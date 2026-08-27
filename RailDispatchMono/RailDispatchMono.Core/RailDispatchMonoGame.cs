@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using XnaGame = Microsoft.Xna.Framework.Game;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Effects;
 using RailDispatchMono.Core.Localization;
@@ -19,7 +20,7 @@ namespace RailDispatchMono.Core
     /// This class is the entry point for the game and handles initialization, content loading,
     /// and screen management.
     /// </remarks>}
-    public class RailDispatchMonoGame : Game
+    public class RailDispatchMonoGame : XnaGame
     {
         // Resources for drawing.
         private GraphicsDeviceManager graphicsDeviceManager;
