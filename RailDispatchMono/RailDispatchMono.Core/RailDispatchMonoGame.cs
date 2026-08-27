@@ -1,141 +1,68 @@
-using Microsoft.Xna.Framework;
-using XnaGame = Microsoft.Xna.Framework.Game;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using RailDispatchMono.Core.Effects;
-using RailDispatchMono.Core.Localization;
-using RailDispatchMono.Core.Settings;
-using RailDispatchMono.ScreenManagers;
-using RailDispatchMono.Screens;
+using Microsoft.Xna.Framework.Input;
+using RailDispatchMono.Core.Screens;
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 
-namespace RailDispatchMono.Core
+namespace RailDispatchMono.Core;
+
+public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 {
-    /// <summary>
-    /// The main class for the game, responsible for managing game components, settings, 
-    /// and platform-specific configurations.
-    /// </summary>
-    /// <remarks>
-    /// This class is the entry point for the game and handles initialization, content loading,
-    /// and screen management.
-    /// </remarks>}
-    public class RailDispatchMonoGame : XnaGame
+    private readonly GraphicsDeviceManager _graphics;
+    private GameplayScreen _gameplay;
+
+    public static bool IsMobile => false;
+
+    public static bool IsDesktop => true;
+
+    public RailDispatchMonoGame()
     {
-        // Resources for drawing.
-        private GraphicsDeviceManager graphicsDeviceManager;
+        _graphics = new GraphicsDeviceManager(this);
 
-        // Manages the game's screen transitions and screens.
-        private ScreenManager screenManager;
+        Content.RootDirectory = "Content";
+        IsMouseVisible = true;
 
-        // Manages game settings, such as preferences and configurations.
-        private SettingsManager<RailDispatchMonoSettings> settingsManager;
+        _graphics.PreferredBackBufferWidth = 1280;
+        _graphics.PreferredBackBufferHeight = 720;
 
-        // Manages leaderboard data for tracking high scores and achievements.
-        private SettingsManager<RailDispatchMonoLeaderboard> leaderboardManager;
+        _graphics.SynchronizeWithVerticalRetrace = true;
 
-        // Texture for rendering particles.
-        private Texture2D particleTexture;
+        IsFixedTimeStep = true;
+        TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 60.0);
+    }
 
-        // Manages particle effects in the game.
-        private ParticleManager particleManager;
+    protected override void Initialize()
+    {
+        _gameplay = new GameplayScreen(GraphicsDevice);
 
-        /// <summary>
-        /// Indicates if the game is running on a mobile platform.
-        /// </summary>
-        public readonly static bool IsMobile = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
+        base.Initialize();
+    }
 
-        /// <summary>
-        /// Indicates if the game is running on a desktop platform.
-        /// </summary>
-        public readonly static bool IsDesktop = OperatingSystem.IsMacOS() || OperatingSystem.IsLinux() || OperatingSystem.IsWindows();
+    protected override void Update(GameTime gameTime)
+    {
+        GamePadState gamePad = GamePad.GetState(PlayerIndex.One);
 
-        /// <summary>
-        /// Initializes a new instance of the game. Configures platform-specific settings, 
-        /// initializes services like settings and leaderboard managers, and sets up the 
-        /// screen manager for screen transitions.
-        /// </summary>
-        public RailDispatchMonoGame()
+        if (gamePad.Buttons.Back == ButtonState.Pressed)
         {
-            graphicsDeviceManager = new GraphicsDeviceManager(this);
-
-            // Share GraphicsDeviceManager as a service.
-            Services.AddService(typeof(GraphicsDeviceManager), graphicsDeviceManager);
-
-            // Determine the appropriate settings storage based on the platform.
-            ISettingsStorage storage;
-            if (IsMobile)
-            {
-                storage = new MobileSettingsStorage();
-                graphicsDeviceManager.IsFullScreen = true;
-                IsMouseVisible = false;
-            }
-            else if (IsDesktop)
-            {
-                storage = new DesktopSettingsStorage();
-                graphicsDeviceManager.IsFullScreen = false;
-                graphicsDeviceManager.PreferredBackBufferWidth = 1280;
-                graphicsDeviceManager.PreferredBackBufferHeight = 768;
-                IsMouseVisible = true;
-            }
-            else
-            {
-                throw new PlatformNotSupportedException();
-            }
-
-            // Initialize settings and leaderboard managers.
-            settingsManager = new SettingsManager<RailDispatchMonoSettings>(storage);
-            Services.AddService(typeof(SettingsManager<RailDispatchMonoSettings>), settingsManager);
-
-            leaderboardManager = new SettingsManager<RailDispatchMonoLeaderboard>(storage);
-            Services.AddService(typeof(SettingsManager<RailDispatchMonoLeaderboard>), leaderboardManager);
-
-            Content.RootDirectory = "Content";
-
-            // Configure screen orientations.
-            graphicsDeviceManager.SupportedOrientations = DisplayOrientation.LandscapeLeft | DisplayOrientation.LandscapeRight;
-
-            // Initialize the screen manager.
-            screenManager = new ScreenManager(this);
-            Components.Add(screenManager);
+            Exit();
+            return;
         }
 
-        /// <summary>
-        /// Initializes the game, including setting up localization and adding the 
-        /// initial screens to the ScreenManager.
-        /// </summary>
-        protected override void Initialize()
-        {
-            base.Initialize();
+        _gameplay.Update(gameTime);
 
-            // Load supported languages and set the default language.
-            List<CultureInfo> cultures = LocalizationManager.GetSupportedCultures();
-            var languages = new List<CultureInfo>();
-            for (int i = 0; i < cultures.Count; i++)
-            {
-                languages.Add(cultures[i]);
-            }
-            var selectedLanguage = languages[settingsManager.Settings.Language].Name;
-            LocalizationManager.SetCulture(selectedLanguage);
+        base.Update(gameTime);
+    }
 
-            // Add background and main menu screens.
-            screenManager.AddScreen(new BackgroundScreen(), null);
-            screenManager.AddScreen(new MainMenuScreen(), null);
-        }
+    protected override void Draw(
+     GameTime gameTime)
+    {
+        _spriteBatch.Begin(
+            transformMatrix: _camera.Transform);
 
-        /// <summary>
-        /// Loads game content, such as textures and particle systems.
-        /// </summary>
-        protected override void LoadContent()
-        {
-            base.LoadContent();
+        _trackRenderer.Draw(
+            _spriteBatch,
+            _camera);
 
-            // Load a texture for particles and initialize the particle manager.
-            particleTexture = Content.Load<Texture2D>("Sprites/blank");
-            particleManager = new ParticleManager(particleTexture, new Vector2(400, 200));
-
-            // Share the particle manager as a service.
-            Services.AddService(typeof(ParticleManager), particleManager);
-        }
+        _spriteBatch.End();
     }
 }

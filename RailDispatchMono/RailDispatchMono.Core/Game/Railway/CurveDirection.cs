@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace RailDispatchMono.Core.Game.Railway;
 
 public enum CurveDirection
@@ -8,6 +8,8 @@ public enum CurveDirection
     SouthWest,
     WestNorth
 }
+
+
 
 
 

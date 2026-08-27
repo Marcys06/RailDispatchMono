@@ -1,4 +1,4 @@
-using RailDispatchMono.Core.Game.Map;
+﻿using RailDispatchMono.Core.Game.Map;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
@@ -38,6 +38,8 @@ public sealed class TrackCell
         return Connections.HasFlag(connection);
     }
 }
+
+
 
 
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace RailDispatchMono.Core.Game.Railway;
 
 [Flags]
@@ -11,6 +11,8 @@ public enum TrackConnections
     South = 4,
     West = 8
 }
+
+
 
 
 

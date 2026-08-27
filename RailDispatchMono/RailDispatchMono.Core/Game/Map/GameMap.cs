@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using RailDispatchMono.Core.Game.Railway;
 using System.Collections.Generic;
 using System;
@@ -131,6 +131,8 @@ public sealed class GameMap
         }
     }
 }
+
+
 
 
 

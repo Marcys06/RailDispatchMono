@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace RailDispatchMono.Core.Game.Map;
 
 public enum TerrainType
@@ -8,5 +8,7 @@ public enum TerrainType
     Hill,
     Mountain
 }
+
+
 
 

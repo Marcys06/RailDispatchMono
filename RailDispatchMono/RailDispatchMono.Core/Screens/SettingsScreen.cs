@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Effects;
 using RailDispatchMono.Core.Localization;

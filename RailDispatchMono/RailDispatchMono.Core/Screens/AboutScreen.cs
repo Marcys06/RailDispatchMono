@@ -1,4 +1,4 @@
-using RailDispatchMono.Core.Localization;
+﻿using RailDispatchMono.Core.Localization;
 
 namespace RailDispatchMono.Screens
 {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 namespace RailDispatchMono.Core.Game.Railway;
 
 public enum TrackBuildMode
@@ -6,6 +6,8 @@ public enum TrackBuildMode
     Straight,
     Curve
 }
+
+
 
 
 
