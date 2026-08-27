@@ -55,7 +55,7 @@ public sealed class GameplayScreen
                 _map);
 
         _trainManager =
-            new TrainManager();
+            new TrainManager(_map);
 
         _trainRenderer =
             new TrainRenderer();
@@ -294,4 +294,5 @@ public sealed class GameplayScreen
             train);
     }
 }
+
 
