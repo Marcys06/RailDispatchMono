@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="RailDispatchMono/RailDispatchMono.Android/RailDispatchMono.Android.csproj" />
+  <Project Path="RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj" />
+  <Project Path="RailDispatchMono/RailDispatchMono.DesktopGL/RailDispatchMono.DesktopGL.csproj" />
+  <Project Path="RailDispatchMono/RailDispatchMono.iOS/RailDispatchMono.iOS.csproj" />
+  <Project Path="RailDispatchMono/RailDispatchMono.WindowsDX/RailDispatchMono.WindowsDX.csproj" />
+</Solution>
