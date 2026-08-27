@@ -58,7 +58,7 @@ public sealed class TrainRenderer
                     : Color.Blue;
 
             spriteBatch.Draw(
-                _pixel!,
+                _pixel,
                 new Vector2(
                     x,
                     centerY),

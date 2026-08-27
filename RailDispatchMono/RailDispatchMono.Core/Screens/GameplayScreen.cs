@@ -81,6 +81,9 @@ public sealed class GameplayScreen
         var keyboard =
             Keyboard.GetState();
 
+        _trainManager.Update(
+            (float)gameTime.ElapsedGameTime.TotalSeconds);
+
         if (keyboard.IsKeyDown(Keys.D1))
         {
             _builder.Mode =
@@ -291,3 +294,4 @@ public sealed class GameplayScreen
             train);
     }
 }
+

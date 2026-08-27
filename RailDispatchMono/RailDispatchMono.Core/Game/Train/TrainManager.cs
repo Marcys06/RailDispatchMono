@@ -9,7 +9,8 @@ public sealed class TrainManager
     public IReadOnlyList<Train> Trains =>
         _trains;
 
-    public void Add(Train train)
+    public void Add(
+        Train train)
     {
         if (!_trains.Contains(train))
         {
@@ -17,8 +18,18 @@ public sealed class TrainManager
         }
     }
 
-    public bool Remove(Train train)
+    public bool Remove(
+        Train train)
     {
         return _trains.Remove(train);
+    }
+
+    public void Update(
+        float deltaTime)
+    {
+        foreach (var train in _trains)
+        {
+            train.Update(deltaTime);
+        }
     }
 }
