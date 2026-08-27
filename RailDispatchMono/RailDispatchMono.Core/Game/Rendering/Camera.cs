@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
 
@@ -21,7 +21,6 @@ public sealed class Camera
     {
         Position += delta;
     }
-    public float Zoom { get; set; } = 32f;
 
 
     public void ZoomAt(

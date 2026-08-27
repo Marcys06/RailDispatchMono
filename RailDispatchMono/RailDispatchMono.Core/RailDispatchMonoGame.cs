@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Screens;
@@ -38,9 +38,15 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         base.Initialize();
     }
 
+    protected override void LoadContent()
+    {
+        _gameplay.LoadContent();
+    }
+
     protected override void Update(GameTime gameTime)
     {
-        GamePadState gamePad = GamePad.GetState(PlayerIndex.One);
+        GamePadState gamePad =
+            GamePad.GetState(PlayerIndex.One);
 
         if (gamePad.Buttons.Back == ButtonState.Pressed)
         {
@@ -53,16 +59,12 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         base.Update(gameTime);
     }
 
-    protected override void Draw(
-     GameTime gameTime)
+    protected override void Draw(GameTime gameTime)
     {
-        _spriteBatch.Begin(
-            transformMatrix: _camera.Transform);
+        GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        _trackRenderer.Draw(
-            _spriteBatch,
-            _camera);
+        _gameplay.Draw(gameTime);
 
-        _spriteBatch.End();
+        base.Draw(gameTime);
     }
 }

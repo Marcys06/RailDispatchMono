@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Map;
@@ -16,21 +16,19 @@ public sealed class TrackRenderer
         _map = map;
     }
 
-    public void LoadContent(
-        GraphicsDevice graphicsDevice)
+    public void LoadContent(GraphicsDevice graphicsDevice)
     {
         _pixel = new Texture2D(
             graphicsDevice,
             1,
             1);
 
-        _pixel.SetData(
-            new[] { Color.White });
+        _pixel.SetData(new[] { Color.White });
     }
 
     public void Draw(
-     SpriteBatch spriteBatch,
-     Camera camera)
+        SpriteBatch spriteBatch,
+        Camera camera)
     {
         if (_pixel is null)
             return;
@@ -40,13 +38,11 @@ public sealed class TrackRenderer
     }
 
     private void DrawGrid(
-     SpriteBatch spriteBatch)
+        SpriteBatch spriteBatch)
     {
-        const float thickness = 0.03f;
+        const float gridThickness = 0.025f;
 
-        for (int x = 0;
-             x <= _map.Size.Width;
-             x++)
+        for (int x = 0; x <= _map.Size.Width; x++)
         {
             DrawLine(
                 spriteBatch,
@@ -55,12 +51,10 @@ public sealed class TrackRenderer
                 x,
                 _map.Size.Height,
                 Color.DarkGray,
-                thickness);
+                gridThickness);
         }
 
-        for (int y = 0;
-             y <= _map.Size.Height;
-             y++)
+        for (int y = 0; y <= _map.Size.Height; y++)
         {
             DrawLine(
                 spriteBatch,
@@ -69,40 +63,27 @@ public sealed class TrackRenderer
                 _map.Size.Width,
                 y,
                 Color.DarkGray,
-                thickness);
+                gridThickness);
         }
     }
 
     private void DrawTracks(
         SpriteBatch spriteBatch)
     {
-        const float cellSize = 1f;
-        const float thickness = 0.12f;
-
         foreach (var track in _map.Tracks.Values)
         {
-            var x =
-                track.Position.X *
-                cellSize;
+            var x = track.Position.X;
+            var y = track.Position.Y;
 
-            var y =
-                track.Position.Y *
-                cellSize;
-
-            var centerX =
-                x + cellSize / 2f;
-
-            var centerY =
-                y + cellSize / 2f;
+            var centerX = x + 0.5f;
+            var centerY = y + 0.5f;
 
             var color =
-                track.Geometry ==
-                TrackGeometry.Curve
+                track.Geometry == TrackGeometry.Curve
                     ? Color.Orange
                     : Color.Black;
 
-            if (track.HasConnection(
-                TrackConnections.North))
+            if (track.HasConnection(TrackConnections.North))
             {
                 DrawLine(
                     spriteBatch,
@@ -111,37 +92,34 @@ public sealed class TrackRenderer
                     centerX,
                     y,
                     color,
-                    thickness);
+                    0.12f);
             }
 
-            if (track.HasConnection(
-                TrackConnections.East))
+            if (track.HasConnection(TrackConnections.East))
             {
                 DrawLine(
                     spriteBatch,
                     centerX,
                     centerY,
-                    x + cellSize,
+                    x + 1f,
                     centerY,
                     color,
-                    thickness);
+                    0.12f);
             }
 
-            if (track.HasConnection(
-                TrackConnections.South))
+            if (track.HasConnection(TrackConnections.South))
             {
                 DrawLine(
                     spriteBatch,
                     centerX,
                     centerY,
                     centerX,
-                    y + cellSize,
+                    y + 1f,
                     color,
-                    thickness);
+                    0.12f);
             }
 
-            if (track.HasConnection(
-                TrackConnections.West))
+            if (track.HasConnection(TrackConnections.West))
             {
                 DrawLine(
                     spriteBatch,
@@ -150,7 +128,7 @@ public sealed class TrackRenderer
                     x,
                     centerY,
                     color,
-                    thickness);
+                    0.12f);
             }
         }
     }
@@ -168,14 +146,13 @@ public sealed class TrackRenderer
         var dy = y2 - y1;
 
         var length =
-            (float)Math.Sqrt(
-                dx * dx +
-                dy * dy);
+            MathF.Sqrt(dx * dx + dy * dy);
+
+        if (length <= 0f)
+            return;
 
         var angle =
-            (float)Math.Atan2(
-                dy,
-                dx);
+            MathF.Atan2(dy, dx);
 
         spriteBatch.Draw(
             _pixel!,
