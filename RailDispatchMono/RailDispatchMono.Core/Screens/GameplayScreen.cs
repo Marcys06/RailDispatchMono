@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
@@ -160,6 +160,14 @@ public sealed class GameplayScreen
 
     public void Draw(GameTime gameTime)
     {
+        var mouse = Mouse.GetState();
+
+        var mouseScreenPosition =
+            new Vector2(mouse.X, mouse.Y);
+
+        var previewPosition =
+            _camera.ScreenToMap(mouseScreenPosition);
+
         _spriteBatch.Begin(
             transformMatrix: _camera.Transform);
 
@@ -167,7 +175,13 @@ public sealed class GameplayScreen
             _spriteBatch,
             _camera);
 
+        _renderer.DrawPreview(
+            _spriteBatch,
+            previewPosition,
+            _builder.Mode,
+            _builder.StraightHorizontal,
+            _builder.Curve);
+
         _spriteBatch.End();
     }
 }
- 
