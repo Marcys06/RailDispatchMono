@@ -46,7 +46,7 @@ public sealed class Train
                 2.5f);
 
         Speed =
-            2.0f;
+            0.4f;
 
         Direction =
             TrackConnections.West;
@@ -65,7 +65,7 @@ public sealed class Train
     }
 
     public void Update(
-    float deltaTime)
+        float deltaTime)
     {
         if (!CanMove ||
             _map is null ||
@@ -78,10 +78,11 @@ public sealed class Train
             $"TRAIN Position={Position} Direction={Direction}");
 
         Move(
-           Speed * deltaTime);
+            Speed * deltaTime);
     }
+
     private void Move(
-    float distance)
+        float distance)
     {
         if (_map is null)
             return;
@@ -157,9 +158,10 @@ public sealed class Train
             }
         }
     }
+
     private bool MoveThroughCurve(
-    TrackCell track,
-    ref float remaining)
+        TrackCell track,
+        ref float remaining)
     {
         var center =
             new Vector2(
@@ -216,106 +218,18 @@ public sealed class Train
             center;
 
         /*
-         * W środku zakrętu zmieniamy kierunek.
+         * Direction to kierunek jazdy. Strona, którą pociąg
+         * faktycznie wjechał do tej komórki (i która jest
+         * obecna w track.Connections), to jej przeciwność.
          */
+        var entrySide =
+            GetOppositeDirection(
+                Direction);
+
         var nextDirection =
             GetCurveExitDirection(
                 track.Connections,
-                Direction);
-
-        if (nextDirection ==
-            TrackConnections.None)
-        {
-            return false;
-        }
-
-        Console.WriteLine(
-            $"CURVE: {track.Position} " +
-            $"Connections={track.Connections} " +
-            $"{Direction} -> {nextDirection}");
-
-        Direction =
-            nextDirection;
-
-        return true;
-    }
-
-    
-
-    private bool HandleCurve(
-        TrackCell track,
-        ref float remaining)
-    {
-        var center =
-            new Vector2(
-                track.Position.X + 0.5f,
-                track.Position.Y + 0.5f);
-
-        /*
-         * Sprawdźmy, czy pociąg jest już
-         * w środku zakrętu.
-         */
-        var dx =
-            MathF.Abs(
-                Position.X -
-                center.X);
-
-        var dy =
-            MathF.Abs(
-                Position.Y -
-                center.Y);
-
-        var atCenter =
-            dx <= 0.0001f &&
-            dy <= 0.0001f;
-
-        /*
-         * Najpierw dojeżdżamy do środka
-         * po aktualnym kierunku.
-         */
-        if (!atCenter)
-        {
-            var distanceToCenter =
-                GetDistanceToCenter(
-                    center);
-
-            var step =
-                MathF.Min(
-                    remaining,
-                    distanceToCenter);
-
-            MoveStraight(
-                step);
-
-            remaining -=
-                step;
-
-            if (remaining <=
-                0.0001f)
-            {
-                return true;
-            }
-
-            /*
-             * Ustawiamy dokładnie środek,
-             * żeby uniknąć błędów float.
-             */
-            Position =
-                center;
-        }
-
-        /*
-         * Jesteśmy w środku zakrętu.
-         *
-         * Direction wskazuje stronę,
-         * z której przyjechaliśmy.
-         *
-         * Wybieramy drugie połączenie.
-         */
-        var nextDirection =
-            GetCurveExitDirection(
-                track.Connections,
-                Direction);
+                entrySide);
 
         if (nextDirection ==
             TrackConnections.None)
@@ -326,45 +240,7 @@ public sealed class Train
         Direction =
             nextDirection;
 
-        /*
-         * Pozostały dystans zostanie
-         * wykonany już w nowym kierunku.
-         */
         return true;
-    }
-
-    private float GetDistanceToCenter(
-        Vector2 center)
-    {
-        return Direction switch
-        {
-            TrackConnections.East =>
-                MathF.Max(
-                    0f,
-                    center.X -
-                    Position.X),
-
-            TrackConnections.West =>
-                MathF.Max(
-                    0f,
-                    Position.X -
-                    center.X),
-
-            TrackConnections.South =>
-                MathF.Max(
-                    0f,
-                    center.Y -
-                    Position.Y),
-
-            TrackConnections.North =>
-                MathF.Max(
-                    0f,
-                    Position.Y -
-                    center.Y),
-
-            _ =>
-                0f
-        };
     }
 
     private MapPosition GetCurrentCell()
@@ -480,28 +356,44 @@ public sealed class Train
             $"Connections={nextTrack.Connections}");
 
         /*
-         * Pociąg wchodzi do następnej komórki
-         * dokładnie od strony, z której przyjechał.
+         * Direction oznacza kierunek jazdy.
+         *
+         * Do następnej komórki wchodzimy od strony
+         * przeciwnej do kierunku jazdy.
+         *
+         * East -> wejście od West
+         * West -> wejście od East
+         * South -> wejście od North
+         * North -> wejście od South
          */
         var direction =
             Direction;
 
+        var entrySide =
+            GetOppositeDirection(
+                direction);
+
+        /*
+         * Sprawdzamy rzeczywistą stronę wejścia
+         * do następnej komórki.
+         */
         if (!nextTrack.HasConnection(
-                direction))
+                entrySide))
         {
             System.Diagnostics.Debug.WriteLine(
                 $"TRAIN BLOCKED: " +
-                $"next track does not have connection {direction}");
+                $"next track does not have entry connection " +
+                $"{entrySide}");
 
             return false;
         }
 
         /*
-         * Zachowujemy kierunek wejścia.
+         * Kierunek jazdy pozostaje bez zmian.
          *
-         * Jeżeli następna komórka jest zakrętem,
-         * zmiana kierunku nastąpi dopiero
-         * po dotarciu do jej środka.
+         * Jeżeli nextTrack jest zakrętem,
+         * MoveThroughCurve() zmieni Direction
+         * dopiero po dotarciu do środka komórki.
          */
         Direction =
             direction;
@@ -514,7 +406,8 @@ public sealed class Train
         System.Diagnostics.Debug.WriteLine(
             $"TRAIN ENTERED: " +
             $"Position={Position} " +
-            $"Direction={Direction}");
+            $"Direction={Direction} " +
+            $"EntrySide={entrySide}");
 
         return true;
     }
@@ -550,8 +443,8 @@ public sealed class Train
     }
 
     private static Vector2 GetPositionAtEntry(
-    MapPosition cell,
-    TrackConnections direction)
+        MapPosition cell,
+        TrackConnections direction)
     {
         const float epsilon = 0.0001f;
 
@@ -600,75 +493,47 @@ public sealed class Train
         };
     }
 
-    private static TrackConnections GetCurveExitDirection(
-    TrackConnections connections,
-    TrackConnections direction)
+    /// <summary>
+    /// Zwraca stronę geometrycznie przeciwną do podanej.
+    /// Używana do wyznaczania strony wejścia do komórki
+    /// (przeciwność kierunku jazdy) oraz strony wyjścia
+    /// z zakrętu (na podstawie strony wejścia).
+    /// </summary>
+    private static TrackConnections GetOppositeDirection(
+        TrackConnections direction)
     {
-        if (connections ==
-            (TrackConnections.North | TrackConnections.East))
+        return direction switch
         {
-            return direction switch
-            {
-                TrackConnections.North =>
-                    TrackConnections.East,
+            TrackConnections.North =>
+                TrackConnections.South,
 
-                TrackConnections.East =>
-                    TrackConnections.North,
+            TrackConnections.East =>
+                TrackConnections.West,
 
-                _ =>
-                    TrackConnections.None
-            };
-        }
+            TrackConnections.South =>
+                TrackConnections.North,
 
-        if (connections ==
-            (TrackConnections.East | TrackConnections.South))
-        {
-            return direction switch
-            {
-                TrackConnections.East =>
-                    TrackConnections.South,
+            TrackConnections.West =>
+                TrackConnections.East,
 
-                TrackConnections.South =>
-                    TrackConnections.East,
+            _ =>
+                TrackConnections.None
+        };
+    }
 
-                _ =>
-                    TrackConnections.None
-            };
-        }
+    /// <summary>
+    /// Wyznacza kierunek wyjazdu z komórki zakrętu.
+    /// Zakręt ma zawsze dokładnie dwie flagi połączeń;
+    /// wyjście to ta druga flaga, różna od strony wejścia.
+    /// </summary>
+    private static TrackConnections GetCurveExitDirection(
+        TrackConnections connections,
+        TrackConnections entrySide)
+    {
+        if (!connections.HasFlag(entrySide))
+            return TrackConnections.None;
 
-        if (connections ==
-            (TrackConnections.South | TrackConnections.West))
-        {
-            return direction switch
-            {
-                TrackConnections.South =>
-                    TrackConnections.West,
-
-                TrackConnections.West =>
-                    TrackConnections.South,
-
-                _ =>
-                    TrackConnections.None
-            };
-        }
-
-        if (connections ==
-            (TrackConnections.West | TrackConnections.North))
-        {
-            return direction switch
-            {
-                TrackConnections.West =>
-                    TrackConnections.North,
-
-                TrackConnections.North =>
-                    TrackConnections.West,
-
-                _ =>
-                    TrackConnections.None
-            };
-        }
-
-        return TrackConnections.None;
+        return connections & ~entrySide;
     }
 
     public Vector2 GetHeadPosition()
