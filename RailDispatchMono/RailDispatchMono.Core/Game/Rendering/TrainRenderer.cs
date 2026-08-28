@@ -41,14 +41,15 @@ public sealed class TrainRenderer
         SpriteBatch spriteBatch,
         RailDispatchMono.Core.Game.Train.Train train)
     {
-        const float startX = 2.5f;
-        const float centerY = 2.5f;
-
         const float vehicleLength = 0.7f;
         const float vehicleWidth = 0.45f;
         const float spacing = 0.1f;
 
-        var x = startX;
+        var x =
+            train.Position.X;
+
+        var centerY =
+            train.Position.Y;
 
         foreach (var vehicle in train.Composition.Vehicles)
         {

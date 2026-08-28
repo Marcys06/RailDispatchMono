@@ -258,6 +258,13 @@ public sealed class GameplayScreen
 
     private void CreateTestTrain()
     {
+        for (var x = 0; x < 20; x++)
+        {
+            _builder.BuildStraight(
+                new MapPosition(x, 2),
+                horizontal: true);
+        }
+
         var locomotiveParameters =
             new VehicleParameters(
                 maxSpeed: 120f,
