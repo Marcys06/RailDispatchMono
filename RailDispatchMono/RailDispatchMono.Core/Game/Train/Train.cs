@@ -210,6 +210,9 @@ public sealed class Train
         if (_trajectory.Count == 0)
             return (Position, GetDirectionAngle(Direction));
 
+        // ============================================================
+        // PRZYPADEK: PRZED PIERWSZYM PUNKTEM
+        // ============================================================
         if (targetDistance <= _trajectory[0].Distance)
         {
             var first = _trajectory[0];
@@ -219,7 +222,9 @@ public sealed class Train
             return (first.Position, angle);
         }
 
-        // Sprawdź czy cel jest na końcu trajektorii
+        // ============================================================
+        // PRZYPADEK: NA KOŃCU TRAJEKTORII
+        // ============================================================
         if (targetDistance >= _trajectory[_trajectory.Count - 1].Distance)
         {
             var last = _trajectory[_trajectory.Count - 1];
@@ -230,6 +235,9 @@ public sealed class Train
             return (last.Position, angle);
         }
 
+        // ============================================================
+        // INTERPOLACJA POZYCJI I KĄTA
+        // ============================================================
         for (int i = _trajectory.Count - 1; i > 0; i--)
         {
             var curr = _trajectory[i];
@@ -242,41 +250,43 @@ public sealed class Train
                     ? (targetDistance - prev.Distance) / segmentLength
                     : 0f;
 
-                // Interpolacja pozycji
-                Vector2 pos = Vector2.Lerp(prev.Position, curr.Position, t);
-
                 // ============================================================
-                // PŁYNNA INTERPOLACJA KĄTA
+                // POZYCJA - INTERPOLACJA PO ŁUKU (NIE LINIOWA!)
                 // ============================================================
 
-                // Oblicz kąty dla poprzedniego i następnego punktu
-                float prevAngle = GetDirectionAngle(Direction);
-                float currAngle = GetDirectionAngle(Direction);
+                // Sprawdź czy jesteśmy na łuku
+                bool isOnCurveSegment = IsOnCurve && _curveLength > MovementEpsilon;
 
-                // Kąt z poprzedniego punktu
-                if (i - 1 >= 0)
+                Vector2 pos;
+                float angle;
+
+                if (isOnCurveSegment && targetDistance >= _totalTravelDistance - _curveDistance - _curveLength)
                 {
-                    var prevPoint = _trajectory[i - 1];
-                    Vector2 prevDir = prev.Position - prevPoint.Position;
-                    if (prevDir.LengthSquared() > MovementEpsilon * MovementEpsilon)
-                    {
-                        prevAngle = MathF.Atan2(prevDir.Y, prevDir.X);
-                    }
-                }
+                    // Jeśli jesteśmy na łuku, oblicz pozycję z kąta
+                    float curveProgress = MathHelper.Clamp(
+                        (targetDistance - (_totalTravelDistance - _curveDistance)) / _curveLength,
+                        0.0f, 1.0f);
 
-                // Kąt z następnego punktu
-                if (i + 1 < _trajectory.Count)
+                    pos = GetArcPosition(curveProgress);
+
+                    // Kąt = styczna do okręgu
+                    float angleAtCurve = _arcStartAngle + (_arcSweepAngle * curveProgress);
+                    Vector2 tangent = new Vector2(-MathF.Sin(angleAtCurve), MathF.Cos(angleAtCurve));
+                    if (_arcSweepAngle < 0.0f)
+                        tangent = -tangent;
+                    angle = MathF.Atan2(tangent.Y, tangent.X);
+                }
+                else
                 {
-                    var nextPoint = _trajectory[i + 1];
-                    Vector2 currDir = nextPoint.Position - curr.Position;
-                    if (currDir.LengthSquared() > MovementEpsilon * MovementEpsilon)
-                    {
-                        currAngle = MathF.Atan2(currDir.Y, currDir.X);
-                    }
-                }
+                    // Na prostej - liniowa interpolacja
+                    pos = Vector2.Lerp(prev.Position, curr.Position, t);
 
-                // Użyj LerpAngle dla płynnej interpolacji kąta
-                float angle = MathHelper.LerpAngle(prevAngle, currAngle, t);
+                    // Kąt z kierunku ruchu
+                    Vector2 dir = curr.Position - prev.Position;
+                    angle = dir != Vector2.Zero
+                        ? MathF.Atan2(dir.Y, dir.X)
+                        : GetDirectionAngle(Direction);
+                }
 
                 return (pos, angle);
             }
