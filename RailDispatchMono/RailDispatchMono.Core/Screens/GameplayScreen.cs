@@ -265,8 +265,15 @@ public sealed class GameplayScreen
             mass: 80000f,
             length: 1.0f);
 
+        var wagonParameters = new VehicleParameters(
+            maxSpeed: 2.0f,
+            acceleration: 0.8f,
+            braking: 1.0f,
+            mass: 40000f,
+            length: 1.0f);
+
         // ============================================================
-        // POCIĄG - TYLKO LOKOMOTYWA (BEZ WAGONÓW!)
+        // POCIĄG Z LOKOMOTYWĄ I WAGONAMI
         // ============================================================
 
         var train = new Train(
@@ -276,11 +283,19 @@ public sealed class GameplayScreen
 
         train.SetMap(_map);
 
-        // TYLKO LOKOMOTYWA, BEZ WAGONÓW
+        // LOKOMOTYWA
         train.Composition.AddVehicle(
             new Locomotive(
                 LocomotiveType.ElectricDC,
                 locomotiveParameters));
+
+        // ✅ WAGONY - PRZYWRÓCONE
+        train.Composition.AddVehicle(new Wagon(wagonParameters));
+        train.Composition.AddVehicle(new Wagon(wagonParameters));
+
+        // ✅ OPCJONALNIE - WIĘCEJ WAGONÓW
+        // train.Composition.AddVehicle(new Wagon(wagonParameters));
+        // train.Composition.AddVehicle(new Wagon(wagonParameters));
 
         _trainManager.Add(train);
     }
