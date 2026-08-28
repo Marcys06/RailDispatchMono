@@ -78,7 +78,7 @@ public sealed class GameplayScreen
         if (keyboard.IsKeyDown(Keys.F12))
         {
             _trainDebugger.IsEnabled = !_trainDebugger.IsEnabled;
-            System.Threading.Thread.Sleep(100); // Zapobiega wielokrotnemu przełączaniu
+            System.Threading.Thread.Sleep(100);
         }
         if (keyboard.IsKeyDown(Keys.F11))
         {
@@ -194,20 +194,6 @@ public sealed class GameplayScreen
 
     private void CreateTestTrack()
     {
-        /*
-         * =====================================================
-         * DUŻA PĘTLA TESTOWA
-         * =====================================================
-         *
-         * Lewy górny zakręt:  (10,10) = SE
-         * Prawy górny zakręt: (30,10) = SW
-         * Prawy dolny:        (30,29) = NW
-         * Lewy dolny:         (10,29) = NE
-         *
-         * Szerokość: 30 - 10 + 1 = 21 pól
-         * Wysokość:  29 - 10 + 1 = 20 pól
-         */
-
         const int left = 10;
         const int right = 30;
         const int top = 10;
@@ -268,6 +254,10 @@ public sealed class GameplayScreen
 
     private void CreateTestTrain()
     {
+        // ============================================================
+        // PARAMETRY POCIĄGU
+        // ============================================================
+
         var locomotiveParameters = new VehicleParameters(
             maxSpeed: 2.0f,
             acceleration: 0.8f,
@@ -275,26 +265,22 @@ public sealed class GameplayScreen
             mass: 80000f,
             length: 1.0f);
 
-        var wagonParameters = new VehicleParameters(
-            maxSpeed: 2.0f,
-            acceleration: 0f,
-            braking: 1.0f,
-            mass: 40000f,
-            length: 1.0f);
+        // ============================================================
+        // POCIĄG - TYLKO LOKOMOTYWA (BEZ WAGONÓW!)
+        // ============================================================
 
-        // Pociąg startuje na górnej prostej (25, 10) jadąc na Wschód
-        var spawnPosition = new Vector2(25.5f, 10.5f);
-        var initialDirection = TrackConnections.East;
+        var train = new Train(
+            new Vector2(25.5f, 10.5f),
+            TrackConnections.East,
+            speed: 1.5f);
 
-        var train = new Train(spawnPosition, initialDirection, speed: 1.5f);
-
-        // Ustaw mapę
         train.SetMap(_map);
 
-        // Dodaj pojazdy
-        train.Composition.AddVehicle(new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters));
-        train.Composition.AddVehicle(new Wagon(wagonParameters));
-        train.Composition.AddVehicle(new Wagon(wagonParameters));
+        // TYLKO LOKOMOTYWA, BEZ WAGONÓW
+        train.Composition.AddVehicle(
+            new Locomotive(
+                LocomotiveType.ElectricDC,
+                locomotiveParameters));
 
         _trainManager.Add(train);
     }
