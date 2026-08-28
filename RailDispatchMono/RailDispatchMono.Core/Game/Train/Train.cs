@@ -588,40 +588,57 @@ public sealed class Train
             return;
         }
 
-        float oldProgress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
+        // Zapisz starą wartość przed zmianą
+        float oldCurveDistance = _curveDistance;
 
+        // Zaktualizuj dystans na łuku
         _curveDistance += step;
         remaining -= step;
 
         float newProgress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
 
-        // Dodaj dodatkowy punkt w środku dla płynności
-        if (step > 0.05f)
+        // ============================================================
+        // GĘSTE PRÓBKOWANIE ŁUKU (co 0.1 jednostki)
+        // ============================================================
+        float sampleInterval = 0.1f;
+        float currentSampleDist = MathF.Floor(oldCurveDistance / sampleInterval) * sampleInterval + sampleInterval;
+
+        while (currentSampleDist < _curveDistance)
         {
-            float midProgress = (oldProgress + newProgress) / 2f;
-            if (midProgress > 0f && midProgress < 1f && midProgress != oldProgress && midProgress != newProgress)
+            float sampleProgress = MathHelper.Clamp(currentSampleDist / _curveLength, 0.0f, 1.0f);
+            Vector2 samplePos = GetArcPosition(sampleProgress);
+
+            // Obliczamy ile faktycznie przejechaliśmy od poprzedniego punktu
+            float deltaSample = currentSampleDist - oldCurveDistance;
+            if (deltaSample > MovementEpsilon)
             {
-                Vector2 midPos = GetArcPosition(midProgress);
-                float midDistance = step / 2f;
-                _totalTravelDistance += midDistance;
-                _trajectory.Add(new TrajectoryPoint(midPos, _totalTravelDistance));
+                AddTrajectoryPoint(samplePos, deltaSample);
             }
+
+            oldCurveDistance = currentSampleDist;
+            currentSampleDist += sampleInterval;
         }
 
+        // ============================================================
+        // USTAWIENIE OSTATECZNEJ POZYCJI W TEJ KLATCE
+        // ============================================================
         Position = GetArcPosition(newProgress);
         TotalDistance += step;
         DistanceAlongTrack += step;
-        AddTrajectoryPoint(Position, step);
 
-        if (_curveLength - _curveDistance <= MovementEpsilon)
+        // Dodajemy punkt końcowy dla pozostałej części kroku
+        float remainingStep = _curveDistance - oldCurveDistance;
+        if (remainingStep > MovementEpsilon)
+        {
+            AddTrajectoryPoint(Position, remainingStep);
+        }
+
+        // Sprawdź czy łuk został ukończony
+        if (_curveDistance >= _curveLength - MovementEpsilon)
         {
             FinishCurve();
         }
     }
-
-    // ============================================================
-    // ARC GEOMETRY
-    // ============================================================
 
     private void SetupArcParams(MapPosition cell, TrackConnections entrySide, TrackConnections exitSide)
     {
@@ -979,5 +996,14 @@ public static class MathHelper
     public static float Clamp(float value, float min, float max)
     {
         return value < min ? min : value > max ? max : value;
+    }
+
+    /// <summary>
+    /// Interpoluje kąt z uwzględnieniem przekroczenia granicy -PI/PI.
+    /// </summary>
+    public static float LerpAngle(float from, float to, float t)
+    {
+        float difference = MathF.IEEERemainder(to - from, MathF.PI * 2f);
+        return from + difference * t;
     }
 }
