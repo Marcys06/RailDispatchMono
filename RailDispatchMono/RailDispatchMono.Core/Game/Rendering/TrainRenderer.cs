@@ -11,10 +11,11 @@ public sealed class TrainRenderer
     public void LoadContent(
         GraphicsDevice graphicsDevice)
     {
-        _pixel = new Texture2D(
-            graphicsDevice,
-            1,
-            1);
+        _pixel =
+            new Texture2D(
+                graphicsDevice,
+                1,
+                1);
 
         _pixel.SetData(
             new[] { Color.White });
@@ -29,7 +30,8 @@ public sealed class TrainRenderer
             return;
         }
 
-        foreach (var train in trainManager.Trains)
+        foreach (var train in
+                 trainManager.Trains)
         {
             DrawTrain(
                 spriteBatch,
@@ -41,18 +43,18 @@ public sealed class TrainRenderer
         SpriteBatch spriteBatch,
         RailDispatchMono.Core.Game.Train.Train train)
     {
-        const float vehicleLength = 0.7f;
         const float vehicleWidth = 0.45f;
-        const float spacing = 0.1f;
 
-        var x =
-            train.Position.X;
-
-        var centerY =
-            train.Position.Y;
-
-        foreach (var vehicle in train.Composition.Vehicles)
+        for (var i = 0;
+             i < train.Composition.Vehicles.Count;
+             i++)
         {
+            var vehicle =
+                train.Composition.Vehicles[i];
+
+            var distance =
+                train.GetVehicleDistance(i);
+
             var color =
                 vehicle is Locomotive
                     ? Color.Red
@@ -61,8 +63,8 @@ public sealed class TrainRenderer
             spriteBatch.Draw(
                 _pixel,
                 new Vector2(
-                    x,
-                    centerY),
+                    distance,
+                    train.GetHeadPosition().Y),
                 null,
                 color,
                 0f,
@@ -70,14 +72,10 @@ public sealed class TrainRenderer
                     0.5f,
                     0.5f),
                 new Vector2(
-                    vehicleLength,
+                    vehicle.Parameters.Length,
                     vehicleWidth),
                 SpriteEffects.None,
                 0f);
-
-            x +=
-                vehicleLength +
-                spacing;
         }
     }
 }

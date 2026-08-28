@@ -8,9 +8,18 @@ public abstract class Vehicle
 
     public VehicleParameters Parameters { get; }
 
-    protected Vehicle(VehicleParameters parameters)
+    public VehicleOrientation Orientation { get; set; }
+
+    protected Vehicle(
+        VehicleParameters parameters)
     {
-        Id = Guid.NewGuid();
-        Parameters = parameters;
+        Id =
+            Guid.NewGuid();
+
+        Parameters =
+            parameters;
+
+        Orientation =
+            VehicleOrientation.Forward;
     }
 }

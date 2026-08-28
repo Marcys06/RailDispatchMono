@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Train;
@@ -38,12 +39,14 @@ public sealed class TrainComposition
         }
     }
 
-    public void AddVehicle(Vehicle vehicle)
+    public void AddVehicle(
+        Vehicle vehicle)
     {
         _vehicles.Add(vehicle);
     }
 
-    public bool RemoveVehicle(Vehicle vehicle)
+    public bool RemoveVehicle(
+        Vehicle vehicle)
     {
         return _vehicles.Remove(vehicle);
     }
@@ -52,6 +55,35 @@ public sealed class TrainComposition
         int index,
         Vehicle vehicle)
     {
-        _vehicles.Insert(index, vehicle);
+        _vehicles.Insert(
+            index,
+            vehicle);
+    }
+
+    public TrainComposition Split(
+        int index)
+    {
+        if (index <= 0 ||
+            index >= _vehicles.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(index));
+        }
+
+        var splitComposition =
+            new TrainComposition();
+
+        while (_vehicles.Count > index)
+        {
+            var vehicle =
+                _vehicles[index];
+
+            _vehicles.RemoveAt(index);
+
+            splitComposition.AddVehicle(
+                vehicle);
+        }
+
+        return splitComposition;
     }
 }
