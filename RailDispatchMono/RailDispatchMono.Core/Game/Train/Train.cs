@@ -219,6 +219,17 @@ public sealed class Train
             return (first.Position, angle);
         }
 
+        // Sprawdź czy cel jest na końcu trajektorii
+        if (targetDistance >= _trajectory[_trajectory.Count - 1].Distance)
+        {
+            var last = _trajectory[_trajectory.Count - 1];
+            var angle = _trajectory.Count > 1
+                ? MathF.Atan2(last.Position.Y - _trajectory[_trajectory.Count - 2].Position.Y,
+                              last.Position.X - _trajectory[_trajectory.Count - 2].Position.X)
+                : GetDirectionAngle(Direction);
+            return (last.Position, angle);
+        }
+
         for (int i = _trajectory.Count - 1; i > 0; i--)
         {
             var curr = _trajectory[i];
@@ -231,11 +242,41 @@ public sealed class Train
                     ? (targetDistance - prev.Distance) / segmentLength
                     : 0f;
 
+                // Interpolacja pozycji
                 Vector2 pos = Vector2.Lerp(prev.Position, curr.Position, t);
-                Vector2 dir = curr.Position - prev.Position;
-                float angle = dir != Vector2.Zero
-                    ? MathF.Atan2(dir.Y, dir.X)
-                    : GetDirectionAngle(Direction);
+
+                // ============================================================
+                // PŁYNNA INTERPOLACJA KĄTA
+                // ============================================================
+
+                // Oblicz kąty dla poprzedniego i następnego punktu
+                float prevAngle = GetDirectionAngle(Direction);
+                float currAngle = GetDirectionAngle(Direction);
+
+                // Kąt z poprzedniego punktu
+                if (i - 1 >= 0)
+                {
+                    var prevPoint = _trajectory[i - 1];
+                    Vector2 prevDir = prev.Position - prevPoint.Position;
+                    if (prevDir.LengthSquared() > MovementEpsilon * MovementEpsilon)
+                    {
+                        prevAngle = MathF.Atan2(prevDir.Y, prevDir.X);
+                    }
+                }
+
+                // Kąt z następnego punktu
+                if (i + 1 < _trajectory.Count)
+                {
+                    var nextPoint = _trajectory[i + 1];
+                    Vector2 currDir = nextPoint.Position - curr.Position;
+                    if (currDir.LengthSquared() > MovementEpsilon * MovementEpsilon)
+                    {
+                        currAngle = MathF.Atan2(currDir.Y, currDir.X);
+                    }
+                }
+
+                // Użyj LerpAngle dla płynnej interpolacji kąta
+                float angle = MathHelper.LerpAngle(prevAngle, currAngle, t);
 
                 return (pos, angle);
             }
@@ -243,7 +284,6 @@ public sealed class Train
 
         return (Position, GetDirectionAngle(Direction));
     }
-
     private static float GetDirectionAngle(TrackConnections direction) => direction switch
     {
         TrackConnections.East => 0f,
@@ -398,7 +438,7 @@ public sealed class Train
 
         _trajectory.Add(new TrajectoryPoint(position, _totalTravelDistance));
 
-        float requiredHistory = MathF.Max(Length * 5.0f, 15.0f);
+        float requiredHistory = MathF.Max(Length * 10.0f, 30.0f);
         float minimumDistance = _totalTravelDistance - requiredHistory;
 
         while (_trajectory.Count > 2 && _trajectory[1].Distance < minimumDistance)
@@ -492,13 +532,39 @@ public sealed class Train
     {
         if (distance <= 0.0f) return;
 
-        Vector2 movement = DirectionToVector(Direction) * distance;
-        Position += movement;
-        TotalDistance += distance;
-        DistanceAlongTrack += distance;
-        AddTrajectoryPoint(Position, distance);
-    }
+        // ============================================================
+        // GĘSTE PRÓBKOWANIE DLA RUCHU PROSTEGO
+        // ============================================================
+        float sampleInterval = 0.05f;
+        float remainingDistance = distance;
+        float currentPos = 0f;
 
+        while (remainingDistance > sampleInterval)
+        {
+            float step = sampleInterval;
+            Vector2 movement = DirectionToVector(Direction) * step;
+            Vector2 newPos = Position + movement;
+
+            // Dodaj punkt do trajektorii
+            TotalDistance += step;
+            DistanceAlongTrack += step;
+            AddTrajectoryPoint(newPos, step);
+
+            Position = newPos;
+            remainingDistance -= step;
+            currentPos += step;
+        }
+
+        // Pozostały fragment
+        if (remainingDistance > MovementEpsilon)
+        {
+            Vector2 movement = DirectionToVector(Direction) * remainingDistance;
+            Position += movement;
+            TotalDistance += remainingDistance;
+            DistanceAlongTrack += remainingDistance;
+            AddTrajectoryPoint(Position, remainingDistance);
+        }
+    }
     // ============================================================
     // NEXT CELL
     // ============================================================
@@ -600,7 +666,7 @@ public sealed class Train
         // ============================================================
         // GĘSTE PRÓBKOWANIE ŁUKU (co 0.1 jednostki)
         // ============================================================
-        float sampleInterval = 0.1f;
+        float sampleInterval = 0.01f;
         float currentSampleDist = MathF.Floor(oldCurveDistance / sampleInterval) * sampleInterval + sampleInterval;
 
         while (currentSampleDist < _curveDistance)
