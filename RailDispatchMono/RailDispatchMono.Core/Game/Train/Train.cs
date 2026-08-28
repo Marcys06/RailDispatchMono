@@ -592,6 +592,12 @@ public sealed class Train
     // NEXT CELL
     // ============================================================
 
+
+
+    // ============================================================
+    // NEXT CELL
+    // ============================================================
+
     private bool EnterNextCell()
     {
         if (_map is null) return false;
@@ -618,15 +624,31 @@ public sealed class Train
             return false;
         }
 
-        const float epsilon = 0.0001f;
+        // Pobieramy wyjście na podstawie obecnego stanu toru/zwrotnicy
+        TrackConnections exitSide = nextTrack.GetExitDirection(entrySide);
 
-        // ✅ POPRAWIONE POZYCJE WEJŚCIA
+        if (exitSide == TrackConnections.None)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ENTER] No exit path available from {entrySide} at {nextCell}");
+            return false;
+        }
+
+        // Jeśli wejście i wyjście tworzą łuk
+        if (IsPerpendicular(entrySide, exitSide))
+        {
+            return EnterCurve(nextTrack, entrySide, exitSide);
+        }
+
+        // --- PROSTY TOR ---
+        Direction = exitSide;
+
+        // Używamy MovementEpsilon (istniejącej stałej w klasie)
         Vector2 entryPos = Direction switch
         {
-            TrackConnections.East => new Vector2(nextCell.X + epsilon, nextCell.Y + 0.5f),
-            TrackConnections.West => new Vector2(nextCell.X + 1.0f - epsilon, nextCell.Y + 0.5f),
-            TrackConnections.South => new Vector2(nextCell.X + 0.5f, nextCell.Y + epsilon),
-            TrackConnections.North => new Vector2(nextCell.X + 0.5f, nextCell.Y + 1.0f - epsilon),
+            TrackConnections.East => new Vector2(nextCell.X + MovementEpsilon, nextCell.Y + 0.5f),
+            TrackConnections.West => new Vector2(nextCell.X + 1.0f - MovementEpsilon, nextCell.Y + 0.5f),
+            TrackConnections.South => new Vector2(nextCell.X + 0.5f, nextCell.Y + MovementEpsilon),
+            TrackConnections.North => new Vector2(nextCell.X + 0.5f, nextCell.Y + 1.0f - MovementEpsilon),
             _ => new Vector2(nextCell.X + 0.5f, nextCell.Y + 0.5f)
         };
 
@@ -635,7 +657,6 @@ public sealed class Train
 
         System.Diagnostics.Debug.WriteLine($"[ENTER] OldPos:{oldPos} NewPos:{entryPos} Distance:{actualDistance:F6}");
 
-        // ✅ ZAPISZ PUNKT TRAJEKTORII PRZED ZMIANĄ POZYCJI
         if (actualDistance > MovementEpsilon)
         {
             AddTrajectoryPoint(entryPos, actualDistance);
@@ -644,13 +665,37 @@ public sealed class Train
         }
 
         Position = entryPos;
-
-        // ✅ SPRAWDŹ CZY NOWA KOMÓRKA MA ŁUK
-        if (nextTrack.Geometry == TrackGeometry.Curve)
-            return EnterCurve(nextTrack);
-
         return true;
     }
+
+    private bool EnterCurve(TrackCell track, TrackConnections entrySide, TrackConnections exitSide)
+    {
+        _curveCell = track.Position;
+        _curveEntrySide = entrySide;
+        _curveExitSide = exitSide;
+        _curveDistance = 0.0f;
+        _curveLength = DefaultCurveLength;
+        _isOnCurve = true;
+
+        SetupArcParams(_curveCell, _curveEntrySide, _curveExitSide);
+
+        Vector2 curveStart = GetArcPosition(0.0f);
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[CURVE] {entrySide}->{exitSide} " +
+            $"Cell:{track.Position} " +
+            $"Center:{_arcCenter} " +
+            $"Start:{curveStart} " +
+            $"Current:{Position} " +
+            $"Diff:{(curveStart - Position).Length():F6}");
+
+        Position = curveStart;
+        AddTrajectoryPoint(Position, 0.0f);
+
+        Direction = exitSide;
+        return true;
+    }
+
 
     // ============================================================
     // CURVE ENTRY

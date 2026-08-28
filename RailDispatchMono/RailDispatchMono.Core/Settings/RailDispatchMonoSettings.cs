@@ -1,4 +1,4 @@
-﻿using RailDispatchMono.Core.Effects;
+using RailDispatchMono.Core.Effects;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -78,7 +78,7 @@ namespace RailDispatchMono.Core.Settings
         /// <summary>
         /// Event triggered when a property value changes.
         /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
         /// Raises the <see cref="PropertyChanged"/> event to notify subscribers that a property value has changed.
@@ -86,7 +86,7 @@ namespace RailDispatchMono.Core.Settings
         /// <param name="propertyName">
         /// The name of the property that changed. If not provided, the name of the calling member is used.
         /// </param>
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

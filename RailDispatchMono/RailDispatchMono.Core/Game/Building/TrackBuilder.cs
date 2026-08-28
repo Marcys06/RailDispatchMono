@@ -13,11 +13,35 @@ public sealed class TrackBuilder
     public CurveDirection Curve { get; set; } =
         CurveDirection.NorthEast;
 
+    public JunctionType Junction { get; set; } =
+        JunctionType.South_NorthEast;
+
     public bool StraightHorizontal { get; set; } = true;
 
     public TrackBuilder(GameMap map)
     {
         _map = map;
+    }
+
+    /// <summary>
+    /// Główna metoda stawiająca tor/zwrotnicę zależnie od aktualnie wybranego Mode.
+    /// </summary>
+    public void BuildAt(MapPosition position)
+    {
+        switch (Mode)
+        {
+            case TrackBuildMode.Straight:
+                BuildStraight(position, StraightHorizontal);
+                break;
+
+            case TrackBuildMode.Curve:
+                BuildCurve(position, Curve);
+                break;
+
+            case TrackBuildMode.Junction:
+                BuildJunctionFromType(position, Junction);
+                break;
+        }
     }
 
     public void BuildStraight(
@@ -44,6 +68,38 @@ public sealed class TrackBuilder
         ConnectNeighbours(
             position,
             connections);
+    }
+
+    public void BuildJunction(
+        MapPosition position,
+        TrackConnections stem,
+        TrackConnections straight,
+        TrackConnections diverging)
+    {
+        if (!IsInsideMap(position))
+            return;
+
+        var track = GetOrCreate(position);
+        track.ConfigureJunction(stem, straight, diverging);
+
+        // Połącz sąsiadów dla wszystkich 3 wyjść
+        ConnectNeighbours(position, track.Connections);
+    }
+
+    public void BuildJunctionFromType(
+        MapPosition position,
+        JunctionType type)
+    {
+        var (stem, straight, diverging) = type switch
+        {
+            JunctionType.South_NorthEast => (TrackConnections.South, TrackConnections.North, TrackConnections.East),
+            JunctionType.South_NorthWest => (TrackConnections.South, TrackConnections.North, TrackConnections.West),
+            JunctionType.West_EastSouth => (TrackConnections.West, TrackConnections.East, TrackConnections.South),
+            JunctionType.West_EastNorth => (TrackConnections.West, TrackConnections.East, TrackConnections.North),
+            _ => (TrackConnections.South, TrackConnections.North, TrackConnections.East)
+        };
+
+        BuildJunction(position, stem, straight, diverging);
     }
 
     public void BuildCurve(
@@ -185,7 +241,7 @@ public sealed class TrackBuilder
         }
 
         if (neighbour.Geometry ==
-    TrackGeometry.Curve)
+            TrackGeometry.Curve)
         {
             return;
         }

@@ -112,7 +112,8 @@ namespace RailDispatchMono.Screens
             }
         }
 
-        private ScreenManager screenManager;
+        // Jeśli pole nazywa się _screenManager lub screenManager, dodaj '?' przy typie:
+        private ScreenManager? _screenManager;
         /// <summary>
         /// Gets the manager that this screen belongs to.
         /// </summary>
