@@ -184,6 +184,12 @@ public sealed class TrackBuilder
             return;
         }
 
+        if (neighbour.Geometry ==
+    TrackGeometry.Curve)
+        {
+            return;
+        }
+
         neighbour.SetConnections(
             neighbour.Connections |
             connection);
