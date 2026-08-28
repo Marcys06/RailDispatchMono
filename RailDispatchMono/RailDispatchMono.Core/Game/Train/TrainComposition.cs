@@ -86,4 +86,8 @@ public sealed class TrainComposition
 
         return splitComposition;
     }
+    public void Clear()
+    {
+        _vehicles.Clear();
+    }
 }
