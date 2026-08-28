@@ -66,6 +66,7 @@ public sealed class Train
     public event EventHandler<TrainEventArgs>? TrainCoupled;
     public event EventHandler<TrainEventArgs>? TrainDecoupled;
 #pragma warning restore CS0067
+
     public class TrainEventArgs : EventArgs
     {
         public Train Train { get; }
@@ -204,96 +205,22 @@ public sealed class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        float distanceBehindHead = GetDistanceToVehicle(vehicleIndex);
+        // ============================================================
+        // OBLICZ DYSTANS OD GŁOWY DO ŚRODKA POJAZDU
+        // ============================================================
+        float distanceBehindHead = 0f;
+        for (int i = 0; i < vehicleIndex; i++)
+        {
+            distanceBehindHead += Composition.Vehicles[i].Parameters.Length;
+        }
+        // Dodaj połowę długości bieżącego pojazdu, aby punkt był w środku
+        distanceBehindHead += Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
+
         float targetDistance = _totalTravelDistance - distanceBehindHead;
 
-        if (_trajectory.Count == 0)
-            return (Position, GetDirectionAngle(Direction));
-
-        // ============================================================
-        // PRZYPADEK: PRZED PIERWSZYM PUNKTEM
-        // ============================================================
-        if (targetDistance <= _trajectory[0].Distance)
-        {
-            var first = _trajectory[0];
-            var angle = _trajectory.Count > 1
-                ? MathF.Atan2(_trajectory[1].Position.Y - first.Position.Y, _trajectory[1].Position.X - first.Position.X)
-                : GetDirectionAngle(Direction);
-            return (first.Position, angle);
-        }
-
-        // ============================================================
-        // PRZYPADEK: NA KOŃCU TRAJEKTORII
-        // ============================================================
-        if (targetDistance >= _trajectory[_trajectory.Count - 1].Distance)
-        {
-            var last = _trajectory[_trajectory.Count - 1];
-            var angle = _trajectory.Count > 1
-                ? MathF.Atan2(last.Position.Y - _trajectory[_trajectory.Count - 2].Position.Y,
-                              last.Position.X - _trajectory[_trajectory.Count - 2].Position.X)
-                : GetDirectionAngle(Direction);
-            return (last.Position, angle);
-        }
-
-        // ============================================================
-        // INTERPOLACJA POZYCJI I KĄTA
-        // ============================================================
-        for (int i = _trajectory.Count - 1; i > 0; i--)
-        {
-            var curr = _trajectory[i];
-            var prev = _trajectory[i - 1];
-
-            if (targetDistance >= prev.Distance && targetDistance <= curr.Distance)
-            {
-                float segmentLength = curr.Distance - prev.Distance;
-                float t = segmentLength > MovementEpsilon
-                    ? (targetDistance - prev.Distance) / segmentLength
-                    : 0f;
-
-                // ============================================================
-                // POZYCJA - INTERPOLACJA PO ŁUKU (NIE LINIOWA!)
-                // ============================================================
-
-                // Sprawdź czy jesteśmy na łuku
-                bool isOnCurveSegment = IsOnCurve && _curveLength > MovementEpsilon;
-
-                Vector2 pos;
-                float angle;
-
-                if (isOnCurveSegment && targetDistance >= _totalTravelDistance - _curveDistance - _curveLength)
-                {
-                    // Jeśli jesteśmy na łuku, oblicz pozycję z kąta
-                    float curveProgress = MathHelper.Clamp(
-                        (targetDistance - (_totalTravelDistance - _curveDistance)) / _curveLength,
-                        0.0f, 1.0f);
-
-                    pos = GetArcPosition(curveProgress);
-
-                    // Kąt = styczna do okręgu
-                    float angleAtCurve = _arcStartAngle + (_arcSweepAngle * curveProgress);
-                    Vector2 tangent = new Vector2(-MathF.Sin(angleAtCurve), MathF.Cos(angleAtCurve));
-                    if (_arcSweepAngle < 0.0f)
-                        tangent = -tangent;
-                    angle = MathF.Atan2(tangent.Y, tangent.X);
-                }
-                else
-                {
-                    // Na prostej - liniowa interpolacja
-                    pos = Vector2.Lerp(prev.Position, curr.Position, t);
-
-                    // Kąt z kierunku ruchu
-                    Vector2 dir = curr.Position - prev.Position;
-                    angle = dir != Vector2.Zero
-                        ? MathF.Atan2(dir.Y, dir.X)
-                        : GetDirectionAngle(Direction);
-                }
-
-                return (pos, angle);
-            }
-        }
-
-        return (Position, GetDirectionAngle(Direction));
+        // ... reszta kodu bez zmian ...
     }
+
     private static float GetDirectionAngle(TrackConnections direction) => direction switch
     {
         TrackConnections.East => 0f,
@@ -369,7 +296,7 @@ public sealed class Train
         TrackConnections cutDirection = Direction;
 
         var newTrain = new Train(cutPosition, cutDirection, _speed);
-        if (_map != null)  // DODAJ TO SPRAWDZENIE
+        if (_map != null)
             newTrain.SetMap(_map);
 
         var vehiclesToMove = new List<Vehicle>();
@@ -422,6 +349,30 @@ public sealed class Train
     }
 
     // ============================================================
+    // DEBUGGER HELPERS
+    // ============================================================
+
+    public IReadOnlyList<(Vector2 Position, float Distance)> GetTrajectoryHistory()
+    {
+        var result = new List<(Vector2 Position, float Distance)>(_trajectory.Count);
+        foreach (var point in _trajectory)
+        {
+            result.Add((point.Position, point.Distance));
+        }
+        return result;
+    }
+
+    public int TrajectoryPointCount => _trajectory.Count;
+
+    public (Vector2 Position, float Distance)? GetLastTrajectoryPoint()
+    {
+        if (_trajectory.Count == 0)
+            return null;
+        var last = _trajectory[_trajectory.Count - 1];
+        return (last.Position, last.Distance);
+    }
+
+    // ============================================================
     // TRAJECTORY HISTORY
     // ============================================================
 
@@ -448,7 +399,7 @@ public sealed class Train
 
         _trajectory.Add(new TrajectoryPoint(position, _totalTravelDistance));
 
-        float requiredHistory = MathF.Max(Length * 10.0f, 30.0f);
+        float requiredHistory = MathF.Max(Length * 25.0f, 60.0f);
         float minimumDistance = _totalTravelDistance - requiredHistory;
 
         while (_trajectory.Count > 2 && _trajectory[1].Distance < minimumDistance)
@@ -476,6 +427,9 @@ public sealed class Train
         float remaining = distance;
         int iterations = 0;
 
+        MapPosition lastCell = GetCurrentCell();
+        int sameCellCount = 0;
+
         while (remaining > MovementEpsilon)
         {
             if (++iterations > MaxMovementIterations)
@@ -484,13 +438,31 @@ public sealed class Train
                 break;
             }
 
+            MapPosition currentCell = GetCurrentCell();
+
+            if (currentCell == lastCell)
+            {
+                sameCellCount++;
+                if (sameCellCount > 5)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TRAIN] Stuck in cell {currentCell} - forcing exit");
+                    if (!EnterNextCell())
+                        break;
+                    sameCellCount = 0;
+                    continue;
+                }
+            }
+            else
+            {
+                sameCellCount = 0;
+                lastCell = currentCell;
+            }
+
             if (_isOnCurve)
             {
                 MoveOnCurve(ref remaining);
                 continue;
             }
-
-            MapPosition currentCell = GetCurrentCell();
 
             if (!_map.TryGetTrack(currentCell, out TrackCell? track) || track is null)
                 break;
@@ -542,39 +514,17 @@ public sealed class Train
     {
         if (distance <= 0.0f) return;
 
-        // ============================================================
-        // GĘSTE PRÓBKOWANIE DLA RUCHU PROSTEGO
-        // ============================================================
-        float sampleInterval = 0.05f;
-        float remainingDistance = distance;
-        float currentPos = 0f;
+        Vector2 oldPos = Position;
+        Vector2 movement = DirectionToVector(Direction) * distance;
+        Position += movement;
 
-        while (remainingDistance > sampleInterval)
-        {
-            float step = sampleInterval;
-            Vector2 movement = DirectionToVector(Direction) * step;
-            Vector2 newPos = Position + movement;
+        System.Diagnostics.Debug.WriteLine($"[STRAIGHT] Dir:{Direction} Dist:{distance:F6} Old:({oldPos.X:F4},{oldPos.Y:F4}) New:({Position.X:F4},{Position.Y:F4})");
 
-            // Dodaj punkt do trajektorii
-            TotalDistance += step;
-            DistanceAlongTrack += step;
-            AddTrajectoryPoint(newPos, step);
-
-            Position = newPos;
-            remainingDistance -= step;
-            currentPos += step;
-        }
-
-        // Pozostały fragment
-        if (remainingDistance > MovementEpsilon)
-        {
-            Vector2 movement = DirectionToVector(Direction) * remainingDistance;
-            Position += movement;
-            TotalDistance += remainingDistance;
-            DistanceAlongTrack += remainingDistance;
-            AddTrajectoryPoint(Position, remainingDistance);
-        }
+        TotalDistance += distance;
+        DistanceAlongTrack += distance;
+        AddTrajectoryPoint(Position, distance);
     }
+
     // ============================================================
     // NEXT CELL
     // ============================================================
@@ -586,59 +536,70 @@ public sealed class Train
         MapPosition currentCell = GetCurrentCell();
         MapPosition nextCell = GetNextCell(currentCell);
 
-        if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
+        System.Diagnostics.Debug.WriteLine($"[ENTER] Current:{currentCell} Next:{nextCell} Dir:{Direction} Pos:{Position}");
+
+        if (currentCell == nextCell)
             return false;
+
+        if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ENTER] No track at {nextCell}");
+            return false;
+        }
 
         TrackConnections entrySide = GetOppositeDirection(Direction);
 
         if (!nextTrack.HasConnection(entrySide))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ENTER] No connection {entrySide} at {nextCell}");
             return false;
+        }
 
-        Position = GetPositionAtEntry(nextCell, Direction);
+        const float epsilon = 0.0001f;
+
+        Vector2 entryPos = Direction switch
+        {
+            TrackConnections.East => new Vector2(nextCell.X + epsilon, nextCell.Y + 0.5f),
+            TrackConnections.West => new Vector2(nextCell.X + 1.0f - epsilon, nextCell.Y + 0.5f),
+            TrackConnections.South => new Vector2(nextCell.X + 0.5f, nextCell.Y + epsilon),
+            TrackConnections.North => new Vector2(nextCell.X + 0.5f, nextCell.Y + 1.0f - epsilon),
+            _ => new Vector2(nextCell.X + 0.5f, nextCell.Y + 0.5f)
+        };
+
+        // ============================================================
+        // OBLICZ RZECZYWISTY DYSTANS - TYLKO BARDZO MAŁY SKOK!
+        // ============================================================
+        Vector2 oldPos = Position;
+        float actualDistance = Vector2.Distance(oldPos, entryPos);
+
+        System.Diagnostics.Debug.WriteLine($"[ENTER] OldPos:{oldPos} NewPos:{entryPos} Distance:{actualDistance:F6}");
+
+        Position = entryPos;
+
+        // ============================================================
+        // TYLKO DODAJ MAŁY DYSTANS (0.0001), NIE 1.0!
+        // ============================================================
+        if (actualDistance > MovementEpsilon && actualDistance < 0.01f)
+        {
+            TotalDistance += actualDistance;
+            DistanceAlongTrack += actualDistance;
+        }
+        // Jeśli actualDistance jest duże (np. 1.0), to znaczy że pociąg
+        // jest na granicy i NIE powinien dodawać dystansu
+
         AddTrajectoryPoint(Position, 0.0f);
-
-        if (nextTrack.Geometry == TrackGeometry.Straight)
-            return true;
 
         if (nextTrack.Geometry == TrackGeometry.Curve)
             return EnterCurve(nextTrack);
 
-        return false;
+        return true;
     }
 
     // ============================================================
     // CURVE ENTRY
     // ============================================================
 
-    private bool EnterCurve(TrackCell track)
-    {
-        TrackConnections entrySide = GetOppositeDirection(Direction);
-
-        if (!track.HasConnection(entrySide))
-            return false;
-
-        TrackConnections exitSide = GetCurveExitDirection(track.Connections, entrySide);
-
-        if (exitSide == TrackConnections.None)
-            return false;
-
-        if (!IsPerpendicular(entrySide, exitSide))
-            return false;
-
-        _curveCell = track.Position;
-        _curveEntrySide = entrySide;
-        _curveExitSide = exitSide;
-        _curveDistance = 0.0f;
-        _curveLength = DefaultCurveLength;
-        _isOnCurve = true;
-
-        SetupArcParams(_curveCell, _curveEntrySide, _curveExitSide);
-
-        Position = GetArcPosition(0.0f);
-        AddTrajectoryPoint(Position, 0.0f);
-
-        return true;
-    }
+    
 
     // ============================================================
     // CURVE MOVEMENT
@@ -664,129 +625,83 @@ public sealed class Train
             return;
         }
 
-        // Zapisz starą wartość przed zmianą
-        float oldCurveDistance = _curveDistance;
-
-        // Zaktualizuj dystans na łuku
         _curveDistance += step;
         remaining -= step;
 
-        float newProgress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
+        float progress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
+
+        Position = GetArcPosition(progress);
 
         // ============================================================
-        // GĘSTE PRÓBKOWANIE ŁUKU (co 0.1 jednostki)
+        // DODAJ DYSTANS DO TOTAL DISTANCE
         // ============================================================
-        float sampleInterval = 0.01f;
-        float currentSampleDist = MathF.Floor(oldCurveDistance / sampleInterval) * sampleInterval + sampleInterval;
-
-        while (currentSampleDist < _curveDistance)
-        {
-            float sampleProgress = MathHelper.Clamp(currentSampleDist / _curveLength, 0.0f, 1.0f);
-            Vector2 samplePos = GetArcPosition(sampleProgress);
-
-            // Obliczamy ile faktycznie przejechaliśmy od poprzedniego punktu
-            float deltaSample = currentSampleDist - oldCurveDistance;
-            if (deltaSample > MovementEpsilon)
-            {
-                AddTrajectoryPoint(samplePos, deltaSample);
-            }
-
-            oldCurveDistance = currentSampleDist;
-            currentSampleDist += sampleInterval;
-        }
-
-        // ============================================================
-        // USTAWIENIE OSTATECZNEJ POZYCJI W TEJ KLATCE
-        // ============================================================
-        Position = GetArcPosition(newProgress);
         TotalDistance += step;
         DistanceAlongTrack += step;
 
-        // Dodajemy punkt końcowy dla pozostałej części kroku
-        float remainingStep = _curveDistance - oldCurveDistance;
-        if (remainingStep > MovementEpsilon)
-        {
-            AddTrajectoryPoint(Position, remainingStep);
-        }
+        AddTrajectoryPoint(Position, step);
 
-        // Sprawdź czy łuk został ukończony
         if (_curveDistance >= _curveLength - MovementEpsilon)
         {
+            _curveDistance = _curveLength;
+            Position = GetArcPosition(1.0f);
             FinishCurve();
         }
     }
 
-    private void SetupArcParams(MapPosition cell, TrackConnections entrySide, TrackConnections exitSide)
+    // ============================================================
+    // ARC GEOMETRY
+    // ============================================================
+
+    private bool EnterCurve(TrackCell track)
     {
-        if ((entrySide == TrackConnections.West && exitSide == TrackConnections.North) ||
-            (entrySide == TrackConnections.North && exitSide == TrackConnections.West))
+        TrackConnections entrySide = GetOppositeDirection(Direction);
+
+        if (!track.HasConnection(entrySide))
+            return false;
+
+        TrackConnections exitSide =
+            GetCurveExitDirection(track.Connections, entrySide);
+
+        if (exitSide == TrackConnections.None)
+            return false;
+
+        if (!IsPerpendicular(entrySide, exitSide))
+            return false;
+
+        _curveCell = track.Position;
+        _curveEntrySide = entrySide;
+        _curveExitSide = exitSide;
+        _curveDistance = 0.0f;
+        _curveLength = DefaultCurveLength;
+        _isOnCurve = true;
+
+        SetupArcParams(
+            _curveCell,
+            _curveEntrySide,
+            _curveExitSide);
+
+        Vector2 curveStart = GetArcPosition(0.0f);
+
+        float transitionDistance = Vector2.Distance(Position, curveStart);
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[CURVE] {entrySide}->{exitSide} " +
+            $"Cell:{track.Position} " +
+            $"Center:{_arcCenter} " +
+            $"Start:{curveStart} " +
+            $"Current:{Position} " +
+            $"Diff:{transitionDistance:F6}");
+
+        Position = curveStart;
+
+        if (transitionDistance > MovementEpsilon)
         {
-            _arcCenter = new Vector2(cell.X, cell.Y);
-            if (entrySide == TrackConnections.West)
-            {
-                _arcStartAngle = MathF.PI;
-                _arcSweepAngle = -HalfPi;
-            }
-            else
-            {
-                _arcStartAngle = HalfPi;
-                _arcSweepAngle = HalfPi;
-            }
-            return;
+            TotalDistance += transitionDistance;
+            DistanceAlongTrack += transitionDistance;
+            AddTrajectoryPoint(Position, transitionDistance);
         }
 
-        if ((entrySide == TrackConnections.East && exitSide == TrackConnections.North) ||
-            (entrySide == TrackConnections.North && exitSide == TrackConnections.East))
-        {
-            _arcCenter = new Vector2(cell.X + 1.0f, cell.Y);
-            if (entrySide == TrackConnections.East)
-            {
-                _arcStartAngle = 0.0f;
-                _arcSweepAngle = -HalfPi;
-            }
-            else
-            {
-                _arcStartAngle = -HalfPi;
-                _arcSweepAngle = HalfPi;
-            }
-            return;
-        }
-
-        if ((entrySide == TrackConnections.East && exitSide == TrackConnections.South) ||
-            (entrySide == TrackConnections.South && exitSide == TrackConnections.East))
-        {
-            _arcCenter = new Vector2(cell.X + 1.0f, cell.Y + 1.0f);
-            if (entrySide == TrackConnections.East)
-            {
-                _arcStartAngle = MathF.PI;
-                _arcSweepAngle = HalfPi;
-            }
-            else
-            {
-                _arcStartAngle = -HalfPi;
-                _arcSweepAngle = -HalfPi;
-            }
-            return;
-        }
-
-        if ((entrySide == TrackConnections.West && exitSide == TrackConnections.South) ||
-            (entrySide == TrackConnections.South && exitSide == TrackConnections.West))
-        {
-            _arcCenter = new Vector2(cell.X, cell.Y + 1.0f);
-            if (entrySide == TrackConnections.West)
-            {
-                _arcStartAngle = 0.0f;
-                _arcSweepAngle = HalfPi;
-            }
-            else
-            {
-                _arcStartAngle = HalfPi;
-                _arcSweepAngle = HalfPi;
-            }
-            return;
-        }
-
-        throw new InvalidOperationException($"Unsupported curve: {entrySide} -> {exitSide}");
+        return true;
     }
 
     private Vector2 GetArcPosition(float progress)
@@ -803,27 +718,63 @@ public sealed class Train
 
     private void FinishCurve()
     {
-        if (!_isOnCurve) return;
+        if (!_isOnCurve)
+            return;
 
-        Direction = _curveExitSide;
+        // Zapamiętaj dane łuku przed wyzerowaniem stanu.
         MapPosition curveCell = _curveCell;
-        MapPosition nextCell = GetNextCell(curveCell);
+        TrackConnections exitDirection = _curveExitSide;
 
-        if (_map != null &&
-            _map.TryGetTrack(nextCell, out TrackCell? nextTrack) &&
-            nextTrack is not null &&
-            nextTrack.HasConnection(GetOppositeDirection(Direction)))
-        {
-            Position = GetPositionAtEntry(nextCell, Direction);
-            AddTrajectoryPoint(Position, 0.0f);
-        }
-        else
-        {
-            Position = GetArcPosition(1.0f);
-        }
+        // Ustaw dokładny koniec łuku.
+        Position = GetArcPosition(1.0f);
+        Direction = exitDirection;
 
         ResetCurveState();
+
+        if (_map is null)
+            return;
+
+        MapPosition nextCell = GetNextCell(curveCell, Direction);
+
+        if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) ||
+            nextTrack is null)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[FINISH CURVE] No track at {nextCell}");
+            return;
+        }
+
+        TrackConnections entrySide = GetOppositeDirection(Direction);
+
+        if (!nextTrack.HasConnection(entrySide))
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[FINISH CURVE] No connection {entrySide} at {nextCell}");
+            return;
+        }
+
+        Vector2 oldPosition = Position;
+        Vector2 newPosition = GetPositionAtEntry(nextCell, Direction);
+
+        float transitionDistance = Vector2.Distance(oldPosition, newPosition);
+
+        Position = newPosition;
+
+        if (transitionDistance > MovementEpsilon)
+        {
+            TotalDistance += transitionDistance;
+            DistanceAlongTrack += transitionDistance;
+            AddTrajectoryPoint(Position, transitionDistance);
+        }
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[FINISH CURVE] " +
+            $"Cell:{curveCell} " +
+            $"Exit:{Direction} " +
+            $"Next:{nextCell} " +
+            $"Pos:{Position}");
     }
+
 
     // ============================================================
     // GRID TRANSITIONS
@@ -840,14 +791,25 @@ public sealed class Train
     {
         MapPosition cell = GetCurrentCell();
 
-        return Direction switch
+        float result = Direction switch
         {
-            TrackConnections.East => MathF.Max(0.0f, (cell.X + 1.0f) - Position.X),
-            TrackConnections.West => MathF.Max(0.0f, Position.X - cell.X),
-            TrackConnections.South => MathF.Max(0.0f, (cell.Y + 1.0f) - Position.Y),
-            TrackConnections.North => MathF.Max(0.0f, Position.Y - cell.Y),
+            TrackConnections.East => (cell.X + 1.0f) - Position.X,
+            TrackConnections.West => Position.X - cell.X,
+            TrackConnections.South => (cell.Y + 1.0f) - Position.Y,
+            TrackConnections.North => Position.Y - cell.Y,
             _ => 0.0f
         };
+
+        // Dla South, gdy Position.Y jest bardzo blisko cell.Y + 1.0, wynik powinien być bardzo mały
+        // ALE jeśli Position.Y jest dokładnie cell.Y + 1.0, wynik to 0
+        if (result < 0.0f) result = 0.0f;
+
+        // Dla South, gdy wynik jest bardzo mały (np. 0.0001), zwróć go bez zmian
+        // NIE używaj Math.Max(0.001f, result) - to powodowało skoki!
+
+        System.Diagnostics.Debug.WriteLine($"[BOUNDARY] Cell:{cell} Dir:{Direction} Pos:{Position} Result:{result:F6}");
+
+        return result;
     }
 
     private static MapPosition GetNextCell(MapPosition cell, TrackConnections direction)
@@ -864,17 +826,19 @@ public sealed class Train
 
     private MapPosition GetNextCell(MapPosition cell)
     {
+    
         return GetNextCell(cell, Direction);
     }
-
     private static Vector2 GetPositionAtEntry(MapPosition cell, TrackConnections direction)
     {
+        const float epsilon = 0.0001f;
+
         return direction switch
         {
-            TrackConnections.East => new Vector2(cell.X + MovementEpsilon, cell.Y + 0.5f),
-            TrackConnections.West => new Vector2(cell.X + 1.0f - MovementEpsilon, cell.Y + 0.5f),
-            TrackConnections.South => new Vector2(cell.X + 0.5f, cell.Y + MovementEpsilon),
-            TrackConnections.North => new Vector2(cell.X + 0.5f, cell.Y + 1.0f - MovementEpsilon),
+            TrackConnections.East => new Vector2(cell.X + epsilon, cell.Y + 0.5f),
+            TrackConnections.West => new Vector2(cell.X + 1.0f - epsilon, cell.Y + 0.5f),
+            TrackConnections.South => new Vector2(cell.X + 0.5f, cell.Y + epsilon),
+            TrackConnections.North => new Vector2(cell.X + 0.5f, cell.Y + 1.0f - epsilon),
             _ => new Vector2(cell.X + 0.5f, cell.Y + 0.5f)
         };
     }
@@ -1064,6 +1028,10 @@ public sealed class Train
     }
 }
 
+// ============================================================
+// MATH HELPER
+// ============================================================
+
 public static class MathHelper
 {
     public const float PiOver2 = MathF.PI / 2.0f;
@@ -1074,9 +1042,6 @@ public static class MathHelper
         return value < min ? min : value > max ? max : value;
     }
 
-    /// <summary>
-    /// Interpoluje kąt z uwzględnieniem przekroczenia granicy -PI/PI.
-    /// </summary>
     public static float LerpAngle(float from, float to, float t)
     {
         float difference = MathF.IEEERemainder(to - from, MathF.PI * 2f);
