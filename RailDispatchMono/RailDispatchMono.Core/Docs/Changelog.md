@@ -1,5 +1,85 @@
 Changelog
 
+[0.0.6] — System semaforów i rozjazdów - integracja z ruchem pociągów Data: 2026-08-29
+
+Train System / Signal Integration
+
+Dodano pełną integrację semaforów z ruchem pociągów.
+Pociąg wykrywa semafory w bieżącej i następnej komórce.
+Dodano mechanizm zapamiętywania ostatniego napotkanego semafora (obowiązuje do następnego).
+Pociąg płynnie dostosowuje prędkość do aspektu semafora (przyspieszanie/hamowanie).
+Dodano parametry hamowania (braking) do VehicleParameters.
+Pociąg wykorzystuje parametry pojazdów do obliczania przyspieszania i hamowania.
+Dodano SetSignalController w celu przekazania kontrolera semaforów do pociągu.
+Dodano GetNextSignal do odczytywania semaforów z mapy.
+Dodano GetSpeedFromSignal do mapowania aspektów na prędkość w m/s.
+Dodano logi debugowania ruchu i wykrywania semaforów.
+Train Physics
+
+Dodano płynną zmianę prędkości z uwzględnieniem parametrów pojazdów.
+Prędkość docelowa (targetSpeed) ustalana na podstawie ostatniego semafora.
+Hamowanie z wykorzystaniem parametru braking z pojazdów (domyślnie 100 m/s²).
+Przyspieszanie z wykorzystaniem parametru acceleration z pojazdów.
+Dodano zabezpieczenie przed przekroczeniem maxSpeed pojazdów.
+Dodano zatrzymywanie pociągu przy prędkości bliskiej 0.
+Signal System
+
+Dodano możliwość ustawiania początkowego aspektu semafora podczas tworzenia.
+Dodano SignalController.GetSignalAt do pobierania semafora na konkretnej pozycji.
+Dodano SignalController.GetSignalsAt do pobierania wszystkich semaforów w komórce.
+Dodano Signal.AvailableAspects do definiowania dostępnych aspektów dla danego semafora.
+Dodano Signal.GetAspectName jako metodę rozszerzającą.
+Dodano SignalAspectInfo z pełnymi opisami aspektów.
+Dodano SignalAspectExtensions z metodami GetName, GetDescription, GetSpeedLimit.
+TrainManager / Gameplay
+
+Dodano przekazywanie SignalController do TrainManager.
+Dodano automatyczne ustawianie SignalController dla każdego nowego pociągu.
+Dodano tworzenie pojazdów przed konstruktorem Train w CreateTestTrain.
+Dodano przeciążenie konstruktora Train bez pojazdów (dla TrainManager i Decouple).
+Dodano domyślne pojazdy w TrainManager dla przypadków brzegowych.
+Bug Fixes
+
+Naprawiono błąd braku pojazdów w konstruktorze Train (CS7036).
+Naprawiono resetowanie _lastSignal w SetPosition i SetDirection.
+Naprawiono wykrywanie semaforów w GetNextSignal.
+Naprawiono parametr braking w VehicleParameters.
+Dodano brakujący konstruktor Train(Vector2, TrackConnections, float).
+Controls
+
+1 — tor prosty
+2 — zakręt
+3 — rozjazd
+4 — semafor
+H — orientacja pozioma (tor prosty)
+V — orientacja pionowa (tor prosty)
+R — obrót zakrętu / zmiana typu rozjazdu
+J — przełącz rozjazd / przełącz semafor (Stop ↔ Clear)
+LPM — postaw element toru / semafor
+PPM — usuń element toru / otwórz menu rozjazdu lub semafora
+MMB — przesuwanie kamery
+Kółko myszy — zoom mapy
+Escape — zamknij menu radialne
+Build
+
+RailDispatchMono.Core — build OK.
+RailDispatchMono.DesktopGL — build OK.
+Dodano wszystkie nowe klasy semaforów i rozjazdów.
+Known gaps / Poza zakresem tego wpisu
+
+Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów.
+Ruch pociągu nie obsługuje jeszcze pełnego przebiegu po sieci torowej.
+Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru.
+Brak obsługi kierunku jazdy i zmiany kierunku na rozjazdach.
+Brak sekcji blokowych (BlockSection).
+Brak interlockingu.
+Brak wykolejenia.
+Brak manewrów i sprzęgania w warstwie symulacji.
+Brak planowania jazdy.
+Brak pasażerów.
+Brak harmonogramów.
+Brak proceduralnego generowania terenu.
+
 [0.0.5] — System semaforów i rozjazdów
 Data: 2026-08-29
 

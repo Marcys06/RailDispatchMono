@@ -43,7 +43,7 @@ namespace RailDispatchMono.Core.Game.Railway
             { SignalAspect.Stop, new AspectInfo("S1a", "Stój - przejazd zabroniony", 0, "Czerwony") },
             { SignalAspect.StopStation, new AspectInfo("S1b", "Stój (stacja) - przejazd zabroniony", 0, "Czerwony + Biały") },
             { SignalAspect.Clear, new AspectInfo("S2", "Jazda z Vmax - droga wolna", float.MaxValue, "Zielony") },
-            { SignalAspect.Warning, new AspectInfo("S5", "Ostrzeżenie - następny semafor stój", 60, "Żółty") },
+            { SignalAspect.Warning, new AspectInfo("S5", "Ostrzeżenie - następny semafor stój", 5, "Żółty") },
             { SignalAspect.Speed100, new AspectInfo("S6", "Jazda ≤ 100 km/h", 100, "Zielony + Żółty") },
             { SignalAspect.Speed40, new AspectInfo("S10", "Jazda ≤ 40 km/h", 40, "Żółty Migający") },
             { SignalAspect.Reserve1, new AspectInfo("S12", "Rezerwa 1", 120, "Rezerwowy 1") },

@@ -106,5 +106,17 @@ namespace RailDispatchMono.Core.Game.Railway
 
             return signals.FirstOrDefault(s => s.Direction == direction);
         }
+
+
+        public List<Signal> GetAllSignals()
+        {
+            var result = new List<Signal>();
+            foreach (var kvp in _signals)
+            {
+                result.AddRange(kvp.Value);
+            }
+            return result;
+        }
     }
+
 }

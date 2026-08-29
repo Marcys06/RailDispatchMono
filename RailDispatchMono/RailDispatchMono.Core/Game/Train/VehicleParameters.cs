@@ -1,17 +1,15 @@
-namespace RailDispatchMono.Core.Game.Train;
-
-public sealed class VehicleParameters
+public class VehicleParameters
 {
-    public float MaxSpeed { get; set; }
-    public float Acceleration { get; set; }
-    public float Braking { get; set; }
-    public float Mass { get; set; }
-    public float Length { get; set; }
+    public float MaxSpeed { get; }
+    public float Acceleration { get; }
+    public float Braking { get; }  
+    public float Mass { get; }
+    public float Length { get; }
 
     public VehicleParameters(
         float maxSpeed,
         float acceleration,
-        float braking,
+        float braking,  
         float mass,
         float length)
     {

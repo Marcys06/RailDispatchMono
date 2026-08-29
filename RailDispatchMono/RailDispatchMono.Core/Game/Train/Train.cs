@@ -1,8 +1,9 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -28,13 +29,11 @@ public sealed class Train
         set
         {
             float maxSpeed = float.MaxValue;
-
             foreach (var vehicle in Composition.Vehicles)
             {
                 if (vehicle.Parameters.MaxSpeed < maxSpeed)
                     maxSpeed = vehicle.Parameters.MaxSpeed;
             }
-
             _speed = Math.Clamp(value, 0f, maxSpeed);
         }
     }
@@ -142,18 +141,32 @@ public sealed class Train
     // ============================================================
 
     public Train(
-        Vector2 spawnPosition,
-        TrackConnections initialDirection,
-        float speed)
+    Vector2 spawnPosition,
+    TrackConnections initialDirection,
+    float speed,
+    IEnumerable<Vehicle> vehicles)  // <- DODAJ
     {
         Id = Guid.NewGuid();
-
-        Composition = new TrainComposition();
-
         Position = spawnPosition;
         Direction = initialDirection;
-
         _speed = speed;
+
+        // ✅ Użyj przekazanych pojazdów
+        Composition = new TrainComposition();
+        foreach (var vehicle in vehicles)
+        {
+            Composition.AddVehicle(vehicle);
+        }
+
+        // ✅ Ustaw maxSpeed na podstawie pojazdów
+        _maxSpeed = float.MaxValue;
+        foreach (var vehicle in Composition.Vehicles)
+        {
+            if (vehicle.Parameters.MaxSpeed < _maxSpeed)
+                _maxSpeed = vehicle.Parameters.MaxSpeed;
+        }
+        _lastSignalSpeed = _maxSpeed;
+        _targetSpeed = _maxSpeed;
 
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
@@ -177,20 +190,58 @@ public sealed class Train
 
     public void Update(float deltaTime)
     {
-        if (deltaTime <= 0.0f ||
-            !CanMove ||
-            _map is null ||
-            _speed <= 0.0f)
-        {
+        if (deltaTime <= 0.0f || !CanMove || _map is null)
             return;
+
+        // 1. Znajdź sygnał
+        var nextSignal = GetNextSignal();
+        if (nextSignal != null)
+        {
+            _lastSignal = nextSignal;
+            _lastSignalSpeed = GetSpeedFromSignal(nextSignal);
         }
 
-        float distance = _speed * deltaTime;
+        _targetSpeed = _lastSignalSpeed;
 
-        if (distance <= MovementEpsilon)
-            return;
+        // 2. ✅ POBIERZ PARAMETRY Z POJAZDÓW
+        float maxSpeed = float.MaxValue;
+        float maxAcceleration = 0f;
+        float maxBraking = 0f;
 
-        Move(distance);
+        foreach (var vehicle in Composition.Vehicles)
+        {
+            var p = vehicle.Parameters;
+            if (p.MaxSpeed < maxSpeed)
+                maxSpeed = p.MaxSpeed;
+            if (p.Acceleration > maxAcceleration)
+                maxAcceleration = p.Acceleration;
+            if (p.Braking > maxBraking)
+                maxBraking = p.Braking;
+        }
+
+        // Użyj maxBraking z pojazdów
+        float decelerationRate = maxBraking > 0 ? maxBraking : 20.0f; // fallback
+
+        // 3. Zmień prędkość używając parametrów z pojazdów
+        if (Speed < _targetSpeed)
+        {
+            Speed = Math.Min(
+                Speed + maxAcceleration * deltaTime,
+                Math.Min(_targetSpeed, maxSpeed)
+            );
+        }
+        else if (Speed > _targetSpeed)
+        {
+            Speed = Math.Max(
+                Speed - decelerationRate * deltaTime,
+                _targetSpeed
+            );
+        }
+
+        // 4. Wykonaj ruch
+        float distance = Speed * deltaTime;
+        if (distance > MovementEpsilon)
+            Move(distance);
     }
 
     // ============================================================
@@ -209,6 +260,10 @@ public sealed class Train
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
 
+        // ✅ Resetuj ostatni sygnał przy ręcznym ustawieniu pozycji
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
+
         ResetCurveState();
         ResetTrajectory();
     }
@@ -218,6 +273,10 @@ public sealed class Train
         ValidateDirection(direction);
 
         Direction = direction;
+
+        // ✅ Resetuj ostatni sygnał przy zmianie kierunku
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
 
         ResetCurveState();
         ResetTrajectory();
@@ -422,7 +481,7 @@ public sealed class Train
             ? TrackConnections.South
             : TrackConnections.North;
     }
-
+    /*
     public Train Decouple(int startIndex)
     {
         if (startIndex <= 0 ||
@@ -517,6 +576,16 @@ public sealed class Train
                 this,
                 null,
                 0));
+    }
+    */
+
+    public Train(
+    Vector2 spawnPosition,
+    TrackConnections initialDirection,
+    float speed)
+    : this(spawnPosition, initialDirection, speed, Array.Empty<Vehicle>())
+    {
+        // Pusty - wszystkie pojazdy będą dodane później
     }
 
     public bool IsOnTrack()
@@ -1773,11 +1842,84 @@ public sealed class Train
         return GetDistanceToVehicle(
             vehicleIndex);
     }
+    // ============================================================
+    // SIGNAL CONTROL
+    // ============================================================
+
+    private SignalController? _signalController;
+    private float _targetSpeed;
+    private float _maxSpeed = 160f / 3.6f;  // 160 km/h na m/s
+
+    // ✅ OSTATNI WIDZIANY SYGNAŁ (obowiązuje aż do następnego)
+    private Signal? _lastSignal;
+    private float _lastSignalSpeed;
+
+    public void SetSignalController(SignalController controller)
+    {
+        _signalController = controller;
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
+    }
+
+    public Signal? GetNextSignal()
+    {
+        if (_signalController == null)
+            return null;
+
+        var currentCell = GetCurrentCell();
+        var nextCell = GetNextCell(currentCell, Direction);
+
+        System.Diagnostics.Debug.WriteLine($"[TRAIN] GetNextSignal - Current: {currentCell}, Next: {nextCell}, Dir: {Direction}");
+
+        // Sprawdź aktualną komórkę
+        var currentSignals = _signalController.GetSignalsAt(currentCell);
+        var signal = currentSignals?.FirstOrDefault(s => s.Direction == Direction);
+
+        if (signal != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TRAIN] ✅ Found signal at CURRENT cell: {signal.Aspect} ({signal.GetAspectName()})");
+            return signal;
+        }
+
+        // Sprawdź następną komórkę
+        var nextSignals = _signalController.GetSignalsAt(nextCell);
+        signal = nextSignals?.FirstOrDefault(s => s.Direction == Direction);
+
+        if (signal != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TRAIN] ✅ Found signal at NEXT cell: {signal.Aspect} ({signal.GetAspectName()})");
+            return signal;
+        }
+
+        System.Diagnostics.Debug.WriteLine("[TRAIN] ❌ No signal found");
+        return null;
+    }
+
+    private float GetSpeedFromSignal(Signal? signal)
+    {
+        if (signal == null)
+            return _maxSpeed;
+
+        return signal.Aspect switch
+        {
+            SignalAspect.Stop => 0f,
+            SignalAspect.StopStation => 0f,
+            SignalAspect.Clear => _maxSpeed,
+            SignalAspect.Warning => _maxSpeed * 0.5f,
+            SignalAspect.Speed100 => 100f / 3.6f,
+            SignalAspect.Speed40 => 40f / 3.6f,
+            SignalAspect.Reserve1 => 120f / 3.6f,
+            SignalAspect.Reserve2 => 80f / 3.6f,
+            SignalAspect.Reserve3 => 60f / 3.6f,
+            SignalAspect.Reserve4 => 30f / 3.6f,
+            _ => _maxSpeed
+        };
+    }
+
 
     // ============================================================
     // VEHICLE TRAJECTORY
     // ============================================================
-
     private Vector2 GetPositionBehindHead(
         float distanceBehind)
     {
