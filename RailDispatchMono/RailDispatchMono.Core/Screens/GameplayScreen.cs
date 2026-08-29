@@ -304,14 +304,14 @@ public sealed class GameplayScreen
     private void CreateTestTrain()
     {
         var locomotiveParameters = new VehicleParameters(
-            maxSpeed: 2.4f,
+            maxSpeed: 20.4f,
             acceleration: 0.8f,
             braking: 1.0f,
             mass: 80000f,
             length: 1.0f);
 
         var wagonParameters = new VehicleParameters(
-            maxSpeed: 2.4f,
+            maxSpeed: 20.4f,
             acceleration: 0.8f,
             braking: 1.0f,
             mass: 40000f,
@@ -320,7 +320,7 @@ public sealed class GameplayScreen
         var train = new Train(
             new Vector2(25.5f, 10.5f),
             TrackConnections.East,
-            speed: 2.4f);
+            speed: 20.4f);
 
         train.SetMap(_map);
 
