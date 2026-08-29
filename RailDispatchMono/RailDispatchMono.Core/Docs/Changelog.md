@@ -1,5 +1,36 @@
 Changelog
 
+Train System / Diagnostics
+- Dodano szczegółowe logi prędkości w Train.Update()
+- Dodano oznaczenia: 🟢 START, 🟡 SIGNAL, 🔵 NO_SIGNAL, ⚪ NO_SIGNAL_HISTORY
+- Dodano logi przyspieszania (🚀 ACCEL) i hamowania (🛑 BRAKE)
+- Dodano logi stałej prędkości (➡️ CONST) i ruchu (🏃 MOVE)
+- Dodano wyświetlanie prędkości w m/s i km/h
+
+Signal Detection
+- Rozszerzono GetNextSignal o logi wykrywania sygnałów w bieżącej i następnej komórce
+- Dodano logi dla sygnałów Warning (S5) i Clear (S2)
+- Potwierdzono poprawne działanie wykrywania sygnałów na zakrętach
+
+Curve Movement
+- Dodano logi wejścia i wyjścia z zakrętu (CURVE Enter / FINISH CURVE)
+- Dodano informacje o środku łuku, kątach i postępie
+- Potwierdzono poprawne działanie geometrii zakrętów
+
+Debugger
+- Rozszerzono TrainDebugger o informacje o łuku (ArcCenter, Curve progress)
+- Dodano wyświetlanie rotacji pojazdów
+
+Build
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+
+Test Results
+- Pociąg prawidłowo przyspiesza z parametrem acceleration: 0.8f
+- Sygnały wykrywane w bieżącej i następnej komórce
+- Zakręty obsługiwane bez utraty prędkości
+- Prędkość wzrasta z 3,73 m/s do 5,23 m/s na trasie"
+
 [0.0.6] — System semaforów i rozjazdów - integracja z ruchem pociągów Data: 2026-08-29
 
 Train System / Signal Integration
