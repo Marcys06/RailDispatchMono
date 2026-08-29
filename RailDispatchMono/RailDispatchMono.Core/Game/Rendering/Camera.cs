@@ -1,13 +1,12 @@
-using System;
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
+using System;
 
 namespace RailDispatchMono.Core.Game.Rendering;
 
 public sealed class Camera
 {
     public Vector2 Position { get; set; }
-
     public float Zoom { get; set; } = 32f;
 
     public Matrix Transform =>
@@ -22,45 +21,42 @@ public sealed class Camera
         Position += delta;
     }
 
-
     public void ZoomAt(
-     Vector2 screenPoint,
-     float delta)
+        Vector2 screenPosition,
+        float delta)
     {
-        var oldZoom = Zoom;
+        var worldBefore = ScreenToWorld(screenPosition);
 
         Zoom = Math.Clamp(
             Zoom + delta,
             8f,
-            64f);
+            128f);
 
-        if (Math.Abs(Zoom - oldZoom) < 0.001f)
-            return;
+        var worldAfter = ScreenToWorld(screenPosition);
 
-        var worldPosition =
-            ScreenToWorld(screenPoint);
-
-        Position =
-            worldPosition -
-            screenPoint / Zoom;
+        Position += worldBefore - worldAfter;
     }
 
     public Vector2 ScreenToWorld(
-        Vector2 screen)
+        Vector2 screenPosition)
     {
-        return
-            screen / Zoom +
-            Position;
+        return screenPosition / Zoom + Position;
     }
 
     public MapPosition ScreenToMap(
-        Vector2 screen)
+        Vector2 screenPosition)
     {
-        var world =
-            ScreenToWorld(screen);
-
+        var world = ScreenToWorld(screenPosition);
         return new MapPosition(
             (int)Math.Floor(world.X),
             (int)Math.Floor(world.Y));
+    }
+
+    // ============================================================
+    // DODANA METODA - WEWNĄTRZ KLASY, PRZED OSTATNIM NAWIASEM
+    // ============================================================
+    public Vector2 MapToScreen(Vector2 mapPosition)
+    {
+        return (mapPosition - Position) * Zoom;
     }
 }

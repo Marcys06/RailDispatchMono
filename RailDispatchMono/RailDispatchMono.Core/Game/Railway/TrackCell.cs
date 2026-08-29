@@ -1,4 +1,5 @@
 ﻿using RailDispatchMono.Core.Game.Map;
+using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
@@ -44,6 +45,7 @@ public sealed class TrackCell
         Geometry = geometry;
     }
 
+    // W pliku TrackCell.cs
     public void SetConnections(TrackConnections connections)
     {
         Connections = connections;
@@ -85,19 +87,35 @@ public sealed class TrackCell
     {
         if (Geometry != TrackGeometry.Junction)
         {
-            // Dla zwykłego toru zwracamy drugie wolne połączenie
+            // Dla zwykłego toru maskujemy i zwracamy przeciwne połączenie
             return Connections & ~entryDir;
         }
 
-        // Jeśli wjeżdżamy od strony wspólnego pnia (CommonStem -> Ostrze zwrotnicy)
-        if (entryDir == CommonStem)
+        // Wjazd od strony pnia (Ostrze zwrotnicy -> Rozjazd na dwa tory)
+        // Używamy HasFlag, aby bezbłędnie sprawdzić dopasowanie bitowe
+        if (CommonStem.HasFlag(entryDir) || entryDir.HasFlag(CommonStem))
         {
             return CurrentSwitchPosition == SwitchPosition.Straight
                 ? StraightConnection
                 : DivergingConnection;
         }
 
-        // Jeśli wjeżdżamy od strony odgałęzień (Jazda z rozpory / do ostrza) -> wyjście jest zawsze w stronę CommonStem
+        // Wjazd od strony odgałęzień (Z rozpory do wspólnego pnia)
         return CommonStem;
+    }
+    public List<TrackConnections> GetAvailableDirections()
+    {
+        var result = new List<TrackConnections>();
+
+        if (Connections.HasFlag(TrackConnections.North))
+            result.Add(TrackConnections.North);
+        if (Connections.HasFlag(TrackConnections.East))
+            result.Add(TrackConnections.East);
+        if (Connections.HasFlag(TrackConnections.South))
+            result.Add(TrackConnections.South);
+        if (Connections.HasFlag(TrackConnections.West))
+            result.Add(TrackConnections.West);
+
+        return result;
     }
 }

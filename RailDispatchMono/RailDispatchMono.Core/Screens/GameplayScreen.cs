@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
@@ -7,6 +8,11 @@ using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Rendering;
 using RailDispatchMono.Core.Game.Train;
+using RailDispatchMono.Core.Screens.UI;
+using System;
+using Debug = System.Diagnostics.Debug;
+
+
 
 namespace RailDispatchMono.Core.Screens;
 
@@ -23,6 +29,18 @@ public sealed class GameplayScreen
     private readonly TrainManager _trainManager;
     private readonly TrainRenderer _trainRenderer;
     private readonly TrainDebugger _trainDebugger;
+
+    private readonly JunctionRadialMenu _junctionRadialMenu;
+
+    // ============================================================
+    // NOWE POLA DLA SEMAFORÓW
+    // ============================================================
+    private SignalController _signalController;
+    private SignalRadialMenu _signalRadialMenu;
+    private SignalDirectionMenu _signalDirectionMenu;
+    private SignalSelectionMenu _signalSelectionMenu;
+    private InputManager _inputManager;
+    private SignalRenderer _signalRenderer;
 
     private MouseState _previousMouse;
     private KeyboardState _previousKeyboard;
@@ -45,16 +63,106 @@ public sealed class GameplayScreen
         _renderer = new TrackRenderer(_map);
         _trainManager = new TrainManager(_map);
         _trainRenderer = new TrainRenderer();
-        _trainDebugger = new TrainDebugger(1.0f); // Logowanie co 1 sekundę
+        _trainDebugger = new TrainDebugger(1.0f);
+
+        _junctionRadialMenu = new JunctionRadialMenu(_graphicsDevice, _builder);
+
+        // ============================================================
+        // TWORZENIE SIGNALCONTROLLER I MENU SEMAFORÓW
+        // ============================================================
+        Debug.WriteLine("[GAMEPLAY] Tworzę SignalController...");
+        _signalController = new SignalController(_map);
+        Debug.WriteLine("[GAMEPLAY] SignalController utworzony!");
+
+        Debug.WriteLine("[GAMEPLAY] Tworzę SignalRadialMenu...");
+        _signalRadialMenu = new SignalRadialMenu(_graphicsDevice);
+        Debug.WriteLine("[GAMEPLAY] SignalRadialMenu utworzony!");
+
+        Debug.WriteLine("[GAMEPLAY] Tworzę SignalDirectionMenu...");
+        _signalDirectionMenu = new SignalDirectionMenu(_graphicsDevice);
+        Debug.WriteLine("[GAMEPLAY] SignalDirectionMenu utworzony!");
+
+        Debug.WriteLine("[GAMEPLAY] Tworzę SignalSelectionMenu...");
+        _signalSelectionMenu = new SignalSelectionMenu(_graphicsDevice);
+        Debug.WriteLine("[GAMEPLAY] SignalSelectionMenu utworzony!");
+
+        // ============================================================
+        // TWORZENIE SIGNALRENDERER
+        // ============================================================
+        _signalRenderer = new SignalRenderer(_map, _signalController);
+        _signalRenderer.LoadContent(_graphicsDevice);
+        Debug.WriteLine("[GAMEPLAY] SignalRenderer utworzony!");
+
+        // Przekaż SignalRenderer do TrackRenderer
+        _renderer.SetSignalRenderer(_signalRenderer);
+        Debug.WriteLine("[GAMEPLAY] SignalRenderer przekazany do TrackRenderer");
+
+        // ============================================================
+        // TWORZENIE INPUTMANAGER
+        // ============================================================
+        Debug.WriteLine("[GAMEPLAY] Tworzę InputManager z semaforami...");
+        _inputManager = new InputManager(
+            _graphicsDevice,
+            _spriteBatch,
+            _camera,
+            _builder,
+            _renderer,
+            _trainManager,
+            _trainRenderer,
+            _junctionRadialMenu,
+            _signalController,
+            _signalRadialMenu,
+            _signalDirectionMenu,
+            _signalSelectionMenu,
+            _map
+        );
+        Debug.WriteLine("[GAMEPLAY] InputManager utworzony!");
+
+        // ============================================================
+        // SUBKRYPCJA ZDARZEŃ SEMAFORÓW (DEBUG)
+        // ============================================================
+        _signalRadialMenu.AspectSelected += (s, aspect) =>
+        {
+            Debug.WriteLine($"[SIGNAL] ✅ Wybrano aspekt: {aspect}");
+        };
+
+        _signalRadialMenu.MenuClosed += (s, e) =>
+        {
+            Debug.WriteLine("[SIGNAL] Menu aspektów zamknięte");
+        };
+
+        _signalDirectionMenu.MenuClosed += (s, e) =>
+        {
+            Debug.WriteLine("[SIGNAL] Menu kierunków zamknięte");
+        };
+
+        _signalSelectionMenu.MenuClosed += (s, e) =>
+        {
+            Debug.WriteLine("[SIGNAL] Menu wyboru semafora zamknięte");
+        };
 
         CreateTestTrack();
         CreateTestTrain();
+
+        Debug.WriteLine("[GAMEPLAY] ========================================");
+        Debug.WriteLine("[GAMEPLAY] GameplayScreen utworzony!");
+        Debug.WriteLine("[GAMEPLAY] ========================================");
     }
 
-    public void LoadContent()
+    public void LoadContent(ContentManager content)
     {
+        Debug.WriteLine("[GAMEPLAY] LoadContent() - START");
+
         _renderer.LoadContent(_graphicsDevice);
         _trainRenderer.LoadContent(_graphicsDevice);
+
+        SpriteFont font = content.Load<SpriteFont>("Arial24");
+        _junctionRadialMenu.SetFont(font);
+        _signalRadialMenu.SetFont(font);
+        _signalDirectionMenu.SetFont(font);
+        _signalSelectionMenu.SetFont(font);
+
+        Debug.WriteLine("[GAMEPLAY] LoadContent() - KONIEC");
     }
 
     public void Update(GameTime gameTime)
@@ -64,254 +172,82 @@ public sealed class GameplayScreen
         var mouse = Mouse.GetState();
         var keyboard = Keyboard.GetState();
 
-        // --- AKTUALIZACJA SYMULACJI I DEBUGA ---
         _trainManager.Update(deltaTime);
         _trainDebugger.Update(deltaTime, _trainManager);
 
-        // --- OBSŁUGA KLAWIATURY ---
-        HandleKeyboardInput(keyboard);
-
-        // --- OBSŁUGA MYSZY (BUDOWANIE / KASOWANIE / KAMERA) ---
-        HandleMouseInput(mouse);
+        _inputManager.Update(gameTime);
 
         _previousScrollWheelValue = mouse.ScrollWheelValue;
         _previousMouse = mouse;
         _previousKeyboard = keyboard;
     }
 
-    private void HandleKeyboardInput(KeyboardState keyboard)
-    {
-        // 1. Pasek budowania (Sloty 1 - 9)
-        if (IsKeyPressed(keyboard, Keys.D1) || IsKeyPressed(keyboard, Keys.NumPad1)) _builder.Mode = TrackBuildMode.Straight;
-        if (IsKeyPressed(keyboard, Keys.D2) || IsKeyPressed(keyboard, Keys.NumPad2)) _builder.Mode = TrackBuildMode.Curve;
-        if (IsKeyPressed(keyboard, Keys.D3) || IsKeyPressed(keyboard, Keys.NumPad3)) _builder.Mode = TrackBuildMode.Junction;
-        if (IsKeyPressed(keyboard, Keys.D4) || IsKeyPressed(keyboard, Keys.NumPad4)) _builder.Mode = TrackBuildMode.Signal;
-        if (IsKeyPressed(keyboard, Keys.D5) || IsKeyPressed(keyboard, Keys.NumPad5)) _builder.Mode = TrackBuildMode.Station;
-        if (IsKeyPressed(keyboard, Keys.D6) || IsKeyPressed(keyboard, Keys.NumPad6)) _builder.Mode = TrackBuildMode.Reserved6;
-        if (IsKeyPressed(keyboard, Keys.D7) || IsKeyPressed(keyboard, Keys.NumPad7)) _builder.Mode = TrackBuildMode.Reserved7;
-        if (IsKeyPressed(keyboard, Keys.D8) || IsKeyPressed(keyboard, Keys.NumPad8)) _builder.Mode = TrackBuildMode.Reserved8;
-        if (IsKeyPressed(keyboard, Keys.D9) || IsKeyPressed(keyboard, Keys.NumPad9)) _builder.Mode = TrackBuildMode.Reserved9;
-        if (IsKeyPressed(keyboard, Keys.D0) || IsKeyPressed(keyboard, Keys.NumPad0)) OnSlotReserved(10);
-
-        // 2. Modyfikatory i orientacja torów
-        if (keyboard.IsKeyDown(Keys.H)) _builder.StraightHorizontal = true;
-        if (keyboard.IsKeyDown(Keys.V)) _builder.StraightHorizontal = false;
-
-        if (IsKeyPressed(keyboard, Keys.R))
-        {
-            RotateSelectedBuilding();
-        }
-
-        if (IsKeyPressed(keyboard, Keys.Delete) || IsKeyPressed(keyboard, Keys.X)) OnActionReserved("DemolishMode");
-        if (IsKeyPressed(keyboard, Keys.Escape)) OnActionReserved("CancelAction");
-        if (IsKeyPressed(keyboard, Keys.C)) OnActionReserved("CopyTrack");
-        if (IsKeyPressed(keyboard, Keys.Z)) OnActionReserved("Undo");
-        if (IsKeyPressed(keyboard, Keys.Y)) OnActionReserved("Redo");
-
-        // 3. Kontrola symulacji i czasu
-        if (IsKeyPressed(keyboard, Keys.Space)) OnActionReserved("TogglePause");
-        if (IsKeyPressed(keyboard, Keys.Tab)) OnActionReserved("CycleGameSpeed");
-        if (IsKeyPressed(keyboard, Keys.OemPlus) || IsKeyPressed(keyboard, Keys.Add)) OnActionReserved("SpeedUp");
-        if (IsKeyPressed(keyboard, Keys.OemMinus) || IsKeyPressed(keyboard, Keys.Subtract)) OnActionReserved("SpeedDown");
-
-        // 4. Nakładki, widok i interfejs
-        if (IsKeyPressed(keyboard, Keys.G)) OnActionReserved("ToggleGrid");
-        if (IsKeyPressed(keyboard, Keys.M)) OnActionReserved("ToggleMinimap");
-        if (IsKeyPressed(keyboard, Keys.T)) OnActionReserved("ToggleTimetable");
-        if (IsKeyPressed(keyboard, Keys.L)) OnActionReserved("ToggleSignalsOverlay");
-        if (IsKeyPressed(keyboard, Keys.I)) OnActionReserved("ToggleInfoPanel");
-        if (IsKeyPressed(keyboard, Keys.E)) OnActionReserved("ToggleEconomy");
-
-        // 5. Nawigacja kamerą
-        if (IsKeyPressed(keyboard, Keys.Home)) OnActionReserved("ResetCamera");
-        if (IsKeyPressed(keyboard, Keys.PageUp)) OnActionReserved("ZoomIn");
-        if (IsKeyPressed(keyboard, Keys.PageDown)) OnActionReserved("ZoomOut");
-        if (IsKeyPressed(keyboard, Keys.F)) OnActionReserved("FollowTrain");
-
-        // 6. Narzędzia Deweloperskie i Debugger
-        if (IsKeyPressed(keyboard, Keys.F1)) OnActionReserved("ShowHelp");
-        if (IsKeyPressed(keyboard, Keys.F5)) OnActionReserved("QuickSave");
-        if (IsKeyPressed(keyboard, Keys.F9)) OnActionReserved("QuickLoad");
-
-        if (IsKeyPressed(keyboard, Keys.F11))
-        {
-            _trainDebugger.ForceLog(_trainManager);
-        }
-
-        if (IsKeyPressed(keyboard, Keys.F12))
-        {
-            _trainDebugger.IsEnabled = !_trainDebugger.IsEnabled;
-        }
-
-        if (IsKeyPressed(keyboard, Keys.OemTilde)) OnActionReserved("OpenConsole");
-    }
-
-    private void HandleMouseInput(MouseState mouse)
-    {
-        // Budowanie torów (LPM)
-        if (mouse.LeftButton == ButtonState.Pressed)
-        {
-            var screenPosition = new Vector2(mouse.X, mouse.Y);
-            var mapPosition = _camera.ScreenToMap(screenPosition);
-            _builder.BuildAt(mapPosition);
-        }
-
-        // Akcja dodatkowa / Kasowanie / Przełączanie zwrotnicy (PPM - kliknięcie pojedyncze)
-        if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
-        {
-            var screenPosition = new Vector2(mouse.X, mouse.Y);
-            var mapPosition = _camera.ScreenToMap(screenPosition);
-
-            if (_map.TryGetTrack(mapPosition, out var track) && track is not null && track.IsJunction)
-            {
-                track.ToggleSwitch();
-            }
-            else
-            {
-                _builder.Remove(mapPosition);
-            }
-        }
-
-        // Przesuwanie kamery (ŚPM)
-        if (mouse.MiddleButton == ButtonState.Pressed && _previousMouse.MiddleButton == ButtonState.Pressed)
-        {
-            var delta = new Vector2(
-                mouse.X - _previousMouse.X,
-                mouse.Y - _previousMouse.Y);
-
-            if (_camera.Zoom > 0f)
-            {
-                _camera.Move(-delta / _camera.Zoom);
-            }
-        }
-
-        // Zoom kółkiem myszy
-        var currentScroll = mouse.ScrollWheelValue;
-        if (currentScroll != _previousScrollWheelValue)
-        {
-            var delta = currentScroll > _previousScrollWheelValue ? 2f : -2f;
-            _camera.ZoomAt(new Vector2(mouse.X, mouse.Y), delta);
-        }
-    }
-
-    private void RotateSelectedBuilding()
-    {
-        if (_builder.Mode == TrackBuildMode.Curve)
-        {
-            _builder.Curve = _builder.Curve switch
-            {
-                CurveDirection.NorthEast => CurveDirection.EastSouth,
-                CurveDirection.EastSouth => CurveDirection.SouthWest,
-                CurveDirection.SouthWest => CurveDirection.WestNorth,
-                CurveDirection.WestNorth => CurveDirection.NorthEast,
-                _ => CurveDirection.NorthEast
-            };
-        }
-        else if (_builder.Mode == TrackBuildMode.Junction)
-        {
-            _builder.Junction = _builder.Junction switch
-            {
-                JunctionType.South_NorthEast => JunctionType.South_NorthWest,
-                JunctionType.South_NorthWest => JunctionType.West_EastSouth,
-                JunctionType.West_EastSouth => JunctionType.West_EastNorth,
-                JunctionType.West_EastNorth => JunctionType.South_NorthEast,
-                _ => JunctionType.South_NorthEast
-            };
-        }
-    }
-
-    private bool IsKeyPressed(KeyboardState currentKeyboard, Keys key)
-    {
-        return currentKeyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
-    }
-
-    private void OnActionReserved(string actionName)
-    {
-        // Rezerwa na przyszłą funkcjonalność
-    }
-
-    private void OnSlotReserved(int slotIndex)
-    {
-        // Rezerwa pod kolejne sloty paska budowania
-    }
-
     public void Draw(GameTime gameTime)
     {
-        var mouse = Mouse.GetState();
-        var mouseScreenPosition = new Vector2(mouse.X, mouse.Y);
-        var previewPosition = _camera.ScreenToMap(mouseScreenPosition);
-
-        _spriteBatch.Begin(transformMatrix: _camera.Transform);
-
-        _renderer.Draw(_spriteBatch, _camera);
-        _trainRenderer.Draw(_spriteBatch, _trainManager);
-
-        _renderer.DrawPreview(
-            _spriteBatch,
-            previewPosition,
-            _builder.Mode,
-            _builder.StraightHorizontal,
-            _builder.Curve,
-            _builder.Junction);
-
-        _spriteBatch.End();
+        _inputManager.Draw(gameTime);
     }
 
     private void CreateTestTrack()
     {
+        Debug.WriteLine("[TRACK] Tworzę testową trasę...");
+
         const int left = 10;
         const int right = 30;
         const int top = 10;
         const int bottom = 29;
 
-        // GÓRNY LEWY ZAKRĘT (East -> South)
         _builder.BuildCurve(new MapPosition(left, top), CurveDirection.EastSouth);
 
-        // GÓRNA PROSTA (Horizontal)
         for (var x = left + 1; x < right; x++)
         {
-            _builder.BuildStraight(new MapPosition(x, top), horizontal: true);
+            if (x == 20 || x == 25)
+            {
+                Debug.WriteLine($"[TRACK] Dodaję zwrotnicę na ({x}, {top})");
+                _builder.BuildJunctionFromType(new MapPosition(x, top), JunctionType.South_NorthEast);
+            }
+            else
+            {
+                _builder.BuildStraight(new MapPosition(x, top), horizontal: true);
+            }
         }
 
-        // GÓRNY PRAWY ZAKRĘT (South -> West)
         _builder.BuildCurve(new MapPosition(right, top), CurveDirection.SouthWest);
 
-        // PRAWA PROSTA (Vertical)
         for (var y = top + 1; y < bottom; y++)
         {
             _builder.BuildStraight(new MapPosition(right, y), horizontal: false);
         }
 
-        // DOLNY PRAWY ZAKRĘT (West -> North)
         _builder.BuildCurve(new MapPosition(right, bottom), CurveDirection.WestNorth);
 
-        // DOLNA PROSTA (Horizontal)
         for (var x = right - 1; x > left; x--)
         {
             _builder.BuildStraight(new MapPosition(x, bottom), horizontal: true);
         }
 
-        // DOLNY LEWY ZAKRĘT (North -> East)
         _builder.BuildCurve(new MapPosition(left, bottom), CurveDirection.NorthEast);
 
-        // LEWA PROSTA (Vertical)
         for (var y = bottom - 1; y > top; y--)
         {
             _builder.BuildStraight(new MapPosition(left, y), horizontal: false);
         }
+
+        Debug.WriteLine("[TRACK] Testowa trasa utworzona!");
     }
 
     private void CreateTestTrain()
     {
+        Debug.WriteLine("[TRAIN] Tworzę testowy pociąg...");
+
         var locomotiveParameters = new VehicleParameters(
-            maxSpeed: 20.4f,
+            maxSpeed: 8.4f,
             acceleration: 0.8f,
             braking: 1.0f,
             mass: 80000f,
             length: 1.0f);
 
         var wagonParameters = new VehicleParameters(
-            maxSpeed: 20.4f,
+            maxSpeed: 8.4f,
             acceleration: 0.8f,
             braking: 1.0f,
             mass: 40000f,
@@ -320,7 +256,7 @@ public sealed class GameplayScreen
         var train = new Train(
             new Vector2(25.5f, 10.5f),
             TrackConnections.East,
-            speed: 20.4f);
+            speed: 8.4f);
 
         train.SetMap(_map);
 
@@ -329,5 +265,8 @@ public sealed class GameplayScreen
         train.Composition.AddVehicle(new Wagon(wagonParameters));
 
         _trainManager.Add(train);
+
+        Debug.WriteLine($"[TRAIN] Pociąg utworzony! ID: {train.Id}, Prędkość: {train.Speed}");
+        Debug.WriteLine($"[TRAIN] Liczba pojazdów: {train.Composition.Vehicles.Count}");
     }
 }
