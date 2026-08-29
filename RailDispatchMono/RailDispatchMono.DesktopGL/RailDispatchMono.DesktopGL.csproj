@@ -1,19 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
 	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net9.0</TargetFramework>
+		<OutputType>WinExe</OutputType>		<TargetFramework>net9.0</TargetFramework>
 		<PublishReadyToRun>false</PublishReadyToRun>
 		<TieredCompilation>false</TieredCompilation>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<ApplicationIcon>../RailDispatchMono.Core/Content/Icon.ico</ApplicationIcon>
-		<AssemblyName>RailDispatchMono</AssemblyName>
-		<AssemblyTitle>RailDispatchMono</AssemblyTitle>
+		<AssemblyName>RailDispatchMono</AssemblyName>		<AssemblyTitle>RailDispatchMono</AssemblyTitle>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<MonoGameContentReference Include="..\RailDispatchMono.Core\Content\RailDispatchMono.mgcb">
 			<Link>Content\RailDispatchMono.mgcb</Link>
 		</MonoGameContentReference>
+	</ItemGroup>
+
+	<!-- Automatyczne kopiowanie zbudowanych zasobów .xnb do katalogu wyjściowego bin/.../Content -->
+	<ItemGroup>
+		<None Include="..\RailDispatchMono.Core\Content\bin\DesktopGL\**\*.*" Condition="Exists('..\RailDispatchMono.Core\Content\bin\DesktopGL')">
+			<Link>Content\%(RecursiveDir)%(Filename)%(Extension)</Link>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -24,4 +31,5 @@
 		<PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
 		<PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
 	</ItemGroup>
+
 </Project>

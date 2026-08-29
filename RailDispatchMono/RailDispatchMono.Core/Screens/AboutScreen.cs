@@ -1,6 +1,6 @@
-﻿using RailDispatchMono.Core.Localization;
+using RailDispatchMono.Core.Localization;
 
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// Represents the "About" screen, providing information about the game and its technology.
@@ -17,14 +17,10 @@ namespace RailDispatchMono.Screens
         /// <summary>
         /// Initializes a new instance of the <see cref="AboutScreen"/> class.
         /// </summary>
-        /// <remarks>
-        /// This constructor sets the screen's title and creates the menu entries.
-        /// It also hooks up event handlers for menu entry selections.
-        /// </remarks>
         public AboutScreen()
-            : base(Resources.About) // Assumes Resources.About contains the screen title
+            : base(Resources.About)
         {
-            // Create the static label entry. isabled as it's a label
+            // Create the static label entry. Disabled as it's a label
             builtWithMonoGameMenuEntry = new MenuEntry("#BuiltWithMonoGame", false);
 
             // Create the clickable link entry.
@@ -46,9 +42,9 @@ namespace RailDispatchMono.Screens
         /// <summary>
         /// Handles the selection event for the MonoGame website menu entry.
         /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="PlayerIndexEventArgs"/> instance containing the event data.</param>
-        private void MonoGameWebsiteMenuSelected(object sender, PlayerIndexEventArgs e)
+
+        // ZMIANA: object? zamiast object (usuwa ostrzeżenie CS8622)
+        private void MonoGameWebsiteMenuSelected(object? sender, PlayerIndexEventArgs e)
         {
             LaunchDefaultBrowser("https://www.monogame.net/");
         }
@@ -56,14 +52,8 @@ namespace RailDispatchMono.Screens
         /// <summary>
         /// Launches the default web browser with the specified URL.
         /// </summary>
-        /// <param name="url">The URL to open in the browser.</param>
-        /// <remarks>
-        /// This method uses <see cref="System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo)"/> to launch the browser.
-        /// Note: Platform-specific adjustments might be necessary for cross-platform compatibility.
-        /// </remarks>
         private static void LaunchDefaultBrowser(string url)
         {
-            // UseShellExecute is crucial for launching the default browser.
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
     }

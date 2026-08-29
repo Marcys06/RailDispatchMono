@@ -7,14 +7,11 @@ public sealed class TrackBuilder
 {
     private readonly GameMap _map;
 
-    public TrackBuildMode Mode { get; set; } =
-        TrackBuildMode.Straight;
+    public TrackBuildMode Mode { get; set; } = TrackBuildMode.Straight;
 
-    public CurveDirection Curve { get; set; } =
-        CurveDirection.NorthEast;
+    public CurveDirection Curve { get; set; } = CurveDirection.NorthEast;
 
-    public JunctionType Junction { get; set; } =
-        JunctionType.South_NorthEast;
+    public JunctionType Junction { get; set; } = JunctionType.South_NorthEast;
 
     public bool StraightHorizontal { get; set; } = true;
 
@@ -44,30 +41,21 @@ public sealed class TrackBuilder
         }
     }
 
-    public void BuildStraight(
-        MapPosition position,
-        bool horizontal)
+    public void BuildStraight(MapPosition position, bool horizontal)
     {
         if (!IsInsideMap(position))
             return;
 
         var connections = horizontal
-            ? TrackConnections.West |
-              TrackConnections.East
-            : TrackConnections.North |
-              TrackConnections.South;
+            ? TrackConnections.West | TrackConnections.East
+            : TrackConnections.North | TrackConnections.South;
 
         var track = GetOrCreate(position);
 
-        track.SetGeometry(
-            TrackGeometry.Straight);
+        track.SetGeometry(TrackGeometry.Straight);
+        track.SetConnections(connections);
 
-        track.SetConnections(
-            connections);
-
-        ConnectNeighbours(
-            position,
-            connections);
+        ConnectNeighbours(position, connections);
     }
 
     public void BuildJunction(
@@ -86,9 +74,7 @@ public sealed class TrackBuilder
         ConnectNeighbours(position, track.Connections);
     }
 
-    public void BuildJunctionFromType(
-        MapPosition position,
-        JunctionType type)
+    public void BuildJunctionFromType(MapPosition position, JunctionType type)
     {
         var (stem, straight, diverging) = type switch
         {
@@ -96,56 +82,39 @@ public sealed class TrackBuilder
             JunctionType.South_NorthWest => (TrackConnections.South, TrackConnections.North, TrackConnections.West),
             JunctionType.West_EastSouth => (TrackConnections.West, TrackConnections.East, TrackConnections.South),
             JunctionType.West_EastNorth => (TrackConnections.West, TrackConnections.East, TrackConnections.North),
+            JunctionType.North_SouthEast => (TrackConnections.North, TrackConnections.South, TrackConnections.East),
+            JunctionType.North_SouthWest => (TrackConnections.North, TrackConnections.South, TrackConnections.West),
+            JunctionType.East_WestSouth => (TrackConnections.East, TrackConnections.West, TrackConnections.South),
+            JunctionType.East_WestNorth => (TrackConnections.East, TrackConnections.West, TrackConnections.North),
             _ => (TrackConnections.South, TrackConnections.North, TrackConnections.East)
         };
 
         BuildJunction(position, stem, straight, diverging);
     }
 
-    public void BuildCurve(
-        MapPosition position,
-        CurveDirection direction)
+    public void BuildCurve(MapPosition position, CurveDirection direction)
     {
         if (!IsInsideMap(position))
             return;
 
         var connections = direction switch
         {
-            CurveDirection.NorthEast =>
-                TrackConnections.North |
-                TrackConnections.East,
-
-            CurveDirection.EastSouth =>
-                TrackConnections.East |
-                TrackConnections.South,
-
-            CurveDirection.SouthWest =>
-                TrackConnections.South |
-                TrackConnections.West,
-
-            CurveDirection.WestNorth =>
-                TrackConnections.West |
-                TrackConnections.North,
-
-            _ =>
-                TrackConnections.None
+            CurveDirection.NorthEast => TrackConnections.North | TrackConnections.East,
+            CurveDirection.EastSouth => TrackConnections.East | TrackConnections.South,
+            CurveDirection.SouthWest => TrackConnections.South | TrackConnections.West,
+            CurveDirection.WestNorth => TrackConnections.West | TrackConnections.North,
+            _ => TrackConnections.None
         };
 
         var track = GetOrCreate(position);
 
-        track.SetGeometry(
-            TrackGeometry.Curve);
+        track.SetGeometry(TrackGeometry.Curve);
+        track.SetConnections(connections);
 
-        track.SetConnections(
-            connections);
-
-        ConnectNeighbours(
-            position,
-            connections);
+        ConnectNeighbours(position, connections);
     }
 
-    public void Remove(
-        MapPosition position)
+    public void Remove(MapPosition position)
     {
         if (!IsInsideMap(position))
             return;
@@ -153,21 +122,16 @@ public sealed class TrackBuilder
         _map.RemoveTrack(position);
     }
 
-    private TrackCell GetOrCreate(
-        MapPosition position)
+    private TrackCell GetOrCreate(MapPosition position)
     {
-        if (_map.TryGetTrack(
-                position,
-                out var existing) &&
-            existing is not null)
+        if (_map.TryGetTrack(position, out var existing) && existing is not null)
         {
             return existing;
         }
 
         if (!IsInsideMap(position))
         {
-            throw new System.ArgumentOutOfRangeException(
-                nameof(position));
+            throw new System.ArgumentOutOfRangeException(nameof(position));
         }
 
         var track = new TrackCell(
@@ -180,84 +144,54 @@ public sealed class TrackBuilder
         return track;
     }
 
-    private void ConnectNeighbours(
-        MapPosition position,
-        TrackConnections connections)
+    private void ConnectNeighbours(MapPosition position, TrackConnections connections)
     {
-        if (connections.HasFlag(
-                TrackConnections.North))
+        if (connections.HasFlag(TrackConnections.North))
         {
-            AddConnection(
-                position.X,
-                position.Y - 1,
-                TrackConnections.South);
+            AddConnection(position.X, position.Y - 1, TrackConnections.South);
         }
 
-        if (connections.HasFlag(
-                TrackConnections.East))
+        if (connections.HasFlag(TrackConnections.East))
         {
-            AddConnection(
-                position.X + 1,
-                position.Y,
-                TrackConnections.West);
+            AddConnection(position.X + 1, position.Y, TrackConnections.West);
         }
 
-        if (connections.HasFlag(
-                TrackConnections.South))
+        if (connections.HasFlag(TrackConnections.South))
         {
-            AddConnection(
-                position.X,
-                position.Y + 1,
-                TrackConnections.North);
+            AddConnection(position.X, position.Y + 1, TrackConnections.North);
         }
 
-        if (connections.HasFlag(
-                TrackConnections.West))
+        if (connections.HasFlag(TrackConnections.West))
         {
-            AddConnection(
-                position.X - 1,
-                position.Y,
-                TrackConnections.East);
+            AddConnection(position.X - 1, position.Y, TrackConnections.East);
         }
     }
 
-    private void AddConnection(
-        int x,
-        int y,
-        TrackConnections connection)
+    private void AddConnection(int x, int y, TrackConnections connection)
     {
-        var position =
-            new MapPosition(x, y);
+        var position = new MapPosition(x, y);
 
         if (!IsInsideMap(position))
             return;
 
-        if (!_map.TryGetTrack(
-                position,
-                out var neighbour) ||
-            neighbour is null)
+        if (!_map.TryGetTrack(position, out var neighbour) || neighbour is null)
         {
             return;
         }
 
-        if (neighbour.Geometry ==
-            TrackGeometry.Curve)
+        if (neighbour.Geometry == TrackGeometry.Curve)
         {
             return;
         }
 
-        neighbour.SetConnections(
-            neighbour.Connections |
-            connection);
+        neighbour.SetConnections(neighbour.Connections | connection);
     }
 
-    private bool IsInsideMap(
-        MapPosition position)
+    private bool IsInsideMap(MapPosition position)
     {
-        return
-            position.X >= 0 &&
-            position.X < _map.Size.Width &&
-            position.Y >= 0 &&
-            position.Y < _map.Size.Height;
+        return position.X >= 0 &&
+               position.X < _map.Size.Width &&
+               position.Y >= 0 &&
+               position.Y < _map.Size.Height;
     }
 }

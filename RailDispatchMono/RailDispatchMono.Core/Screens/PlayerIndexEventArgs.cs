@@ -1,7 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using System;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// Custom event argument which includes the index of the player who

@@ -1,7 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Localization;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     internal class PauseScreen : MenuScreen
     {

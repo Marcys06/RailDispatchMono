@@ -1,10 +1,9 @@
-ï»¿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input.Touch;
 using RailDispatchMono.Core.Inputs;
-using RailDispatchMono.ScreenManagers;
+using RailDispatchMono.Core.ScreenManagers;
 using System;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// A screen is a single layer that has update and draw logic, and which
@@ -112,15 +111,16 @@ namespace RailDispatchMono.Screens
             }
         }
 
-        // JeÅ›li pole nazywa siÄ™ _screenManager lub screenManager, dodaj '?' przy typie:
+        // Jeœli pole nazywa siê _screenManager, dodaj '?' przy typie:
         private ScreenManager? _screenManager;
+
         /// <summary>
         /// Gets the manager that this screen belongs to.
         /// </summary>
         public ScreenManager ScreenManager
         {
-            get { return screenManager; }
-            internal set { screenManager = value; }
+            get { return _screenManager!; }        // ? Poprawione!
+            internal set { _screenManager = value; } // ? Poprawione!
         }
 
         private PlayerIndex? controllingPlayer;

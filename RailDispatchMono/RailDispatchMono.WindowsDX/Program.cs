@@ -1,4 +1,6 @@
-﻿using RailDispatchMono.Core;
+namespace RailDispatchMono.WindowsDX;
+
+using RailDispatchMono.Core;
 
 internal class Program
 {

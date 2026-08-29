@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
@@ -6,8 +6,7 @@ using RailDispatchMono.Core;
 using RailDispatchMono.Core.Inputs;
 using System;
 using System.Collections.Generic;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// Base class for screens that contain a menu of options. The user can

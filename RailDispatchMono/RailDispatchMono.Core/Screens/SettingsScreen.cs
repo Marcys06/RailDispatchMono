@@ -1,13 +1,12 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Effects;
 using RailDispatchMono.Core.Localization;
 using RailDispatchMono.Core.Settings;
-using RailDispatchMono.ScreenManagers;
+using RailDispatchMono.Core.ScreenManagers;
 using System.Collections.Generic;
 using System.Globalization;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// The settings screen is brought up over the top of the main menu

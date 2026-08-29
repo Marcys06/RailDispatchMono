@@ -40,7 +40,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void LoadContent()
     {
-        _gameplay.LoadContent();
+        // Zamień dotychczasowe _gameplay.LoadContent(); na:
+        _gameplay.LoadContent(Content);
     }
 
     protected override void Update(GameTime gameTime)

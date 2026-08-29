@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// Enum describes the screen transition state.

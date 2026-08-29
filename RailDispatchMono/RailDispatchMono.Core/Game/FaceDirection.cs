@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Core
+namespace RailDispatchMono.Core.Game
 {
     /// <summary>
     /// Facing direction along the X axis.

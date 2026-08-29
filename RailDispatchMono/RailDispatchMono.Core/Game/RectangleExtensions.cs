@@ -1,7 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using System;
-
-namespace RailDispatchMono.Core
+namespace RailDispatchMono.Core.Game
 {
     /// <summary>
     /// A set of helpful methods for working with rectangles.

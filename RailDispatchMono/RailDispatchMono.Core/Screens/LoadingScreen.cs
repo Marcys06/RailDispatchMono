@@ -1,10 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Localization;
-using RailDispatchMono.ScreenManagers;
+using RailDispatchMono.Core.ScreenManagers;
 using System;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// The loading screen coordinates transitions between the menu system and the

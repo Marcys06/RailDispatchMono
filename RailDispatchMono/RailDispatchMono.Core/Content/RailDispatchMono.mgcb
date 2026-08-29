@@ -1,4 +1,3 @@
-
 #----------------------------- Global Properties ----------------------------#
 
 /outputDir:bin/$(Platform)
@@ -121,13 +120,6 @@
 /processorParam:TextureFormat=Color
 /build:Backgrounds/Layer2_2.png
 
-#begin Fonts/Hud.spritefont
-/importer:FontDescriptionImporter
-/processor:FontDescriptionProcessor
-/processorParam:PremultiplyAlpha=True
-/processorParam:TextureFormat=Compressed
-/build:Fonts/Hud.spritefont
-
 #begin Levels/00.txt
 /copy:Levels/00.txt
 
@@ -184,13 +176,6 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Overlays/you_win.png
-
-
-
-
-
-
-
 
 #begin Sprites/Player/Celebrate.png
 /importer:TextureImporter
@@ -432,3 +417,9 @@
 /processorParam:TextureFormat=Color
 /build:Tiles/Platform.png
 
+#begin Arial24.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Arial24.spritefont

@@ -1,8 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-
-namespace RailDispatchMono.Core
+namespace RailDispatchMono.Core.Game
 {
     /// <summary>
     /// Represents a parallax scrolling layer in the game, typically used for background elements.

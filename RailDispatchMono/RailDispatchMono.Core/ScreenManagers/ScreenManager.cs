@@ -1,15 +1,16 @@
-﻿using Microsoft.Xna.Framework;
+using FrameworkGame = Microsoft.Xna.Framework.Game;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input.Touch;
 using RailDispatchMono.Core.Inputs;
-using RailDispatchMono.Screens;
+using RailDispatchMono.Core.Screens;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace RailDispatchMono.ScreenManagers
+namespace RailDispatchMono.Core.ScreenManagers
 {
     /// <summary>
     /// The ScreenManager is a component responsible for managing multiple <see cref="GameScreen"/> instances.
@@ -84,7 +85,7 @@ namespace RailDispatchMono.ScreenManagers
         /// Initializes a new instance of the <see cref="ScreenManager"/> class.
         /// </summary>
         /// <param name="game">The associated Game instance.</param>
-        public ScreenManager(Game game) : base(game)
+        public ScreenManager(FrameworkGame game) : base(game)
         {
             TouchPanel.EnabledGestures = GestureType.None;
         }
@@ -201,7 +202,6 @@ namespace RailDispatchMono.ScreenManagers
                     // Dispose of managed resources.
                     spriteBatch?.Dispose();
                 }
-                // No unmanaged resources to dispose in this example.
             }
             finally
             {
@@ -254,10 +254,7 @@ namespace RailDispatchMono.ScreenManagers
         /// Returns an array of all active screens managed by the ScreenManager.
         /// </summary>
         /// <returns>
-        /// An array containing all current GameScreen instances. This array is a copy
-        /// of the internal list to ensure screens are only added or removed using
-        /// <see cref="AddScreen(GameScreen, PlayerIndex?)"/> and
-        /// <see cref="RemoveScreen(GameScreen)"/>.
+        /// An array containing all current GameScreen instances.
         /// </returns>
         public GameScreen[] GetScreens()
         {
@@ -265,18 +262,16 @@ namespace RailDispatchMono.ScreenManagers
         }
 
         /// <summary>
-        /// Draws a translucent black fullscreen sprite. This is used for fading
-        /// screens in and out, or for darkening the background behind popups.
+        /// Draws a translucent black fullscreen sprite.
         /// </summary>
         /// <param name="alpha">The opacity level of the fade (0 = fully transparent, 1 = fully opaque).</param>
         public void FadeBackBufferToBlack(float alpha)
         {
-            // Draw without transformation to cover the entire backbuffer
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, null);
 
             spriteBatch.Draw(blankTexture,
-                                 new Rectangle(0, 0, backbufferWidth, backbufferHeight),
-                                 Color.Black * alpha);
+                             new Rectangle(0, 0, backbufferWidth, backbufferHeight),
+                             Color.Black * alpha);
 
             spriteBatch.End();
         }
@@ -286,55 +281,41 @@ namespace RailDispatchMono.ScreenManagers
         /// </summary>
         public void ScalePresentationArea()
         {
-            // Validate parameters before calculation
             if (GraphicsDevice == null || baseScreenSize.X <= 0 || baseScreenSize.Y <= 0)
             {
                 throw new InvalidOperationException("Invalid graphics configuration");
             }
 
-            // Fetch screen dimensions
             backbufferWidth = GraphicsDevice.PresentationParameters.BackBufferWidth;
             backbufferHeight = GraphicsDevice.PresentationParameters.BackBufferHeight;
 
-            // Prevent division by zero
             if (backbufferHeight == 0 || baseScreenSize.Y == 0)
             {
                 return;
             }
 
-            // Calculate aspect ratios
             float baseAspectRatio = baseScreenSize.X / baseScreenSize.Y;
             float screenAspectRatio = backbufferWidth / (float)backbufferHeight;
 
-            // Determine uniform scaling factor
             float scalingFactor;
             float horizontalOffset = 0;
             float verticalOffset = 0;
 
             if (screenAspectRatio > baseAspectRatio)
             {
-                // Wider screen: scale by height
                 scalingFactor = backbufferHeight / baseScreenSize.Y;
-
-                // Centre things horizontally.
                 horizontalOffset = (backbufferWidth - baseScreenSize.X * scalingFactor) / 2;
             }
             else
             {
-                // Taller screen: scale by width
                 scalingFactor = backbufferWidth / baseScreenSize.X;
-
-                // Centre things vertically.
                 verticalOffset = (backbufferHeight - baseScreenSize.Y * scalingFactor) / 2;
             }
 
-            // Update the transformation matrix
             globalTransformation = Matrix.CreateScale(scalingFactor) *
-                                    Matrix.CreateTranslation(horizontalOffset, verticalOffset, 0);
+                                   Matrix.CreateTranslation(horizontalOffset, verticalOffset, 0);
 
-            // Update the inputTransformation with the Inverted globalTransformation
             inputState.UpdateInputTransformation(Matrix.Invert(globalTransformation));
-
         }
     }
 }

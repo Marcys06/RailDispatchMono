@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// The various stage of the pop-up message after completing a level

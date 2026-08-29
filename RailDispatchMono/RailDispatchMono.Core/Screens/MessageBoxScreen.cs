@@ -1,12 +1,11 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core;
 using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.Localization;
 using System;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// A popup message box screen, used to display messages and prompt user input.

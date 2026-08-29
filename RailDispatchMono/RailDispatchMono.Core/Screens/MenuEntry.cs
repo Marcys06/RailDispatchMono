@@ -1,9 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using RailDispatchMono.ScreenManagers;
+using RailDispatchMono.Core.ScreenManagers;
 using System;
-
-namespace RailDispatchMono.Screens
+namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
     /// Helper class represents a single entry in a MenuScreen. By default this

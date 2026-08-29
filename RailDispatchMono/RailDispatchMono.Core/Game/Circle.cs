@@ -1,6 +1,5 @@
-﻿using Microsoft.Xna.Framework;
-
-namespace RailDispatchMono.Core
+using Microsoft.Xna.Framework;
+namespace RailDispatchMono.Core.Game
 {
     /// <summary>
     /// Represents a 2D circle.
