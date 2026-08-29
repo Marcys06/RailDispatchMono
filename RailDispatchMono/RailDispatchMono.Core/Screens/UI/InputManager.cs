@@ -24,7 +24,7 @@ namespace RailDispatchMono.Core.Screens.UI
         private readonly GameMap _map;
 
         // ============================================================
-        // NOWE POLA DLA SEMAFORÓW
+        // POLA DLA SEMAFORÓW
         // ============================================================
         private readonly SignalController _signalController;
         private readonly SignalRadialMenu _signalRadialMenu;
@@ -83,10 +83,10 @@ namespace RailDispatchMono.Core.Screens.UI
             _signalDirectionMenu.DirectionSelected += OnDirectionSelected;
             _signalDirectionMenu.MenuClosed += (s, e) =>
             {
-                System.Diagnostics.Debug.WriteLine("[SIGNAL] Menu kierunków zamknięte");// $2
+                System.Diagnostics.Debug.WriteLine("[SIGNAL] Menu kierunków zamknięte");
             };
 
-            System.Diagnostics.Debug.WriteLine("[INPUT] InputManager utworzony z SignalController i SignalRenderer");// $2
+            System.Diagnostics.Debug.WriteLine("[INPUT] InputManager utworzony z SignalController i SignalRenderer");
         }
 
         // ============================================================
@@ -94,24 +94,24 @@ namespace RailDispatchMono.Core.Screens.UI
         // ============================================================
         private void OnDirectionSelected(object? sender, SignalDirectionMenu.SignalDirectionSelectedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"[INPUT] OnDirectionSelected - kierunek: {e.Direction} dla {e.Position}");// $2
+            System.Diagnostics.Debug.WriteLine($"[INPUT] OnDirectionSelected - kierunek: {e.Direction} dla {e.Position}");
 
             bool result = _signalController.AddSignal(e.Position, e.Direction);
-            System.Diagnostics.Debug.WriteLine($"[INPUT] AddSignal({e.Position}, {e.Direction}) = {result}");// $2
+            System.Diagnostics.Debug.WriteLine($"[INPUT] AddSignal({e.Position}, {e.Direction}) = {result}");
 
             if (result)
             {
-                System.Diagnostics.Debug.WriteLine("[INPUT] ✅ Semafor dodany pomyślnie!");// $2
+                System.Diagnostics.Debug.WriteLine("[INPUT] ✅ Semafor dodany pomyślnie!");
 
                 // Sprawdź ile jest teraz semaforów
                 int total = 0;
                 foreach (var kvp in _signalController.Signals)
                     total += kvp.Value.Count;
-                System.Diagnostics.Debug.WriteLine($"[INPUT] Łączna liczba semaforów: {total}");// $2
+                System.Diagnostics.Debug.WriteLine($"[INPUT] Łączna liczba semaforów: {total}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[INPUT] ❌ Nie udało się dodać semafora!");// $2
+                System.Diagnostics.Debug.WriteLine("[INPUT] ❌ Nie udało się dodać semafora!");
             }
         }
 
@@ -219,7 +219,7 @@ namespace RailDispatchMono.Core.Screens.UI
             // ============================================================
             // OBSŁUGA MYSZY (budowanie i semafory)
             // ============================================================
-            HandleMouseInput(mouse);
+            HandleMouseInput(mouse, keyboard);
 
             _previousMouse = mouse;
             _previousKeyboard = keyboard;
@@ -248,6 +248,9 @@ namespace RailDispatchMono.Core.Screens.UI
                 _builder.Mode = TrackBuildMode.Signal;
                 Debug.WriteLine("[INPUT] Tryb: Signal");
             }
+
+           
+            
 
             // ============================================================
             // KLAWISZ R - OBRÓT / ZMIANA
@@ -316,11 +319,13 @@ namespace RailDispatchMono.Core.Screens.UI
             return keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
         }
 
-        private void HandleMouseInput(MouseState mouse)
+        private void HandleMouseInput(MouseState mouse, KeyboardState keyboard)
         {
             var mouseScreenPosition = new Vector2(mouse.X, mouse.Y);
             var worldPosition = _camera.ScreenToMap(mouseScreenPosition);
             var mapPos = new MapPosition((int)worldPosition.X, (int)worldPosition.Y);
+
+            bool shiftPressed = keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift);
 
             // ============================================================
             // LEWY PRZYCISK - BUDOWANIE
@@ -360,41 +365,70 @@ namespace RailDispatchMono.Core.Screens.UI
             }
 
             // ============================================================
-            // PRAWY PRZYCISK - USUWANIE LUB MENU
+            // PRAWY PRZYCISK - MENU LUB USUWANIE (Shift + PPM)
             // ============================================================
             if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
             {
-                Debug.WriteLine($"[INPUT] PPM na {mapPos}");
+                Debug.WriteLine($"[INPUT] PPM na {mapPos}, Shift: {shiftPressed}");
 
-                // 1. Sprawdź czy na tej pozycji jest semafor
+                // ============================================================
+                // 1. SEMAFORY
+                // ============================================================
                 var signals = _signalController.GetSignalsAt(mapPos);
-                if (signals.Count == 1)
+                if (signals.Count > 0)
                 {
-                    _signalRadialMenu.Open(mouseScreenPosition, signals[0]);
-                    return;
-                }
-                else if (signals.Count > 1)
-                {
-                    _signalSelectionMenu.Open(mouseScreenPosition, signals);
+                    // ✅ Shift + PPM = USUŃ
+                    if (shiftPressed)
+                    {
+                        _signalController.RemoveSignalsAt(mapPos);
+                        Debug.WriteLine($"[INPUT] ✅ Usunięto semafor na {mapPos} (Shift+PPM)");
+                        return;
+                    }
+
+                    // PPM bez Shift = MENU ASpektów
+                    if (signals.Count == 1)
+                    {
+                        _signalRadialMenu.Open(mouseScreenPosition, signals[0]);
+                        Debug.WriteLine($"[INPUT] 📋 Otwarto menu aspektów na {mapPos}");
+                    }
+                    else if (signals.Count > 1)
+                    {
+                        _signalSelectionMenu.Open(mouseScreenPosition, signals);
+                        Debug.WriteLine($"[INPUT] 📋 Otwarto menu wyboru semafora na {mapPos}");
+                    }
                     return;
                 }
 
-                // 2. Sprawdź czy jest rozjazd
+                // ============================================================
+                // 2. ROZJAZDY
+                // ============================================================
                 if (_map.TryGetTrack(mapPos, out var track) && track != null && track.IsJunction)
                 {
+                    // ✅ Shift + PPM = USUŃ
+                    if (shiftPressed)
+                    {
+                        _builder.Remove(mapPos);
+                        Debug.WriteLine($"[INPUT] ✅ Usunięto rozjazd na {mapPos} (Shift+PPM)");
+                        return;
+                    }
+
+                    // PPM bez Shift = MENU ROZJAZDU
                     _junctionRadialMenu.Open(mouseScreenPosition, track);
+                    Debug.WriteLine($"[INPUT] 📋 Otwarto menu rozjazdu na {mapPos}");
                     return;
                 }
 
-                // 3. USUWANIE TORU / ZAKRĘTU / ROZJAZDU
+                // ============================================================
+                // 3. TORY (PPM = USUŃ - bez Shift, bo to już standard)
+                // ============================================================
                 if (_map.TryGetTrack(mapPos, out var existingTrack) && existingTrack != null)
                 {
-                    Debug.WriteLine($"[INPUT] PPM - usuwam tor na {mapPos}");
                     _builder.Remove(mapPos);
+                    Debug.WriteLine($"[INPUT] ✅ Usunięto tor na {mapPos} (PPM)");
                     return;
                 }
 
-                Debug.WriteLine($"[INPUT] PPM - brak elementu do usunięcia na {mapPos}");
+                Debug.WriteLine($"[INPUT] PPM - brak elementu na {mapPos}");
             }
         }
 

@@ -62,33 +62,13 @@ namespace RailDispatchMono.Core.Game.Railway
             return true;
         }
 
-        public bool RemoveSignal(MapPosition position, TrackConnections? direction = null)
+        public void RemoveSignalsAt(MapPosition position)
         {
-            if (!_signals.TryGetValue(position, out var signals))
-                return false;
-
-            if (direction.HasValue)
+            if (_signals.TryGetValue(position, out var signalList))
             {
-                var signal = signals.FirstOrDefault(s => s.Direction == direction.Value);
-                if (signal != null)
-                {
-                    signals.Remove(signal);
-                    _signalById.Remove(signal.Id);
-
-                    if (signals.Count == 0)
-                        _signals.Remove(position);
-
-                    return true;
-                }
-                return false;
-            }
-            else
-            {
-                foreach (var signal in signals)
-                    _signalById.Remove(signal.Id);
-
+                signalList.Clear();
                 _signals.Remove(position);
-                return true;
+// Debug.WriteLine($"[SIGNAL] Usunięto semafory na {position}");
             }
         }
 

@@ -348,6 +348,21 @@ public sealed class GameplayScreen
             _blockController.CreateBlocksFromSignals();
             Debug.WriteLine($"[BLOCK] Utworzono {_blockController.BlockCount} bloków");
         }
+        _builder.BuildStraight(new MapPosition(88, bottom), horizontal: true);
+        _builder.BuildStraight(new MapPosition(87, bottom), horizontal: true);
+
+        Debug.WriteLine("[TRACK] Sprawdzam tory na dolnej prostej:");
+        for (int x = 89; x >= left; x--)
+        {
+            if (_map.TryGetTrack(new MapPosition(x, bottom), out var track))
+            {
+                Debug.WriteLine($"  ({x}, {bottom}): Connections = {track.Connections}, Geometry = {track.Geometry}");
+            }
+            else
+            {
+                Debug.WriteLine($"  ({x}, {bottom}): ❌ BRAK TORU");
+            }
+        }
     }
 
     private void CreateTestTrain()

@@ -3,14 +3,12 @@ using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
-// ✅ POPRAWNIE - BEZ private
 public enum SwitchPosition
 {
     Straight = 0,
     Diverging = 1
 }
 
-// ✅ POPRAWNIE - BEZ private
 public sealed class TrackCell
 {
     public MapPosition Position { get; }
@@ -84,24 +82,26 @@ public sealed class TrackCell
     /// <summary>
     /// Zwraca kierunek wyjścia z komórki na podstawie kierunku wjazdu pociągu (entryDir).
     /// </summary>
-    public TrackConnections GetExitDirection(TrackConnections entryDir)
+    public TrackConnections GetExitDirection(TrackConnections entrySide)
     {
         if (Geometry != TrackGeometry.Junction)
         {
-            // Dla zwykłego toru maskujemy i zwracamy przeciwne połączenie
-            return Connections & ~entryDir;
+            // ✅ DLA PROSTEGO TORU - zwróć przeciwne połączenie
+            // Np. jeśli wjeżdżamy od East, wyjeżdżamy West
+            return Connections & ~entrySide;
         }
 
-        // Wjazd od strony pnia (Ostrze zwrotnicy -> Rozjazd na dwa tory)
-        if (CommonStem.HasFlag(entryDir) || entryDir.HasFlag(CommonStem))
+        // Rozjazd - logika dla CommonStem
+        if (entrySide == CommonStem)
         {
             return CurrentSwitchPosition == SwitchPosition.Straight
                 ? StraightConnection
                 : DivergingConnection;
         }
-
-        // Wjazd od strony odgałęzień (Z rozpory do wspólnego pnia)
-        return CommonStem;
+        else
+        {
+            return CommonStem;
+        }
     }
 
     public List<TrackConnections> GetAvailableDirections()

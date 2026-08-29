@@ -1,5 +1,47 @@
 Changelog
 
+[0.0.7a] — Naprawa wykrywania połączeń w prostych torach Data: 2026-08-29
+
+Bug Fixes
+- Naprawiono GetExitDirection w TrackCell.cs dla prostych torów
+- Metoda GetExitDirection zwracała TrackConnections.None dla Straight
+- Dodano poprawne obliczanie przeciwnego połączenia: Connections & ~entrySide
+- Naprawiono zatrzymywanie pociągu na (88,89) mimo prawidłowych połączeń
+- Usunięto błędne zwracanie None dla torów prostych w GetExitDirection
+
+Train System
+- Poprawiono EnterNextCell w Train.cs
+- Dodano GetOppositeDirection(Direction) zamiast Direction
+- Prawidłowe wykrywanie połączeń przy wejściu do następnej komórki
+- Dodano logi diagnostyczne w EnterNextCell
+
+TrackBuilder
+- Dodano ręczne budowanie brakujących torów w CreateTestTrack()
+- Dodano logi diagnostyczne dla torów na dolnej prostej
+- Potwierdzono poprawne Connections = East, West dla wszystkich torów
+
+Build
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+
+Test Results
+- Tory na dolnej prostej mają poprawne Connections = East, West
+- Pociąg prawidłowo przechodzi przez komórkę (88,89)
+- Pociąg kontynuuje jazdę po całej trasie
+- Zakręty obsługiwane poprawnie
+
+Known gaps / Poza zakresem tego wpisu
+- Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów
+- Ruch pociągu nie obsługuje jeszcze pełnego przebiegu po sieci torowej
+- Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru
+- Brak obsługi kierunku jazdy i zmiany kierunku na rozjazdach
+- Brak sekcji blokowych (BlockSection)
+- Brak interlockingu
+- Brak wykolejenia
+- Brak manewrów i sprzęgania w warstwie symulacji
+- Brak planowania jazdy
+- Brak pasażerów
+- Brak harmonogramów
 
 [0.0.7] — Obsługa rozjazdów przez pociągi Data: 2026-08-29
 

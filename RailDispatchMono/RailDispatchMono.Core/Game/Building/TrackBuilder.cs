@@ -116,10 +116,19 @@ public sealed class TrackBuilder
 
     public void Remove(MapPosition position)
     {
-        if (!IsInsideMap(position))
-            return;
+        if (!IsInsideMap(position)) return;
 
-        _map.RemoveTrack(position);
+        if (_map.TryGetTrack(position, out var track) && track != null)
+        {
+            // Zapisz połączenia przed usunięciem
+            var connections = track.Connections;
+
+            // Usuń tor
+            _map.RemoveTrack(position);
+
+            // Aktualizuj sąsiadów - usuń połączenia do usuniętego toru
+            UpdateNeighborsAfterRemoval(position, connections);
+        }
     }
 
     private TrackCell GetOrCreate(MapPosition position)
@@ -185,6 +194,47 @@ public sealed class TrackBuilder
         }
 
         neighbour.SetConnections(neighbour.Connections | connection);
+    }
+
+    private void UpdateNeighborsAfterRemoval(MapPosition position, TrackConnections connections)
+    {
+        if (connections.HasFlag(TrackConnections.North))
+        {
+            RemoveConnection(position.X, position.Y - 1, TrackConnections.South);
+        }
+        if (connections.HasFlag(TrackConnections.East))
+        {
+            RemoveConnection(position.X + 1, position.Y, TrackConnections.West);
+        }
+        if (connections.HasFlag(TrackConnections.South))
+        {
+            RemoveConnection(position.X, position.Y + 1, TrackConnections.North);
+        }
+        if (connections.HasFlag(TrackConnections.West))
+        {
+            RemoveConnection(position.X - 1, position.Y, TrackConnections.East);
+        }
+    }
+
+    private void RemoveConnection(int x, int y, TrackConnections connection)
+    {
+        var position = new MapPosition(x, y);
+
+        if (!IsInsideMap(position))
+            return;
+
+        if (!_map.TryGetTrack(position, out var neighbour) || neighbour is null)
+            return;
+
+        // Usuń połączenie
+        var updated = neighbour.Connections & ~connection;
+        neighbour.SetConnections(updated);
+
+        // Jeśli nie ma już połączeń, usuń tor
+        if (updated == TrackConnections.None)
+        {
+            _map.RemoveTrack(position);
+        }
     }
 
     private bool IsInsideMap(MapPosition position)
