@@ -227,38 +227,52 @@ namespace RailDispatchMono.Core.Screens.UI
 
         private void HandleKeyboardInput(KeyboardState keyboard)
         {
+            // Tryby budowania (1-4)
             if (IsKeyPressed(keyboard, Keys.D1))
             {
                 _builder.Mode = TrackBuildMode.Straight;
-                System.Diagnostics.Debug.WriteLine("[INPUT] Tryb: Straight");// $2
+                Debug.WriteLine("[INPUT] Tryb: Straight");
             }
-
             if (IsKeyPressed(keyboard, Keys.D2))
             {
                 _builder.Mode = TrackBuildMode.Curve;
-                System.Diagnostics.Debug.WriteLine("[INPUT] Tryb: Curve");// $2
+                Debug.WriteLine("[INPUT] Tryb: Curve");
             }
-
             if (IsKeyPressed(keyboard, Keys.D3))
             {
                 _builder.Mode = TrackBuildMode.Junction;
-                System.Diagnostics.Debug.WriteLine("[INPUT] Tryb: Junction");// $2
+                Debug.WriteLine("[INPUT] Tryb: Junction");
             }
-
             if (IsKeyPressed(keyboard, Keys.D4) || IsKeyPressed(keyboard, Keys.NumPad4))
             {
                 _builder.Mode = TrackBuildMode.Signal;
-                System.Diagnostics.Debug.WriteLine("[INPUT] Tryb: Signal");// $2
-            }
-
-            if (keyboard.IsKeyDown(Keys.R) && _previousKeyboard.IsKeyUp(Keys.R))
-            {
-                if (_builder.Mode == TrackBuildMode.Straight)
-                    _builder.StraightHorizontal = !_builder.StraightHorizontal;
+                Debug.WriteLine("[INPUT] Tryb: Signal");
             }
 
             // ============================================================
-            // KLAWISZ J - PRZEŁĄCZANIE SEMAFORA / ZWROTNICY
+            // KLAWISZ R - OBRÓT / ZMIANA
+            // ============================================================
+            if (IsKeyPressed(keyboard, Keys.R))
+            {
+                if (_builder.Mode == TrackBuildMode.Straight)
+                {
+                    _builder.StraightHorizontal = !_builder.StraightHorizontal;
+                    Debug.WriteLine($"[INPUT] R - StraightHorizontal: {_builder.StraightHorizontal}");
+                }
+                else if (_builder.Mode == TrackBuildMode.Curve)
+                {
+                    _builder.Curve = (CurveDirection)(((int)_builder.Curve + 1) % 4);
+                    Debug.WriteLine($"[INPUT] R - Curve: {_builder.Curve}");
+                }
+                else if (_builder.Mode == TrackBuildMode.Junction)
+                {
+                    _builder.Junction = (JunctionType)(((int)_builder.Junction + 1) % 8);
+                    Debug.WriteLine($"[INPUT] R - Junction: {_builder.Junction}");
+                }
+            }
+
+            // ============================================================
+            // KLAWISZ J - PRZEŁĄCZANIE
             // ============================================================
             if (IsKeyPressed(keyboard, Keys.J))
             {
@@ -267,14 +281,10 @@ namespace RailDispatchMono.Core.Screens.UI
                 var mapPos = _camera.ScreenToMap(mouseScreenPos);
                 var worldPos = new MapPosition((int)mapPos.X, (int)mapPos.Y);
 
-                System.Diagnostics.Debug.WriteLine($"[INPUT] J - sprawdzam pozycję {worldPos}");// $2
-
-                // Sprawdź czy jest semafor
+                // Sprawdź semafor
                 var signals = _signalController.GetSignalsAt(worldPos);
                 if (signals.Count > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] J - znaleziono {signals.Count} semaforów");// $2
-                    // Przełącz aspekt semafora (Stop <-> Clear)
                     foreach (var signal in signals)
                     {
                         if (signal.Aspect == SignalAspect.Stop)
@@ -284,19 +294,19 @@ namespace RailDispatchMono.Core.Screens.UI
                         else
                             signal.SetAspect(SignalAspect.Stop);
                     }
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] J - przełączono semafor na {worldPos}");// $2
+                    Debug.WriteLine($"[INPUT] J - przełączono semafor na {worldPos}");
                     return;
                 }
 
-                // Sprawdź czy jest zwrotnica
+                // Sprawdź zwrotnicę
                 if (_map.TryGetTrack(worldPos, out var track) && track is not null && track.IsJunction)
                 {
                     track.ToggleSwitch();
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] J - przełączono zwrotnicę na {worldPos}");// $2
+                    Debug.WriteLine($"[INPUT] J - przełączono zwrotnicę na {worldPos}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] J - brak semafora lub zwrotnicy na {worldPos}");// $2
+                    Debug.WriteLine($"[INPUT] J - brak semafora lub zwrotnicy na {worldPos}");
                 }
             }
         }
@@ -313,110 +323,78 @@ namespace RailDispatchMono.Core.Screens.UI
             var mapPos = new MapPosition((int)worldPosition.X, (int)worldPosition.Y);
 
             // ============================================================
-            // LEWY PRZYCISK - BUDOWANIE / STAWIANIE SEMAFORÓW
+            // LEWY PRZYCISK - BUDOWANIE
             // ============================================================
-
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
             {
-                System.Diagnostics.Debug.WriteLine($"[INPUT] LPM na {mapPos}, tryb: {_builder.Mode}");// $2
-
                 // Tryb semaforów
                 if (_builder.Mode == TrackBuildMode.Signal)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - _signalController null? {_signalController == null}");// $2
-
-                    // Sprawdź czy jest tor na tej pozycji
                     if (_map.TryGetTrack(mapPos, out var track) && track != null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - znaleziono tor na {mapPos}");// $2
-
-                        // Pobierz dostępne kierunki połączeń toru
                         var directions = track.GetAvailableDirections();
-                        System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - kierunki: {string.Join(", ", directions)}");// $2
-
                         if (directions.Count == 0)
-                        {
-                            System.Diagnostics.Debug.WriteLine("[INPUT] SIGNAL - brak kierunków!");// $2
                             return;
-                        }
 
-                        // Jeśli tylko jeden kierunek - użyj go
                         if (directions.Count == 1)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - dodaję semafor w kierunku {directions[0]}");// $2
-                            bool result = _signalController.AddSignal(mapPos, directions[0]);
-                            System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - AddSignal({mapPos}, {directions[0]}) = {result}");// $2
-
-                            if (result)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - ✅ Semafor dodany pomyślnie!");// $2
-                                // Sprawdź ile jest teraz semaforów
-                                var allSignals = _signalController.Signals;
-                                int total = 0;
-                                foreach (var kvp in allSignals)
-                                    total += kvp.Value.Count;
-                                System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - Łączna liczba semaforów: {total}");// $2
-                            }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - ❌ Nie udało się dodać semafora!");// $2
-                            }
+                            _signalController.AddSignal(mapPos, directions[0]);
+                            Debug.WriteLine($"[INPUT] SIGNAL - dodano semafor na {mapPos} w kierunku {directions[0]}");
                         }
                         else
                         {
-                            // Jeśli więcej kierunków - pokaż menu wyboru kierunku
-                            System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - otwieram menu wyboru kierunku");// $2
                             _signalDirectionMenu.Open(mouseScreenPosition, mapPos, directions);
+                            Debug.WriteLine($"[INPUT] SIGNAL - otwarto menu kierunków na {mapPos}");
                         }
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[INPUT] SIGNAL - ❌ Brak toru na {mapPos}");// $2
+                        Debug.WriteLine($"[INPUT] SIGNAL - brak toru na {mapPos}");
                     }
                 }
                 else
                 {
-                    // Normalne budowanie (torów, rozjazdów itp.)
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] Budowanie na {mapPos}, tryb: {_builder.Mode}");// $2
                     _builder.BuildAt(mapPos);
+                    Debug.WriteLine($"[INPUT] Budowanie na {mapPos}, tryb: {_builder.Mode}");
                 }
             }
 
             // ============================================================
-            // PRAWY PRZYCISK - INTERAKCJA Z SEMAFOREM / ROZJAZDEM
+            // PRAWY PRZYCISK - USUWANIE LUB MENU
             // ============================================================
-
             if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
             {
-                System.Diagnostics.Debug.WriteLine($"[INPUT] PPM na {mapPos}");
+                Debug.WriteLine($"[INPUT] PPM na {mapPos}");
 
-                // Sprawdź czy na tej pozycji jest semafor
+                // 1. Sprawdź czy na tej pozycji jest semafor
                 var signals = _signalController.GetSignalsAt(mapPos);
-                System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - znaleziono {signals.Count} semaforow");
-
-                // DODAJ TEN LOG:
-                System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - _signalRadialMenu is null? {_signalRadialMenu == null}");
-
                 if (signals.Count == 1)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - otwieram menu aspektow dla semafora");
                     _signalRadialMenu.Open(mouseScreenPosition, signals[0]);
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - po Open, IsOpen: {_signalRadialMenu.IsOpen}");
+                    return;
                 }
                 else if (signals.Count > 1)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - otwieram menu wyboru semafora");
                     _signalSelectionMenu.Open(mouseScreenPosition, signals);
+                    return;
                 }
-                else if (_map.TryGetTrack(mapPos, out var track) && track != null && track.IsJunction)
+
+                // 2. Sprawdź czy jest rozjazd
+                if (_map.TryGetTrack(mapPos, out var track) && track != null && track.IsJunction)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - otwieram menu rozjazdu");
                     _junctionRadialMenu.Open(mouseScreenPosition, track);
+                    return;
                 }
-                else
+
+                // 3. USUWANIE TORU / ZAKRĘTU / ROZJAZDU
+                if (_map.TryGetTrack(mapPos, out var existingTrack) && existingTrack != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[INPUT] PPM - brak semafora lub rozjazdu na {mapPos}");
+                    Debug.WriteLine($"[INPUT] PPM - usuwam tor na {mapPos}");
+                    _builder.Remove(mapPos);
+                    return;
                 }
+
+                Debug.WriteLine($"[INPUT] PPM - brak elementu do usunięcia na {mapPos}");
             }
         }
 

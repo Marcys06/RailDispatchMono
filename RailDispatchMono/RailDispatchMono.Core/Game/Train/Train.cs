@@ -193,6 +193,11 @@ public sealed class Train
         if (deltaTime <= 0.0f || !CanMove || _map is null)
             return;
 
+        System.Diagnostics.Debug.WriteLine(
+       $"[TRAIN] 🟢 START - Pos: ({Position.X:F4}, {Position.Y:F4}), " +
+       $"Dir: {Direction}, Speed: {Speed:F2} m/s ({Speed * 3.6f:F1} km/h)"
+   );
+
         // 1. Znajdź sygnał
         var nextSignal = GetNextSignal();
         if (nextSignal != null)
