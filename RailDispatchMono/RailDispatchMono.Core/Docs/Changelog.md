@@ -1,5 +1,5 @@
 Changelog
-
+[0.0.6b] — Rozszerzenie logowania prędkości i diagnostyka ruchu
 Train System / Diagnostics
 - Dodano szczegółowe logi prędkości w Train.Update()
 - Dodano oznaczenia: 🟢 START, 🟡 SIGNAL, 🔵 NO_SIGNAL, ⚪ NO_SIGNAL_HISTORY
