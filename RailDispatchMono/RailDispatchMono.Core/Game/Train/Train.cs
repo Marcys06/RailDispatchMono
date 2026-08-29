@@ -717,56 +717,38 @@ public sealed class Train
         if (_map is null)
             return;
 
-        if (
-            Position.X < 0 ||
-            Position.X > _map.Size.Width ||
-            Position.Y < 0 ||
-            Position.Y > _map.Size.Height)
+        if (Position.X < 0 || Position.X > _map.Size.Width ||
+            Position.Y < 0 || Position.Y > _map.Size.Height)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[TRAIN] WARNING: Train out of bounds! {Position}");
-
+            System.Diagnostics.Debug.WriteLine($"[TRAIN] WARNING: Train out of bounds! {Position}");
             _speed = 0;
             return;
         }
 
         float remaining = distance;
-
         int iterations = 0;
-
-        MapPosition lastCell =
-            GetCurrentCell();
-
+        MapPosition lastCell = GetCurrentCell();
         int sameCellCount = 0;
 
         while (remaining > MovementEpsilon)
         {
-            if (++iterations >
-                MaxMovementIterations)
+            if (++iterations > MaxMovementIterations)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    "[TRAIN] Movement iteration limit reached.");
-
+                System.Diagnostics.Debug.WriteLine("[TRAIN] Movement iteration limit reached.");
                 break;
             }
 
-            MapPosition currentCell =
-                GetCurrentCell();
+            MapPosition currentCell = GetCurrentCell();
 
             if (currentCell == lastCell)
             {
                 sameCellCount++;
-
                 if (sameCellCount > 10)
                 {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[TRAIN] Stuck in cell {currentCell} - forcing exit");
-
+                    System.Diagnostics.Debug.WriteLine($"[TRAIN] Stuck in cell {currentCell} - forcing exit");
                     if (!EnterNextCell())
                         break;
-
                     sameCellCount = 0;
-
                     continue;
                 }
             }
@@ -782,97 +764,158 @@ public sealed class Train
                 continue;
             }
 
-            if (
-                !_map.TryGetTrack(
-                    currentCell,
-                    out TrackCell? track) ||
-                track is null)
+            if (!_map.TryGetTrack(currentCell, out TrackCell? track) || track is null)
             {
+                System.Diagnostics.Debug.WriteLine($"[TRAIN] No track at {currentCell} - stopping");
+                _speed = 0;
                 break;
             }
 
-            TrackConnections entrySide =
-                GetOppositeDirection(Direction);
+            TrackConnections entrySide = GetOppositeDirection(Direction);
 
-            bool isCurve =
-                track.Geometry ==
-                TrackGeometry.Curve;
-
-            TrackConnections exitSide =
-                track.Geometry ==
-                TrackGeometry.Junction
-                    ? track.GetExitDirection(entrySide)
-                    : GetCurveExitDirection(
-                        track.Connections,
-                        entrySide);
-
-            bool isTurning =
-                exitSide != TrackConnections.None &&
-                IsPerpendicular(
-                    entrySide,
-                    exitSide);
-
-            if (
-                isCurve ||
-                (
-                    track.Geometry ==
-                    TrackGeometry.Junction &&
-                    isTurning
-                ))
+            // ============================================================
+            // OBSŁUGA ROZJAZDU (JUNCTION)
+            // ============================================================
+            if (track.Geometry == TrackGeometry.Junction)
             {
-                if (!EnterCurve(track))
+                System.Diagnostics.Debug.WriteLine($"[JUNCTION] Entering {currentCell}, Dir: {Direction}, Entry: {entrySide}");
+
+                // ✅ UŻYJ ISTNIEJĄCEJ METODY GetExitDirection
+                TrackConnections exitSide = track.GetExitDirection(entrySide);
+
+                if (exitSide == TrackConnections.None)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[JUNCTION] No exit from {entrySide} - stopping");
+                    _speed = 0;
                     break;
+                }
 
-                continue;
+                System.Diagnostics.Debug.WriteLine($"[JUNCTION] Exit: {exitSide}, Switch: {track.CurrentSwitchPosition}");
+
+                // Sprawdź czy to skręt (zmiana kierunku o 90 stopni)
+                bool isTurning = IsPerpendicular(entrySide, exitSide);
+
+                if (isTurning)
+                {
+                    // Skręt - wejdź na łuk
+                    System.Diagnostics.Debug.WriteLine($"[JUNCTION] Turning {entrySide} -> {exitSide} - entering curve");
+                    if (!EnterCurve(track, entrySide, exitSide))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[JUNCTION] Failed to enter curve - stopping");
+                        _speed = 0;
+                        break;
+                    }
+                    continue;
+                }
+                else
+                {
+                    // Jazda prosto - ustaw kierunek i kontynuuj
+                    Direction = exitSide;
+                    System.Diagnostics.Debug.WriteLine($"[JUNCTION] Going straight, new direction: {Direction}");
+
+                    // Przesuń na pozycję wyjścia z komórki
+                    Vector2 exitPos = GetPositionAtEntry(currentCell, exitSide);
+                    float transitionDist = Vector2.Distance(Position, exitPos);
+
+                    if (transitionDist > MovementEpsilon)
+                    {
+                        AddTrajectoryPoint(exitPos, transitionDist);
+                        TotalDistance += transitionDist;
+                        DistanceAlongTrack += transitionDist;
+                    }
+
+                    Position = exitPos;
+                    remaining -= transitionDist;
+
+                    // Wejdź do następnej komórki
+                    if (!EnterNextCell())
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[JUNCTION] Cannot enter next cell - stopping");
+                        _speed = 0;
+                        break;
+                    }
+                    continue;
+                }
             }
 
-            if (!track.HasConnection(Direction))
-                break;
+            // ============================================================
+            // OBSŁUGA ZAKRĘTU (CURVE)
+            // ============================================================
+            if (track.Geometry == TrackGeometry.Curve)
+            {
+                TrackConnections exitSide = GetCurveExitDirection(track.Connections, entrySide);
+                bool isTurning = exitSide != TrackConnections.None && IsPerpendicular(entrySide, exitSide);
 
-            float distanceToBoundary =
-                GetDistanceToBoundary();
+                if (isTurning)
+                {
+                    if (!EnterCurve(track))
+                        break;
+                    continue;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CURVE] Invalid entry {entrySide} at {currentCell} - stopping");
+                    _speed = 0;
+                    break;
+                }
+            }
+
+            // ============================================================
+            // OBSŁUGA TORU PROSTEGO (STRAIGHT)
+            // ============================================================
+            if (!track.HasConnection(Direction))
+            {
+                System.Diagnostics.Debug.WriteLine($"[STRAIGHT] No connection {Direction} at {currentCell} - stopping");
+                _speed = 0;
+                break;
+            }
+
+            float distanceToBoundary = GetDistanceToBoundary();
 
             if (distanceToBoundary <= MovementEpsilon)
             {
                 if (!EnterNextCell())
+                {
+                    System.Diagnostics.Debug.WriteLine($"[STRAIGHT] Cannot enter next cell - stopping");
+                    _speed = 0;
                     break;
-
+                }
                 continue;
             }
 
-            float step =
-                MathF.Min(
-                    remaining,
-                    distanceToBoundary);
-
+            float step = MathF.Min(remaining, distanceToBoundary);
             if (step < MovementEpsilon)
                 step = MovementEpsilon;
-
-            if (
-                step >
-                distanceToBoundary +
-                MovementEpsilon)
-            {
-                step =
-                    distanceToBoundary;
-            }
+            if (step > distanceToBoundary + MovementEpsilon)
+                step = distanceToBoundary;
 
             MoveStraight(step);
-
             remaining -= step;
 
-            float newDistanceToBoundary =
-                GetDistanceToBoundary();
-
-            if (
-                newDistanceToBoundary <=
-                MovementEpsilon)
+            float newDistanceToBoundary = GetDistanceToBoundary();
+            if (newDistanceToBoundary <= MovementEpsilon)
             {
                 if (!EnterNextCell())
+                {
+                    System.Diagnostics.Debug.WriteLine($"[STRAIGHT] Cannot enter next cell after boundary - stopping");
+                    _speed = 0;
                     break;
+                }
             }
         }
     }
+
+    // ============================================================
+    // METODA POMOCNICZA - POZYCJA WYJŚCIA Z KOMÓRKI
+    // ============================================================
+
+  
+
+    // ============================================================
+    // METODA POMOCNICZA - POZYCJA WYJŚCIA Z KOMÓRKI
+    // ============================================================
+
+   
 
     // ============================================================
     // STRAIGHT MOVEMENT

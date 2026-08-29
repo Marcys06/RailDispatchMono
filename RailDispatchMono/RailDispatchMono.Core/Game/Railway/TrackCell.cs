@@ -3,12 +3,14 @@ using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
+// ✅ POPRAWNIE - BEZ private
 public enum SwitchPosition
 {
     Straight = 0,
     Diverging = 1
 }
 
+// ✅ POPRAWNIE - BEZ private
 public sealed class TrackCell
 {
     public MapPosition Position { get; }
@@ -23,7 +25,7 @@ public sealed class TrackCell
     public TrackConnections DivergingConnection { get; private set; } = TrackConnections.None;
     public TrackConnections CommonStem { get; private set; } = TrackConnections.None;
 
-    // --- WŁAŚCIWOŚCI POMOCNICZE (UŻYWANE M.IN. PRZEZ TRACKRENDERER) ---
+    // --- WŁAŚCIWOŚCI POMOCNICZE ---
     public bool IsJunction => Geometry == TrackGeometry.Junction;
     public bool IsSwitchedToDiverging => CurrentSwitchPosition == SwitchPosition.Diverging;
     public TrackConnections StraightSide => StraightConnection;
@@ -45,7 +47,6 @@ public sealed class TrackCell
         Geometry = geometry;
     }
 
-    // W pliku TrackCell.cs
     public void SetConnections(TrackConnections connections)
     {
         Connections = connections;
@@ -92,7 +93,6 @@ public sealed class TrackCell
         }
 
         // Wjazd od strony pnia (Ostrze zwrotnicy -> Rozjazd na dwa tory)
-        // Używamy HasFlag, aby bezbłędnie sprawdzić dopasowanie bitowe
         if (CommonStem.HasFlag(entryDir) || entryDir.HasFlag(CommonStem))
         {
             return CurrentSwitchPosition == SwitchPosition.Straight
@@ -103,6 +103,7 @@ public sealed class TrackCell
         // Wjazd od strony odgałęzień (Z rozpory do wspólnego pnia)
         return CommonStem;
     }
+
     public List<TrackConnections> GetAvailableDirections()
     {
         var result = new List<TrackConnections>();

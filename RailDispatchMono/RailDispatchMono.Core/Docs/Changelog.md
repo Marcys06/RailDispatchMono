@@ -1,4 +1,57 @@
 Changelog
+
+
+[0.0.7] — Obsługa rozjazdów przez pociągi Data: 2026-08-29
+
+Train System / Junction Handling
+- Dodano pełną obsługę rozjazdów (Junction) w ruchu pociągu
+- Pociąg odczytuje ustawienie iglicy (SwitchPosition: Straight / Diverging)
+- Pociąg wybiera właściwy kierunek wyjścia z rozjazdu na podstawie ustawienia iglicy
+- Dodano obsługę skrętu na rozjeździe (wejście na łuk)
+- Dodano obsługę jazdy na wprost przez rozjazd
+- Dodano logi debugowania [JUNCTION] z informacjami o:
+  - Wejściu na rozjazd (Entering)
+  - Kierunku wjazdu (Entry)
+  - Ustawieniu iglicy (Switch)
+  - Kierunku wyjścia (Exit)
+  - Typie przejazdu (Going straight / Turning)
+
+TrackCell
+- Rozszerzono GetExitDirection o obsługę SwitchPosition
+- Dodano właściwości: StraightConnection, DivergingConnection, CommonStem
+- Dodano CurrentSwitchPosition do przechowywania stanu iglicy
+- Dodano ToggleSwitch do przełączania iglicy
+
+Movement
+- Dodano GetPositionAtEntry do znajdowania pozycji wyjścia z komórki
+- Poprawiono przechodzenie przez rozjazdy w Move()
+- Zintegrowano obsługę rozjazdów z istniejącym systemem zakrętów
+
+Bug Fixes
+- Usunięto duplikat metody GetPositionAtExit (CS0111)
+- Poprawiono błąd kompilacji w TrackCell.cs (CS0106)
+
+Build
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+
+Test Results
+- Pociąg prawidłowo odczytuje ustawienie iglicy rozjazdu
+- Pociąg wybiera właściwy kierunek (prosto / skręt)
+- Skręt na rozjeździe płynnie przechodzi w łuk
+- Jazda na wprost przez rozjazd działa poprawnie
+- Logi [JUNCTION] dostarczają pełnej diagnostyki ruchu
+
+Known gaps / Poza zakresem tego wpisu
+- Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów
+- Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru
+- Brak sekcji blokowych (BlockSection)
+- Brak interlockingu
+- Brak pełnej fizyki ruchu pociągu
+- Brak wykolejenia
+- Brak manewrów i sprzęgania w warstwie symulacji
+- Brak planowania jazdy
+
 [0.0.6b] — Rozszerzenie logowania prędkości i diagnostyka ruchu
 Train System / Diagnostics
 - Dodano szczegółowe logi prędkości w Train.Update()
