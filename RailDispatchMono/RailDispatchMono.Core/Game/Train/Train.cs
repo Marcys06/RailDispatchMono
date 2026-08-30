@@ -9,10 +9,6 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
-    // ============================================================
-    // PUBLIC API
-    // ============================================================
-
     public Guid Id { get; }
     public TrainComposition Composition { get; }
     public Vector2 Position { get; private set; }
@@ -51,10 +47,6 @@ public sealed partial class Train
     public float CurveProgressDistance => _curveDistance;
     public float CurveLength => _curveLength;
 
-    // ============================================================
-    // EVENTS
-    // ============================================================
-
 #pragma warning disable CS0067
     public event EventHandler<TrainEventArgs>? VehicleAdded;
     public event EventHandler<TrainEventArgs>? VehicleRemoved;
@@ -75,10 +67,6 @@ public sealed partial class Train
             VehicleIndex = index;
         }
     }
-
-    // ============================================================
-    // CONSTRUCTORS
-    // ============================================================
 
     public Train(
         Vector2 spawnPosition,
@@ -121,18 +109,10 @@ public sealed partial class Train
     {
     }
 
-    // ============================================================
-    // MAP
-    // ============================================================
-
     public void SetMap(GameMap map)
     {
         _map = map ?? throw new ArgumentNullException(nameof(map));
     }
-
-    // ============================================================
-    // PUBLIC POSITION API
-    // ============================================================
 
     public Vector2 GetHeadPosition() => Position;
 
@@ -164,10 +144,6 @@ public sealed partial class Train
         return _map.TryGetTrack(cell, out var track) && track != null;
     }
 
-    // ============================================================
-    // VEHICLE MANAGEMENT
-    // ============================================================
-
     public float GetDistanceToVehicle(int vehicleIndex)
     {
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
@@ -175,9 +151,7 @@ public sealed partial class Train
 
         float distance = 0f;
         for (int i = 0; i < vehicleIndex; i++)
-        {
             distance += Composition.Vehicles[i].Parameters.Length;
-        }
         distance += Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
         return distance;
     }
@@ -199,10 +173,6 @@ public sealed partial class Train
         var transform = GetVehicleTransform(lastIndex);
         return VectorToDirection(transform.Rotation);
     }
-
-    // ============================================================
-    // VEHICLE TRANSFORM
-    // ============================================================
 
     public (Vector2 Position, float Rotation) GetVehicleTransform(int vehicleIndex)
     {
@@ -260,10 +230,6 @@ public sealed partial class Train
         return (Position, GetDirectionAngle(Direction));
     }
 
-    // ============================================================
-    // DEBUGGER HELPERS
-    // ============================================================
-
     public IReadOnlyList<(Vector2 Position, float Distance)> GetTrajectoryHistory()
     {
         var result = new List<(Vector2 Position, float Distance)>(_trajectory.Count);
@@ -284,7 +250,6 @@ public sealed partial class Train
     public float GetRotation()
     {
         Vector2 tangent;
-
         if (_isOnCurve && _curveLength > MovementEpsilon)
         {
             float progress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
@@ -296,7 +261,6 @@ public sealed partial class Train
         {
             tangent = DirectionToVector(Direction);
         }
-
         return MathF.Atan2(tangent.Y, tangent.X);
     }
 
@@ -352,35 +316,37 @@ public sealed partial class Train
         var currentCell = GetCurrentCell();
         var nextCell = GetNextCell(currentCell, Direction);
 
-        DebugManager.Log($"[TRAIN] GetNextSignal - Current: {currentCell}, Next: {nextCell}, Dir: {Direction}");
-
         var currentSignals = _signalController.GetSignalsAt(currentCell);
         var signal = currentSignals?.FirstOrDefault(s => s.Direction == Direction);
-
-        if (signal != null)
-        {
-            DebugManager.Log($"[TRAIN] ✅ Found signal at CURRENT cell: {signal.Aspect} ({signal.GetAspectName()})");
-            return signal;
-        }
+        if (signal != null) return signal;
 
         var nextSignals = _signalController.GetSignalsAt(nextCell);
-        signal = nextSignals?.FirstOrDefault(s => s.Direction == Direction);
+        return nextSignals?.FirstOrDefault(s => s.Direction == Direction);
+    }
 
-        if (signal != null)
+    private float GetSignalDistance(Signal signal)
+    {
+        // A signal on the current or next cell controls the boundary ahead.
+        // The existing signal lookup is limited to these two cells.
+        return MathF.Max(0f, GetDistanceToBoundary());
+    }
+
+    private float GetBrakingRate()
+    {
+        float braking = 0f;
+        foreach (var vehicle in Composition.Vehicles)
         {
-            DebugManager.Log($"[TRAIN] ✅ Found signal at NEXT cell: {signal.Aspect} ({signal.GetAspectName()})");
-            return signal;
+            if (vehicle.Parameters.Braking > braking)
+                braking = vehicle.Parameters.Braking;
         }
-
-        DebugManager.Log("[TRAIN] ❌ No signal found");
-        return null;
+        return braking > 0f ? braking : 20f;
     }
 
     private float GetSpeedFromSignal(Signal? signal)
     {
         if (signal == null) return _maxSpeed;
 
-        return signal.Aspect switch
+        float signalSpeed = signal.Aspect switch
         {
             SignalAspect.Stop => 0f,
             SignalAspect.StopStation => 0f,
@@ -394,6 +360,37 @@ public sealed partial class Train
             SignalAspect.Reserve4 => 30f / 3.6f,
             _ => _maxSpeed
         };
+
+        float distance = GetSignalDistance(signal);
+        float brakingRate = GetBrakingRate();
+
+        // STOP is a hard constraint. Calculate the speed from which the train
+        // can still stop before the signal, rather than commanding zero speed
+        // immediately. A small safety margin prevents crossing the signal due
+        // to the discrete update interval.
+        if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
+        {
+            const float safetyDistance = 0.05f;
+            const float reactionTime = 0.15f;
+            float availableDistance = MathF.Max(0f, distance - safetyDistance - Speed * reactionTime);
+            return MathF.Min(
+                _maxSpeed,
+                MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
+        }
+
+        // Other restrictive aspects are speed limits, not immediate stop
+        // commands. The train may keep its current speed until the braking
+        // distance is reached, then settle on the signal limit.
+        if (Speed > signalSpeed && brakingRate > 0f)
+        {
+            float requiredBrakingDistance =
+                MathF.Max(0f, (Speed * Speed - signalSpeed * signalSpeed) / (2f * brakingRate));
+
+            if (distance > requiredBrakingDistance)
+                return Speed;
+        }
+
+        return MathF.Min(signalSpeed, _maxSpeed);
     }
 
     // ============================================================
@@ -422,9 +419,6 @@ public sealed partial class Train
 
         if (result < 0.0f) result = 0.0f;
         if (result < MovementEpsilon && result > 0) result = MovementEpsilon;
-
-        DebugManager.Log(
-            $"[BOUNDARY] Cell:{cell} Dir:{Direction} Pos:{Position} Result:{result:F6}");
 
         return result;
     }
