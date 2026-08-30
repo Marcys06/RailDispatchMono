@@ -68,11 +68,7 @@ public sealed partial class Train
         }
     }
 
-    public Train(
-        Vector2 spawnPosition,
-        TrackConnections initialDirection,
-        float speed,
-        IEnumerable<Vehicle> vehicles)
+    public Train(Vector2 spawnPosition, TrackConnections initialDirection, float speed, IEnumerable<Vehicle> vehicles)
     {
         Id = Guid.NewGuid();
         Position = spawnPosition;
@@ -81,9 +77,7 @@ public sealed partial class Train
 
         Composition = new TrainComposition();
         foreach (var vehicle in vehicles)
-        {
             Composition.AddVehicle(vehicle);
-        }
 
         _maxSpeed = float.MaxValue;
         foreach (var vehicle in Composition.Vehicles)
@@ -96,24 +90,16 @@ public sealed partial class Train
 
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
-
         ResetCurveState();
         ResetTrajectory();
     }
 
-    public Train(
-        Vector2 spawnPosition,
-        TrackConnections initialDirection,
-        float speed)
+    public Train(Vector2 spawnPosition, TrackConnections initialDirection, float speed)
         : this(spawnPosition, initialDirection, speed, Array.Empty<Vehicle>())
     {
     }
 
-    public void SetMap(GameMap map)
-    {
-        _map = map ?? throw new ArgumentNullException(nameof(map));
-    }
-
+    public void SetMap(GameMap map) => _map = map ?? throw new ArgumentNullException(nameof(map));
     public Vector2 GetHeadPosition() => Position;
 
     public void SetPosition(Vector2 position)
@@ -162,16 +148,14 @@ public sealed partial class Train
     {
         if (Composition.Vehicles.Count == 0) return Position;
         int lastIndex = Composition.Vehicles.Count - 1;
-        float distanceToLast = GetDistanceToVehicle(lastIndex);
-        return GetPositionBehindHead(distanceToLast);
+        return GetPositionBehindHead(GetDistanceToVehicle(lastIndex));
     }
 
     public TrackConnections GetLastVehicleDirection()
     {
         if (Composition.Vehicles.Count == 0) return Direction;
         int lastIndex = Composition.Vehicles.Count - 1;
-        var transform = GetVehicleTransform(lastIndex);
-        return VectorToDirection(transform.Rotation);
+        return VectorToDirection(GetVehicleTransform(lastIndex).Rotation);
     }
 
     public (Vector2 Position, float Rotation) GetVehicleTransform(int vehicleIndex)
@@ -189,8 +173,7 @@ public sealed partial class Train
         {
             var first = _trajectory[0];
             var angle = _trajectory.Count > 1
-                ? MathF.Atan2(_trajectory[1].Position.Y - first.Position.Y,
-                               _trajectory[1].Position.X - first.Position.X)
+                ? MathF.Atan2(_trajectory[1].Position.Y - first.Position.Y, _trajectory[1].Position.X - first.Position.X)
                 : GetDirectionAngle(Direction);
             return (first.Position, angle);
         }
@@ -199,8 +182,7 @@ public sealed partial class Train
         {
             var last = _trajectory[_trajectory.Count - 1];
             var angle = _trajectory.Count > 1
-                ? MathF.Atan2(last.Position.Y - _trajectory[_trajectory.Count - 2].Position.Y,
-                               last.Position.X - _trajectory[_trajectory.Count - 2].Position.X)
+                ? MathF.Atan2(last.Position.Y - _trajectory[_trajectory.Count - 2].Position.Y, last.Position.X - _trajectory[_trajectory.Count - 2].Position.X)
                 : GetDirectionAngle(Direction);
             return (last.Position, angle);
         }
@@ -209,20 +191,13 @@ public sealed partial class Train
         {
             var curr = _trajectory[i];
             var prev = _trajectory[i - 1];
-
             if (targetDistance >= prev.Distance && targetDistance <= curr.Distance)
             {
                 float segmentLength = curr.Distance - prev.Distance;
-                float t = segmentLength > MovementEpsilon
-                    ? (targetDistance - prev.Distance) / segmentLength
-                    : 0f;
-
+                float t = segmentLength > MovementEpsilon ? (targetDistance - prev.Distance) / segmentLength : 0f;
                 Vector2 pos = Vector2.Lerp(prev.Position, curr.Position, t);
                 Vector2 dir = curr.Position - prev.Position;
-                float angle = dir != Vector2.Zero
-                    ? MathF.Atan2(dir.Y, dir.X)
-                    : GetDirectionAngle(Direction);
-
+                float angle = dir != Vector2.Zero ? MathF.Atan2(dir.Y, dir.X) : GetDirectionAngle(Direction);
                 return (pos, angle);
             }
         }
@@ -280,9 +255,7 @@ public sealed partial class Train
             }
             else
             {
-                float spacing = vehicleSpacing > MovementEpsilon
-                    ? vehicleSpacing
-                    : vehicle.Parameters.Length;
+                float spacing = vehicleSpacing > MovementEpsilon ? vehicleSpacing : vehicle.Parameters.Length;
                 result.Add(GetPositionBehindHead(distanceBehind));
                 distanceBehind += spacing;
             }
@@ -309,25 +282,71 @@ public sealed partial class Train
         _lastSignalSpeed = _maxSpeed;
     }
 
+    /// <summary>
+    /// Finds the next signal along the actual track route, not merely in the
+    /// current/next grid cell. This gives the braking model the real distance
+    /// to the controlled point ahead.
+    /// </summary>
     public Signal? GetNextSignal()
     {
-        if (_signalController == null) return null;
+        return TryFindNextSignal(out _, out _);
+    }
 
-        var currentCell = GetCurrentCell();
-        var nextCell = GetNextCell(currentCell, Direction);
+    private bool TryFindNextSignal(out Signal? signal, out float distance)
+    {
+        signal = null;
+        distance = 0f;
+        if (_signalController == null || _map == null)
+            return false;
 
-        var currentSignals = _signalController.GetSignalsAt(currentCell);
-        var signal = currentSignals?.FirstOrDefault(s => s.Direction == Direction);
-        if (signal != null) return signal;
+        var current = GetCurrentCell();
+        var direction = Direction;
+        var visited = new HashSet<MapPosition>();
+        float travelled = GetDistanceToBoundary();
+        const int maxSteps = 2000;
 
-        var nextSignals = _signalController.GetSignalsAt(nextCell);
-        return nextSignals?.FirstOrDefault(s => s.Direction == Direction);
+        for (int step = 0; step < maxSteps; step++)
+        {
+            if (!visited.Add(current))
+                return false;
+
+            var signals = _signalController.GetSignalsAt(current);
+            var candidate = signals?.FirstOrDefault(s => s.Direction == direction);
+            if (candidate != null)
+            {
+                signal = candidate;
+                distance = MathF.Max(0f, travelled);
+                return true;
+            }
+
+            if (!_map.TryGetTrack(current, out var track) || track == null)
+                return false;
+
+            var next = GetNextCell(current, direction);
+            if (next.X < 0 || next.X >= _map.Size.Width || next.Y < 0 || next.Y >= _map.Size.Height)
+                return false;
+            if (!_map.TryGetTrack(next, out var nextTrack) || nextTrack == null)
+                return false;
+
+            var available = nextTrack.GetAvailableDirections();
+            var opposite = GetOppositeDirection(direction);
+            var nextDirection = available.FirstOrDefault(d => d != opposite);
+            if (nextDirection == TrackConnections.None)
+                return false;
+
+            travelled += 1f;
+            current = next;
+            direction = nextDirection;
+        }
+
+        return false;
     }
 
     private float GetSignalDistance(Signal signal)
     {
-        // A signal on the current or next cell controls the boundary ahead.
-        // The existing signal lookup is limited to these two cells.
+        if (TryFindNextSignal(out var nextSignal, out var distance) && nextSignal == signal)
+            return distance;
+
         return MathF.Max(0f, GetDistanceToBoundary());
     }
 
@@ -364,28 +383,17 @@ public sealed partial class Train
         float distance = GetSignalDistance(signal);
         float brakingRate = GetBrakingRate();
 
-        // STOP is a hard constraint. Calculate the speed from which the train
-        // can still stop before the signal, rather than commanding zero speed
-        // immediately. A small safety margin prevents crossing the signal due
-        // to the discrete update interval.
         if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
         {
             const float safetyDistance = 0.05f;
             const float reactionTime = 0.15f;
             float availableDistance = MathF.Max(0f, distance - safetyDistance - Speed * reactionTime);
-            return MathF.Min(
-                _maxSpeed,
-                MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
+            return MathF.Min(_maxSpeed, MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
         }
 
-        // Other restrictive aspects are speed limits, not immediate stop
-        // commands. The train may keep its current speed until the braking
-        // distance is reached, then settle on the signal limit.
         if (Speed > signalSpeed && brakingRate > 0f)
         {
-            float requiredBrakingDistance =
-                MathF.Max(0f, (Speed * Speed - signalSpeed * signalSpeed) / (2f * brakingRate));
-
+            float requiredBrakingDistance = MathF.Max(0f, (Speed * Speed - signalSpeed * signalSpeed) / (2f * brakingRate));
             if (distance > requiredBrakingDistance)
                 return Speed;
         }
@@ -399,15 +407,12 @@ public sealed partial class Train
 
     public MapPosition GetCurrentCell()
     {
-        return new MapPosition(
-            (int)MathF.Floor(Position.X),
-            (int)MathF.Floor(Position.Y));
+        return new MapPosition((int)MathF.Floor(Position.X), (int)MathF.Floor(Position.Y));
     }
 
     public float GetDistanceToBoundary()
     {
         MapPosition cell = GetCurrentCell();
-
         float result = Direction switch
         {
             TrackConnections.East => (cell.X + 1.0f) - Position.X,
@@ -416,10 +421,8 @@ public sealed partial class Train
             TrackConnections.North => Position.Y - cell.Y,
             _ => 0.0f
         };
-
         if (result < 0.0f) result = 0.0f;
         if (result < MovementEpsilon && result > 0) result = MovementEpsilon;
-
         return result;
     }
 }
