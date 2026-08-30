@@ -6,10 +6,21 @@
     <Spacing>0</Spacing>
     <UseKerning>true</UseKerning>
     <Style>Regular</Style>
+    
+    <!-- ✅ Dodaj domyślny znak -->
+    <DefaultCharacter>?</DefaultCharacter>
+    
     <CharacterRegions>
+      <!-- ✅ Rozszerz zakres o polskie znaki -->
       <CharacterRegion>
         <Start>&#32;</Start>
-        <End>&#126;</End>
+        <End>&#255;</End>  <!-- Zmień z 126 na 255 -->
+      </CharacterRegion>
+      
+      <!-- ✅ Lub dodaj osobne regiony dla polskich znaków -->
+      <CharacterRegion>
+        <Start>&#260;</Start>  <!-- Ą -->
+        <End>&#380;</End>      <!-- Ż - cały zakres polskich znaków -->
       </CharacterRegion>
     </CharacterRegions>
   </Asset>

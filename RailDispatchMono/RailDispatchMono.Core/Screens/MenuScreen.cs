@@ -6,6 +6,7 @@ using RailDispatchMono.Core;
 using RailDispatchMono.Core.Inputs;
 using System;
 using System.Collections.Generic;
+
 namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
@@ -17,7 +18,7 @@ namespace RailDispatchMono.Core.Screens
         private List<MenuEntry> menuEntries = new List<MenuEntry>();
         private int selectedEntry = 0;
         private string menuTitle;
-        private Color menuTitleColor = new Color(0, 0, 0); // Default color is black. Use new Color(192, 192, 192) for off-white.
+        private Color menuTitleColor = new Color(0, 0, 0);
 
         /// <summary>
         /// Gets or sets the title of the menu screen.
@@ -46,8 +47,7 @@ namespace RailDispatchMono.Core.Screens
         }
 
         /// <summary>
-        /// Loads content for the menu screen. This method is called once per game
-        /// and is the place to load all content specific to the menu screen.
+        /// Loads content for the menu screen.
         /// </summary>
         public override void LoadContent()
         {
@@ -58,11 +58,13 @@ namespace RailDispatchMono.Core.Screens
         /// Responds to user input, changing the selected entry and accepting
         /// or canceling the menu.
         /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        /// <param name="inputState">Provides the current state of input devices.</param>
         public override void HandleInput(GameTime gameTime, InputState inputState)
         {
             base.HandleInput(gameTime, inputState);
+
+            // ✅ Sprawdź czy Font jest załadowany przed użyciem
+            var font = ScreenManager?.Font;
+            if (font == null) return;
 
             // Handle touch input for mobile platforms.
             if (RailDispatchMonoGame.IsMobile)
@@ -139,9 +141,13 @@ namespace RailDispatchMono.Core.Screens
         /// <param name="touchLocation">The location of the touch or mouse click.</param>
         private void TextSelectedCheck(Vector2 touchLocation)
         {
+            // ✅ Sprawdź czy Font jest załadowany
+            var font = ScreenManager?.Font;
+            if (font == null) return;
+
             for (int i = 0; i < menuEntries.Count; i++)
             {
-                var textSize = ScreenManager.Font.MeasureString(menuEntries[i].Text);
+                var textSize = font.MeasureString(menuEntries[i].Text);
                 var entryBounds = new Rectangle((int)menuEntries[i].Position.X, (int)menuEntries[i].Position.Y, (int)textSize.X, (int)textSize.Y);
 
                 if (entryBounds.Contains(touchLocation))
@@ -170,8 +176,6 @@ namespace RailDispatchMono.Core.Screens
         /// <summary>
         /// Handler for when the user has chosen a menu entry.
         /// </summary>
-        /// <param name="entryIndex">The index of the selected menu entry.</param>
-        /// <param name="playerIndex">The index of the player who triggered the selection.</param>
         protected virtual void OnSelectEntry(int entryIndex, PlayerIndex playerIndex)
         {
             menuEntries[entryIndex].OnSelectEntry(playerIndex);
@@ -180,7 +184,6 @@ namespace RailDispatchMono.Core.Screens
         /// <summary>
         /// Handler for when the user has canceled the menu.
         /// </summary>
-        /// <param name="playerIndex">The index of the player who triggered the cancellation.</param>
         protected virtual void OnCancel(PlayerIndex playerIndex)
         {
             ExitScreen();
@@ -189,33 +192,28 @@ namespace RailDispatchMono.Core.Screens
         /// <summary>
         /// Helper overload makes it easy to use OnCancel as a MenuEntry event handler.
         /// </summary>
-        /// <param name="sender">The object that triggered the event.</param>
-        /// <param name="e">Event arguments containing the player index.</param>
         protected void OnCancel(object sender, PlayerIndexEventArgs e)
         {
             OnCancel(e.PlayerIndex);
         }
 
         /// <summary>
-        /// Updates the positions of the menu entries. By default, all menu entries
-        /// are lined up in a vertical list, centered on the screen.
+        /// Updates the positions of the menu entries.
         /// </summary>
         protected virtual void UpdateMenuEntryLocations()
         {
-            // Make the menu slide into place during transitions, using a
-            // power curve to make things look more interesting (this makes
-            // the movement slow down as it nears the end).
+            // ✅ Sprawdź czy Font jest załadowany
+            var font = ScreenManager?.Font;
+            if (font == null) return;
+
             float transitionOffset = (float)Math.Pow(TransitionPosition, 2);
 
-            // Start at Y = 175; each X value is generated per entry.
             Vector2 position = new Vector2(0f, 175f);
 
-            // Update each menu entry's location in turn.
             for (int i = 0; i < menuEntries.Count; i++)
             {
                 MenuEntry menuEntry = menuEntries[i];
 
-                // Each entry is to be centered horizontally.
                 position.X = ScreenManager.BaseScreenSize.X / 2 - menuEntry.GetWidth(this) / 2;
 
                 if (ScreenState == ScreenState.TransitionOn)
@@ -223,10 +221,8 @@ namespace RailDispatchMono.Core.Screens
                 else
                     position.X += transitionOffset * 512;
 
-                // Set the entry's position.
                 menuEntry.Position = position;
 
-                // Move down for the next entry by the size of this entry.
                 position.Y += menuEntry.GetHeight(this);
             }
         }
@@ -234,16 +230,12 @@ namespace RailDispatchMono.Core.Screens
         /// <summary>
         /// Updates the menu screen.
         /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        /// <param name="otherScreenHasFocus">Whether another screen currently has focus.</param>
-        /// <param name="coveredByOtherScreen">Whether this screen is covered by another screen.</param>
         public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
         {
             base.Update(gameTime, otherScreenHasFocus, coveredByOtherScreen);
 
             SetNextEnabledMenu();
 
-            // Update each nested MenuEntry object.
             for (int i = 0; i < menuEntries.Count; i++)
             {
                 bool isSelected = IsActive && (i == selectedEntry);
@@ -255,15 +247,18 @@ namespace RailDispatchMono.Core.Screens
         /// <summary>
         /// Draws the menu screen.
         /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         public override void Draw(GameTime gameTime)
         {
+            // ✅ Sprawdź czy Font i SpriteBatch są załadowane
+            var font = ScreenManager?.Font;
+            var spriteBatch = ScreenManager?.SpriteBatch;
+            var graphics = ScreenManager?.GraphicsDevice;
+
+            if (font == null || spriteBatch == null || graphics == null)
+                return; // ✅ Nie rysuj, jeśli nie ma czcionki lub SpriteBatch
+
             // Make sure our entries are in the right place before we draw them.
             UpdateMenuEntryLocations();
-
-            GraphicsDevice graphics = ScreenManager.GraphicsDevice;
-            SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
-            SpriteFont font = ScreenManager.Font;
 
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, ScreenManager.GlobalTransformation);
 
@@ -277,9 +272,7 @@ namespace RailDispatchMono.Core.Screens
                 menuEntry.Draw(this, isSelected, gameTime);
             }
 
-            // Make the menu slide into place during transitions, using a
-            // power curve to make things look more interesting (this makes
-            // the movement slow down as it nears the end).
+            // Make the menu slide into place during transitions.
             float transitionOffset = (float)Math.Pow(TransitionPosition, 2);
 
             // Draw the menu title centered on the screen.

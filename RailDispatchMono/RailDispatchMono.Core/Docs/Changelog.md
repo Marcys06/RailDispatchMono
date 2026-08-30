@@ -1,4 +1,70 @@
 Changelog
+
+[0.0.8a] — System pauzy i wsparcie menu ekranowego
+Data: 2026-08-30
+
+Game Loop / Pause System
+
+Dodano pelny ekran pauzy (PauseScreen.cs) wstrzymujacy aktualizacje symulacji
+
+Zaktualizowano GameplayScreen o obsluge stanu pauzy i nakladki menu
+
+Zoptymalizowano petle gry w RailDispatchMonoGame.cs pod katem przelaczania ekranów
+
+UI / Screen Management & Fonts
+
+Dodano czcionki Hud.spritefont oraz zaktualizowano Arial24.spritefont
+
+Rozbudowano MenuScreen.cs oraz MenuEntry.cs do obslugi dynamicznych pozycji menu
+
+Poprawiono zarzadzanie i rysowanie elementow interfejsu uzytkownika w PauseScreen
+
+Dodano obsluge nawigacji po menu w PauseScreen (wznowienie gry, opcje, powrot do menu)
+
+Input Manager
+
+Zaktualizowano InputManager.cs o obsluge wejscia dla ekranu pauzy i nawigacji menu
+
+Dodano wykrywanie klawiszy aktywacji pauzy oraz poruszania sie po pozycjach menu
+
+Controls
+
+Escape / P — wlacz / wylacz pauze (Pause Menu)
+
+Strzalki GORA / DÓŁ (lub W / S) — nawigacja po pozycjach menu pauzy
+
+Enter / Space — zatwierdzenie wybranej opcji w menu
+
+Build
+
+RailDispatchMono.Core — build OK
+
+RailDispatchMono.DesktopGL — build OK
+
+Zintegrowano PauseScreen.cs i zaktualizowano MenuScreen.cs
+
+Known gaps / Poza zakresem tego wpisu
+
+Usuwanie toru nie aktualizuje jeszcze polaczen sasiednich elementow
+
+Ruch pociagu nie obsluguje jeszcze pelnego przebiegu po sieci torowej
+
+Pociag nie zatrzymuje sie jeszcze automatycznie przed koncem istniejacego toru
+
+Brak obslugi kierunku jazdy i zmiany kierunku na rozjazdach
+
+Brak interlockingu
+
+Brak wykolejenia
+
+Brak manewrow i sprzegania w warstwie symulacji
+
+Brak planowania jazdy
+
+Brak pasazerow
+
+Brak harmonogramow
+
 [0.0.8] — Train UI Update (Tooltip)
 Data: 2026-08-30
 

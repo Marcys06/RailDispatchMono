@@ -6,6 +6,7 @@ using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Rendering;
 using RailDispatchMono.Core.Game.Train;
+using RailDispatchMono.Core.ScreenManagers;
 using System;
 using System.Diagnostics;
 
@@ -17,6 +18,7 @@ namespace RailDispatchMono.Core.Screens.UI
         private readonly SpriteBatch _spriteBatch;
         private readonly Camera _camera;
         private readonly TrackBuilder _builder;
+        private readonly ScreenManager _screenManager;
         private readonly TrackRenderer _renderer;
         private readonly TrainManager _trainManager;
         private readonly TrainRenderer _trainRenderer;
@@ -49,6 +51,7 @@ namespace RailDispatchMono.Core.Screens.UI
             JunctionRadialMenu junctionRadialMenu,
             SignalController signalController,
             SignalRadialMenu signalRadialMenu,
+            ScreenManager screenManager,
             SignalDirectionMenu signalDirectionMenu,
             SignalSelectionMenu signalSelectionMenu,
             GameMap map)
@@ -64,6 +67,7 @@ namespace RailDispatchMono.Core.Screens.UI
             _signalController = signalController;
             _signalRadialMenu = signalRadialMenu;
             _signalDirectionMenu = signalDirectionMenu;
+            _screenManager = screenManager;
             _signalSelectionMenu = signalSelectionMenu;
             _map = map;
 
@@ -280,6 +284,9 @@ namespace RailDispatchMono.Core.Screens.UI
                 DebugManager.Log($"[INPUT] Toggle TRAIN_MOVEMENT: {(DebugManager.IsCategoryEnabled(DebugManager.DebugCategory.TrainMovement) ? "ON" : "OFF")}");
             }
 
+
+
+
             // F5 - przełącz WSZYSTKIE
             if (IsKeyPressed(keyboard, Keys.F5))
             {
@@ -316,6 +323,24 @@ namespace RailDispatchMono.Core.Screens.UI
                 DebugManager.SaveLogToFile(fileName);
                 DebugManager.Log($"[INPUT] Log saved to: {fileName}");
             }
+            
+            
+            
+            if (IsKeyPressed(keyboard, Keys.Escape))
+            {
+                DebugManager.Log("[INPUT] ESCAPE PRESSED!");  // <- DODAJ TĘ LINIĘ
+                if (_screenManager != null)
+                {
+                    var pauseScreen = new PauseScreen();
+                    _screenManager.AddScreen(pauseScreen, null);
+                    DebugManager.Log("[INPUT] PauseScreen added!");  // <- DODAJ TĘ LINIĘ
+                }
+                else
+                {
+                    DebugManager.Log("[INPUT] ScreenManager is NULL!");  // <- DODAJ TĘ LINIĘ
+                }
+            }
+
 
 
 

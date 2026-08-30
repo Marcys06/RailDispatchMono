@@ -8,13 +8,14 @@ using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Rendering;
 using RailDispatchMono.Core.Game.Train;
+using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.Screens.UI;
 using System;
 using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Screens;
 
-public sealed class GameplayScreen
+public sealed class GameplayScreen : GameScreen
 {
     private readonly GraphicsDevice _graphicsDevice;
     private readonly SpriteBatch _spriteBatch;
@@ -25,6 +26,8 @@ public sealed class GameplayScreen
     private readonly TrackBuilder _builder;
     private readonly Camera _camera;
     private readonly TrackRenderer _renderer;
+    private bool _isPaused;
+    private PauseScreen? _pauseScreen;
 
     private readonly TrainManager _trainManager;
     private readonly TrainRenderer _trainRenderer;
@@ -47,7 +50,7 @@ public sealed class GameplayScreen
     private KeyboardState _previousKeyboard;
     private int _previousScrollWheelValue;
 
-    public GameplayScreen(GraphicsDevice graphicsDevice)
+    public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager)
     {
         _graphicsDevice = graphicsDevice;
         _spriteBatch = new SpriteBatch(graphicsDevice);
@@ -109,7 +112,6 @@ public sealed class GameplayScreen
         // ============================================================
         // TWORZENIE INPUTMANAGER
         // ============================================================
-        DebugManager.Log("[GAMEPLAY] Tworzę InputManager z semaforami...");
         _inputManager = new InputManager(
             _graphicsDevice,
             _spriteBatch,
@@ -121,10 +123,12 @@ public sealed class GameplayScreen
             _junctionRadialMenu,
             _signalController,
             _signalRadialMenu,
+            screenManager,
             _signalDirectionMenu,
             _signalSelectionMenu,
             _map
         );
+
         DebugManager.Log("[GAMEPLAY] InputManager utworzony!");
 
         // ============================================================
@@ -164,7 +168,7 @@ public sealed class GameplayScreen
 
         _renderer.LoadContent(_graphicsDevice);
         _trainRenderer.LoadContent(_graphicsDevice);
-        _trainRenderer.SetTrainManager(_trainManager);  // <- NOWE
+        _trainRenderer.SetTrainManager(_trainManager);
         _tooltipFont = content.Load<SpriteFont>("Arial24");
 
         SpriteFont font = content.Load<SpriteFont>("Arial24");
@@ -178,17 +182,31 @@ public sealed class GameplayScreen
         DebugManager.Log("[GAMEPLAY] LoadContent() - KONIEC");
     }
 
-    public void Update(GameTime gameTime)
+    public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
     {
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         var mouse = Mouse.GetState();
         var keyboard = Keyboard.GetState();
 
+        // ✅ OBSŁUGA ESC — otwieranie/zamykanie pauzy
+        if (keyboard.IsKeyDown(Keys.Escape) && _previousKeyboard.IsKeyUp(Keys.Escape))
+        {
+            TogglePause();
+        }
+
+        // Jeśli gra jest zapauzowana — nie aktualizuj symulacji
+        if (_isPaused)
+        {
+            _inputManager.Update(gameTime);
+            _previousKeyboard = keyboard;
+            _previousMouse = mouse;
+            return;
+        }
+
         _trainManager.Update(deltaTime);
         _trainDebugger.Update(deltaTime, _trainManager);
         _blockController?.Update(deltaTime);
-
         _inputManager.Update(gameTime);
 
         _previousScrollWheelValue = mouse.ScrollWheelValue;
@@ -196,15 +214,86 @@ public sealed class GameplayScreen
         _previousKeyboard = keyboard;
     }
 
-    public void Draw(GameTime gameTime)
+    // ============================================================
+    // PAUZA
+    // ============================================================
+
+    private void TogglePause()
+    {
+        if (_isPaused)
+            ResumeGame();
+        else
+            PauseGame();
+    }
+
+    private void PauseGame()
+    {
+        if (_isPaused) return;
+
+        _isPaused = true;
+
+        // ✅ Utwórz menu pauzy
+        _pauseScreen = new PauseScreen();
+
+        // ✅ Dodaj event przed dodaniem ekranu
+        _pauseScreen.OnQuit += (s, e) => QuitToMainMenu();
+
+        // ✅ Dodaj ekran do menedżera
+        ScreenManager?.AddScreen(_pauseScreen, null);
+    }
+
+    private void ResumeGame()
+    {
+        if (!_isPaused) return;
+
+        _isPaused = false;
+
+        // ✅ Usuń menu pauzy
+        if (_pauseScreen != null && ScreenManager != null)
+        {
+            ScreenManager.RemoveScreen(_pauseScreen);
+            _pauseScreen = null;
+        }
+    }
+
+    private void QuitToMainMenu()
+    {
+        ResumeGame(); // Wznów grę przed wyjściem
+        // TODO: Przejście do menu głównego
+        // ScreenManager?.AddScreen(new MainMenuScreen(), null);
+        // ExitScreen();
+    }
+
+    // ============================================================
+    // DRAW
+    // ============================================================
+
+    public override void Draw(GameTime gameTime)
     {
         _inputManager.Draw(gameTime);
-
-        // ============================================================
-        // RYSOWANIE TOOLTIPA NAD WSZYSTKIM
-        // ============================================================
         DrawTooltip();
+
+        // ✅ NAPIS "PAUZA"
+        if (_isPaused && _tooltipFont != null)
+        {
+            var viewport = _graphicsDevice.Viewport;
+            string pauseText = "⏸ PAUZA";
+            var textSize = _tooltipFont.MeasureString(pauseText);
+
+            Vector2 position = new Vector2(
+                (viewport.Width - textSize.X) / 2,
+                (viewport.Height - textSize.Y) / 2 - 50
+            );
+
+            _spriteBatch.Begin();
+            _spriteBatch.DrawString(_tooltipFont, pauseText, position, Color.White);
+            _spriteBatch.End();
+        }
     }
+
+    // ============================================================
+    // TOOLTIP
+    // ============================================================
 
     private void DrawTooltip()
     {
@@ -215,7 +304,6 @@ public sealed class GameplayScreen
         var mouseScreenPos = new Vector2(mouseState.X, mouseState.Y);
         var mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
 
-        // Sprawdz czy mysz jest nad jakims pojazdem
         var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
         if (!vehicleInfo.HasValue)
             return;
@@ -224,12 +312,10 @@ public sealed class GameplayScreen
         var vehicle = train.Composition.Vehicles[vehicleIndex];
         bool isLoco = vehicle is Locomotive;
 
-        // Kolor tla
         Color bgColor = isLoco
-            ? new Color(180, 30, 30, 230)   // czerwony dla lokomotywy
-            : new Color(30, 30, 180, 230);   // niebieski dla wagonu
+            ? new Color(180, 30, 30, 230)
+            : new Color(30, 30, 180, 230);
 
-        // Zbuduj tekst
         string typeName = isLoco ? "LOKOMOTYWA" : "WAGON";
         string trainId = train.Id.ToString()[..8];
         float speedMs = train.Speed;
@@ -241,17 +327,16 @@ public sealed class GameplayScreen
 
         string[] lines = new string[]
         {
-        typeName,
-        "ID: " + trainId,
-        "Predkosc: " + speedMs.ToString("F1") + " m/s",
-        "          " + speedKmh.ToString("F1") + " km/h",
-        "Masa: " + mass.ToString("F0") + " kg",
-        "Dlugosc: " + length.ToString("F1") + " m",
-        "Pojazdy: " + vehicleCount,
-        "Kierunek: " + direction
+            typeName,
+            "ID: " + trainId,
+            "Predkosc: " + speedMs.ToString("F1") + " m/s",
+            "          " + speedKmh.ToString("F1") + " km/h",
+            "Masa: " + mass.ToString("F0") + " kg",
+            "Dlugosc: " + length.ToString("F1") + " m",
+            "Pojazdy: " + vehicleCount,
+            "Kierunek: " + direction
         };
 
-        // Oblicz rozmiar tekstu
         float padding = 8f;
         float lineHeight = _tooltipFont.MeasureString("A").Y + 2f;
         float maxWidth = 0f;
@@ -264,20 +349,16 @@ public sealed class GameplayScreen
         float tooltipWidth = maxWidth + padding * 2f;
         float tooltipHeight = lines.Length * lineHeight + padding * 2f;
 
-        // Pozycja tooltipa: 15px od kursora (w prawo i w dol)
         Vector2 tooltipPos = mouseScreenPos + new Vector2(15, 15);
 
-        // Nie wychodz poza ekran
         var viewport = _graphicsDevice.Viewport;
         if (tooltipPos.X + tooltipWidth > viewport.Width)
             tooltipPos.X = mouseScreenPos.X - tooltipWidth - 15;
         if (tooltipPos.Y + tooltipHeight > viewport.Height)
             tooltipPos.Y = mouseScreenPos.Y - tooltipHeight - 15;
 
-        // Rysuj na ekranie (nie na mapie)
         _spriteBatch.Begin();
 
-        // Tlo
         Rectangle bgRect = new Rectangle(
             (int)tooltipPos.X,
             (int)tooltipPos.Y,
@@ -286,7 +367,6 @@ public sealed class GameplayScreen
         );
         _spriteBatch.Draw(_pixel, bgRect, bgColor);
 
-        // Ramka (jasniejszy kolor)
         Color borderColor = isLoco ? new Color(255, 100, 100, 200) : new Color(100, 100, 255, 200);
         int borderThickness = 2;
         _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, bgRect.Width + borderThickness * 2, borderThickness), borderColor);
@@ -294,151 +374,109 @@ public sealed class GameplayScreen
         _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
         _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X + bgRect.Width, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
 
-        // Tekst
         Vector2 textPos = tooltipPos + new Vector2(padding, padding);
-        Color textColor = Color.White;
 
         for (int i = 0; i < lines.Length; i++)
         {
-            string line = lines[i];
-            // Pierwsza linia (nazwa typu) - pogrubiona (uzywamy tej samej czcionki)
-            Color lineColor = (i == 0) ? Color.Yellow : textColor;
-            _spriteBatch.DrawString(_tooltipFont, line, textPos, lineColor);
+            Color lineColor = (i == 0) ? Color.Yellow : Color.White;
+            _spriteBatch.DrawString(_tooltipFont, lines[i], textPos, lineColor);
             textPos.Y += lineHeight;
         }
 
         _spriteBatch.End();
     }
 
+    // ============================================================
+    // TEST TRACK
+    // ============================================================
+
     private void CreateTestTrack()
     {
         DebugManager.SetLogToFile(true, "debug_log.txt");
         DebugManager.EnableAll();
 
-        // Dodaj testowy wpis
-        DebugManager.Log("=== TEST LOG ===");
-        Console.WriteLine("=== TEST CONSOLE ===");
-        System.Diagnostics.Debug.WriteLine("=== TEST DEBUG ===");
-        DebugManager.Log("[DEBUG] System debugowania włączony!");
         DebugManager.Log("[TRACK] Tworzę testową trasę 100x100...");
 
-        // ============================================================
-        // PARAMETRY TRASY
-        // ============================================================
         const int left = 10;
         const int right = 90;
         const int top = 10;
         const int bottom = 89;
 
-        // ============================================================
-        // 1. GÓRNA PROSTA (East)
-        // ============================================================
         _builder.BuildCurve(new MapPosition(left, top), CurveDirection.EastSouth);
         for (var x = left + 1; x < right; x++)
             _builder.BuildStraight(new MapPosition(x, top), horizontal: true);
 
-        // ============================================================
-        // 2. PRAWA PROSTA (South)
-        // ============================================================
         _builder.BuildCurve(new MapPosition(right, top), CurveDirection.SouthWest);
         for (var y = top + 1; y < bottom; y++)
             _builder.BuildStraight(new MapPosition(right, y), horizontal: false);
 
-        // ============================================================
-        // 3. DOLNA PROSTA (West)
-        // ============================================================
         _builder.BuildCurve(new MapPosition(right, bottom), CurveDirection.WestNorth);
         for (var x = right - 1; x > left; x--)
             _builder.BuildStraight(new MapPosition(x, bottom), horizontal: true);
 
-        // ============================================================
-        // 4. LEWA PROSTA (North)
-        // ============================================================
         _builder.BuildCurve(new MapPosition(left, bottom), CurveDirection.NorthEast);
         for (var y = bottom - 1; y > top; y--)
             _builder.BuildStraight(new MapPosition(left, y), horizontal: false);
 
         DebugManager.Log("[TRACK] Testowa trasa 100x100 utworzona!");
 
-        // ============================================================
-        // 5. SEMAFORY — TYLKO 4 (po jednym na każdej prostej)
-        // ============================================================
+        // 5. SEMAFORY — TYLKO 4
         DebugManager.Log("[SIGNAL] Dodaję 4 semafory...");
 
-        // Górna prosta (East) — Vmax (Clear)
         _signalController.AddSignal(
-            new MapPosition(50, top),  // środek górnej prostej
+            new MapPosition(50, top),
             TrackConnections.East,
             new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
         );
         var signal1 = _signalController.GetSignalAt(new MapPosition(50, top), TrackConnections.East);
         signal1?.SetAspect(SignalAspect.Clear);
-        DebugManager.Log($"[SIGNAL] Dodano Vmax na (50, {top}) East");
 
-        // Prawa prosta (South) — Speed40
         _signalController.AddSignal(
-            new MapPosition(right, 50),  // środek prawej prostej
+            new MapPosition(right, 50),
             TrackConnections.South,
             new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
         );
         var signal2 = _signalController.GetSignalAt(new MapPosition(right, 50), TrackConnections.South);
         signal2?.SetAspect(SignalAspect.Speed40);
-        DebugManager.Log($"[SIGNAL] Dodano Speed40 na ({right}, 50) South");
 
-        // Dolna prosta (West) — Vmax (Clear)
         _signalController.AddSignal(
-            new MapPosition(50, bottom),  // środek dolnej prostej
+            new MapPosition(50, bottom),
             TrackConnections.West,
             new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
         );
         var signal3 = _signalController.GetSignalAt(new MapPosition(50, bottom), TrackConnections.West);
         signal3?.SetAspect(SignalAspect.Clear);
-        DebugManager.Log($"[SIGNAL] Dodano Vmax na (50, {bottom}) West");
 
-        // Lewa prosta (North) — Vmax (Clear)
         _signalController.AddSignal(
-            new MapPosition(left, 50),  // środek lewej prostej
+            new MapPosition(left, 50),
             TrackConnections.North,
             new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
         );
         var signal4 = _signalController.GetSignalAt(new MapPosition(left, 50), TrackConnections.North);
         signal4?.SetAspect(SignalAspect.Clear);
-        DebugManager.Log($"[SIGNAL] Dodano Vmax na ({left}, 50) North");
 
-        // Semafor STOP na końcu (przed zakrętem na start)
         _signalController.AddSignal(
             new MapPosition(left, top + 1),
             TrackConnections.North,
             new List<SignalAspect> { SignalAspect.Stop }
         );
-        DebugManager.Log($"[SIGNAL] Dodano STOP na ({left}, {top + 1}) North");
 
         DebugManager.Log($"[SIGNAL] Łącznie dodano {_signalController.GetAllSignals().Count} semaforów");
 
-        // ============================================================
-        // 6. BLOKI (z 5 semaforów = 4 bloki)
-        // ============================================================
         if (_blockController != null)
         {
             _blockController.CreateBlocksFromSignals();
             DebugManager.Log($"[BLOCK] Utworzono {_blockController.BlockCount} bloków");
         }
 
-        // Dodatkowe tory na dole (dla bezpieczeństwa)
         _builder.BuildStraight(new MapPosition(88, bottom), horizontal: true);
         _builder.BuildStraight(new MapPosition(87, bottom), horizontal: true);
-
-        DebugManager.Log("[TRACK] Sprawdzam tory na dolnej prostej:");
-        for (int x = 89; x >= left; x--)
-        {
-            if (_map.TryGetTrack(new MapPosition(x, bottom), out var track))
-                DebugManager.Log($"  ({x}, {bottom}): Connections = {track.Connections}, Geometry = {track.Geometry}");
-            else
-                DebugManager.Log($"  ({x}, {bottom}): ❌ BRAK TORU");
-        }
     }
 
-    // ✅ TYLKO JEDNA METODA CreateTestTrain()!
+    // ============================================================
+    // TEST TRAIN
+    // ============================================================
+
     private void CreateTestTrain()
     {
         DebugManager.Log("[TRAIN] Tworzę testowy pociąg...");
@@ -472,7 +510,7 @@ public sealed class GameplayScreen
 
         train.SetMap(_map);
         train.SetSignalController(_signalController);
-        train.SetBlockController(_blockController); // ✅ DODANE!
+        train.SetBlockController(_blockController);
 
         _trainManager.Add(train);
 

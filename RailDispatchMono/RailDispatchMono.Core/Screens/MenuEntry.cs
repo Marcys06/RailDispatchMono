@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
+
 namespace RailDispatchMono.Core.Screens
 {
     /// <summary>
@@ -18,9 +19,9 @@ namespace RailDispatchMono.Core.Screens
         /// <remarks>
         /// The entries transition out of the selection effect when they are deselected.
         /// </remarks>
-        float selectionFade;
+        private float selectionFade;
 
-        string text;
+        private string text;
         /// <summary>
         /// Gets or sets the text of this menu entry.
         /// </summary>
@@ -30,7 +31,7 @@ namespace RailDispatchMono.Core.Screens
             set { text = value; }
         }
 
-        Vector2 position;
+        private Vector2 position;
         /// <summary>
         /// The position at which the entry is drawn. This is set by the MenuScreen
         /// each frame in Update.
@@ -96,7 +97,6 @@ namespace RailDispatchMono.Core.Screens
                 selectionFade = Math.Max(selectionFade - fadeSpeed, 0);
         }
 
-
         /// <summary>
         /// Draws the menu entry. This can be overridden to customize the appearance.
         /// </summary>
@@ -105,6 +105,10 @@ namespace RailDispatchMono.Core.Screens
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         public virtual void Draw(MenuScreen screen, bool isSelected, GameTime gameTime)
         {
+            var font = screen.ScreenManager.Font;
+            if (font == null)
+                return; // ✅ Zabezpieczenie — nie rysuj, jeśli czcionka nie jest załadowana
+
             Color color;
             if (enabled)
             {
@@ -118,9 +122,7 @@ namespace RailDispatchMono.Core.Screens
 
             // Pulsate the size of the selected menu entry.
             double time = gameTime.TotalGameTime.TotalSeconds;
-
             float pulsate = (float)Math.Sin(time * 6) + 1;
-
             float scale = 1 + pulsate * 0.05f * selectionFade;
 
             // Modify the alpha to fade text out during transitions.
@@ -129,7 +131,6 @@ namespace RailDispatchMono.Core.Screens
             // Draw text, centered on the middle of each line.
             ScreenManager screenManager = screen.ScreenManager;
             SpriteBatch spriteBatch = screenManager.SpriteBatch;
-            SpriteFont font = screenManager.Font;
 
             Vector2 origin = new Vector2(0, font.LineSpacing / 2);
 
@@ -144,7 +145,10 @@ namespace RailDispatchMono.Core.Screens
         /// <returns>The height of the menu entry in pixels.</returns>
         public virtual int GetHeight(MenuScreen screen)
         {
-            return screen.ScreenManager.Font.LineSpacing;
+            var font = screen.ScreenManager.Font;
+            if (font == null) return 30; // ✅ Zabezpieczenie — domyślna wysokość
+
+            return font.LineSpacing;
         }
 
         /// <summary>
@@ -154,7 +158,10 @@ namespace RailDispatchMono.Core.Screens
         /// <returns>The width of the menu entry in pixels.</returns>
         public virtual int GetWidth(MenuScreen screen)
         {
-            return (int)screen.ScreenManager.Font.MeasureString(Text).X;
+            var font = screen.ScreenManager.Font;
+            if (font == null) return 100; // ✅ Zabezpieczenie — domyślna szerokość
+
+            return (int)font.MeasureString(Text).X;
         }
     }
 }

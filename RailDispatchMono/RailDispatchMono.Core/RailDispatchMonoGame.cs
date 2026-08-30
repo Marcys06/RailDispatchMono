@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.Screens;
 using System;
 
@@ -9,6 +10,8 @@ namespace RailDispatchMono.Core;
 public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 {
     private readonly GraphicsDeviceManager _graphics;
+  
+    private ScreenManager _screenManager;
     private GameplayScreen _gameplay;
 
     public static bool IsMobile => false;
@@ -33,8 +36,9 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
-        _gameplay = new GameplayScreen(GraphicsDevice);
-
+        _screenManager = new ScreenManager(this);
+        _gameplay = new GameplayScreen(GraphicsDevice, _screenManager);  // <- przekaż!
+        _screenManager.AddScreen(_gameplay, null);
         base.Initialize();
     }
 
@@ -46,26 +50,13 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Update(GameTime gameTime)
     {
-        GamePadState gamePad =
-            GamePad.GetState(PlayerIndex.One);
-
-        if (gamePad.Buttons.Back == ButtonState.Pressed)
-        {
-            Exit();
-            return;
-        }
-
-        _gameplay.Update(gameTime);
-
+        _screenManager.Update(gameTime);
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
-
-        _gameplay.Draw(gameTime);
-
+        _screenManager.Draw(gameTime);
         base.Draw(gameTime);
     }
 }
