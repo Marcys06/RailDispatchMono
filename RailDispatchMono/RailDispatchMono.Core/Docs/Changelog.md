@@ -1,4 +1,105 @@
 Changelog
+[0.0.8] — Train UI Update (Tooltip)
+Data: 2026-08-30
+
+Train UI / Tooltip System
+
+Dodano tooltip wyswietlajacy sie po najechaniu kursorem na pociag
+
+Tooltip pojawia sie obok kursora (ekran), nie w swiecie gry
+
+Tooltip znika automatycznie po odsunieciu myszy
+
+Dodano wykrywanie pojazdu pod kursorem w TrainRenderer
+
+Dodano metode GetVehicleAtPosition do sprawdzania kolizji z pojazdami
+
+Dodano metode GetTrainAtPosition jako wrapper dla GetVehicleAtPosition
+
+Dane wyswietlane w tooltipie
+
+Typ pojazdu (LOKOMOTYWA / WAGON)
+
+ID pociagu (skrocone do 8 znakow)
+
+Predkosc w m/s i km/h
+
+Masa pojazdu w kg
+
+Dlugosc pojazdu w metrach
+
+Liczba pojazdow w skladzie
+
+Kierunek jazdy (North, East, South, West)
+
+Wyglad tooltipa
+
+Tlo: czerwone dla lokomotywy, niebieskie dla wagonu
+
+Ramka: jasniejszy odcien koloru tla
+
+Pierwsza linia (typ pojazdu): zolty tekst
+
+Reszta tekstu: bialy
+
+Tooltip dostosowuje pozycje aby nie wychodzic poza ekran
+
+TrainRenderer
+
+Dodano SetTrainManager do przekazywania referencji
+
+Dodano GetVehicleAtPosition z parametrem detectionRadius (domyslnie 0.6f)
+
+Dodano GetTrainAtPosition jako metode pomocnicza
+
+Poprawiono blad kompilacji CS0118 (Train jako namespace vs typ)
+
+GameplayScreen
+
+Dodano _tooltipFont do przechowywania czcionki Arial24
+
+Dodano _pixel do rysowania tla i ramki tooltipa
+
+Dodano metode DrawTooltip do rysowania tooltipa
+
+Zaktualizowano LoadContent o inicjalizacje tooltipa
+
+Zaktualizowano Draw o wywolanie DrawTooltip
+
+Controls
+
+Brak nowych klawiszy - tooltip dziala automatycznie po najechaniu mysza
+
+Build
+
+RailDispatchMono.Core — build OK
+
+RailDispatchMono.DesktopGL — build OK
+
+Naprawiono blad CS0118 w TrainRenderer.cs
+
+Known gaps / Poza zakresem tego wpisu
+
+Usuwanie toru nie aktualizuje jeszcze polaczen sasiednich elementow
+
+Ruch pociagu nie obsluguje jeszcze pelnego przebiegu po sieci torowej
+
+Pociag nie zatrzymuje sie jeszcze automatycznie przed koncem istniejacego toru
+
+Brak obslugi kierunku jazdy i zmiany kierunku na rozjazdach
+
+Brak interlockingu
+
+Brak wykolejenia
+
+Brak manewrow i sprzegania w warstwie symulacji
+
+Brak planowania jazdy
+
+Brak pasazerow
+
+Brak harmonogramow
+
 [0.0.7c] — System debugowania i automatyczne resetowanie semaforow
 Data: 2026-08-30
 

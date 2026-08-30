@@ -18,6 +18,8 @@ public sealed class GameplayScreen
 {
     private readonly GraphicsDevice _graphicsDevice;
     private readonly SpriteBatch _spriteBatch;
+    private SpriteFont? _tooltipFont;
+    private Texture2D? _pixel;
 
     private readonly GameMap _map;
     private readonly TrackBuilder _builder;
@@ -162,12 +164,16 @@ public sealed class GameplayScreen
 
         _renderer.LoadContent(_graphicsDevice);
         _trainRenderer.LoadContent(_graphicsDevice);
+        _trainRenderer.SetTrainManager(_trainManager);  // <- NOWE
+        _tooltipFont = content.Load<SpriteFont>("Arial24");
 
         SpriteFont font = content.Load<SpriteFont>("Arial24");
         _junctionRadialMenu.SetFont(font);
         _signalRadialMenu.SetFont(font);
         _signalDirectionMenu.SetFont(font);
         _signalSelectionMenu.SetFont(font);
+        _pixel = new Texture2D(_graphicsDevice, 1, 1);
+        _pixel.SetData(new[] { Color.White });
 
         DebugManager.Log("[GAMEPLAY] LoadContent() - KONIEC");
     }
@@ -193,6 +199,115 @@ public sealed class GameplayScreen
     public void Draw(GameTime gameTime)
     {
         _inputManager.Draw(gameTime);
+
+        // ============================================================
+        // RYSOWANIE TOOLTIPA NAD WSZYSTKIM
+        // ============================================================
+        DrawTooltip();
+    }
+
+    private void DrawTooltip()
+    {
+        if (_tooltipFont == null || _pixel == null || _trainManager == null)
+            return;
+
+        var mouseState = Mouse.GetState();
+        var mouseScreenPos = new Vector2(mouseState.X, mouseState.Y);
+        var mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
+
+        // Sprawdz czy mysz jest nad jakims pojazdem
+        var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
+        if (!vehicleInfo.HasValue)
+            return;
+
+        var (train, vehicleIndex, vehicleWorldPos) = vehicleInfo.Value;
+        var vehicle = train.Composition.Vehicles[vehicleIndex];
+        bool isLoco = vehicle is Locomotive;
+
+        // Kolor tla
+        Color bgColor = isLoco
+            ? new Color(180, 30, 30, 230)   // czerwony dla lokomotywy
+            : new Color(30, 30, 180, 230);   // niebieski dla wagonu
+
+        // Zbuduj tekst
+        string typeName = isLoco ? "LOKOMOTYWA" : "WAGON";
+        string trainId = train.Id.ToString()[..8];
+        float speedMs = train.Speed;
+        float speedKmh = speedMs * 3.6f;
+        float mass = vehicle.Parameters.Mass;
+        float length = vehicle.Parameters.Length;
+        int vehicleCount = train.Composition.Vehicles.Count;
+        string direction = train.Direction.ToString();
+
+        string[] lines = new string[]
+        {
+        typeName,
+        "ID: " + trainId,
+        "Predkosc: " + speedMs.ToString("F1") + " m/s",
+        "          " + speedKmh.ToString("F1") + " km/h",
+        "Masa: " + mass.ToString("F0") + " kg",
+        "Dlugosc: " + length.ToString("F1") + " m",
+        "Pojazdy: " + vehicleCount,
+        "Kierunek: " + direction
+        };
+
+        // Oblicz rozmiar tekstu
+        float padding = 8f;
+        float lineHeight = _tooltipFont.MeasureString("A").Y + 2f;
+        float maxWidth = 0f;
+        foreach (var line in lines)
+        {
+            float w = _tooltipFont.MeasureString(line).X;
+            if (w > maxWidth) maxWidth = w;
+        }
+
+        float tooltipWidth = maxWidth + padding * 2f;
+        float tooltipHeight = lines.Length * lineHeight + padding * 2f;
+
+        // Pozycja tooltipa: 15px od kursora (w prawo i w dol)
+        Vector2 tooltipPos = mouseScreenPos + new Vector2(15, 15);
+
+        // Nie wychodz poza ekran
+        var viewport = _graphicsDevice.Viewport;
+        if (tooltipPos.X + tooltipWidth > viewport.Width)
+            tooltipPos.X = mouseScreenPos.X - tooltipWidth - 15;
+        if (tooltipPos.Y + tooltipHeight > viewport.Height)
+            tooltipPos.Y = mouseScreenPos.Y - tooltipHeight - 15;
+
+        // Rysuj na ekranie (nie na mapie)
+        _spriteBatch.Begin();
+
+        // Tlo
+        Rectangle bgRect = new Rectangle(
+            (int)tooltipPos.X,
+            (int)tooltipPos.Y,
+            (int)tooltipWidth,
+            (int)tooltipHeight
+        );
+        _spriteBatch.Draw(_pixel, bgRect, bgColor);
+
+        // Ramka (jasniejszy kolor)
+        Color borderColor = isLoco ? new Color(255, 100, 100, 200) : new Color(100, 100, 255, 200);
+        int borderThickness = 2;
+        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, bgRect.Width + borderThickness * 2, borderThickness), borderColor);
+        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y + bgRect.Height, bgRect.Width + borderThickness * 2, borderThickness), borderColor);
+        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
+        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X + bgRect.Width, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
+
+        // Tekst
+        Vector2 textPos = tooltipPos + new Vector2(padding, padding);
+        Color textColor = Color.White;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            // Pierwsza linia (nazwa typu) - pogrubiona (uzywamy tej samej czcionki)
+            Color lineColor = (i == 0) ? Color.Yellow : textColor;
+            _spriteBatch.DrawString(_tooltipFont, line, textPos, lineColor);
+            textPos.Y += lineHeight;
+        }
+
+        _spriteBatch.End();
     }
 
     private void CreateTestTrack()
