@@ -6,7 +6,6 @@ namespace RailDispatchMono.Core.Screens
 {
     internal class PauseScreen : MenuScreen
     {
-        // ✅ ZDARZENIA DLA GAMEPLAYSCREEN
         public event EventHandler? OnQuit;
         public event EventHandler? OnResume;
 
@@ -26,16 +25,6 @@ namespace RailDispatchMono.Core.Screens
             MenuEntries.Add(quitGameMenuEntry);
 
             DebugManager.Log($"[PAUSE] Konstruktor - Liczba entries: {MenuEntries.Count}");
-            DebugManager.Log($"[PAUSE] Entry 1: '{resumeGameMenuEntry.Text}'");
-            DebugManager.Log($"[PAUSE] Entry 2: '{quitGameMenuEntry.Text}'");
-        }
-
-        // ✅ DODAJ TĘ METODĘ!
-        public override void Draw(GameTime gameTime)
-        {
-            DebugManager.Log($"[PAUSE] Draw() - Wywołuję base.Draw()");
-            base.Draw(gameTime);
-            DebugManager.Log($"[PAUSE] Draw() - Po base.Draw()");
         }
 
         private void ResumeGameEntrySelected(object? sender, PlayerIndexEventArgs e)
@@ -63,7 +52,6 @@ namespace RailDispatchMono.Core.Screens
 
         private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e)
         {
-            // Nic nie rób - wróć do menu pauzy
         }
 
         protected override void OnCancel(PlayerIndex playerIndex)
