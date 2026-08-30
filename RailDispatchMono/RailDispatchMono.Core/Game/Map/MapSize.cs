@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 namespace RailDispatchMono.Core.Game.Map;
 
 public readonly record struct MapSize

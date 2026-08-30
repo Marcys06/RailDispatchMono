@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Core.Game.Train;
+namespace RailDispatchMono.Core.Game.Train;
 
 public enum VehicleOrientation
 {

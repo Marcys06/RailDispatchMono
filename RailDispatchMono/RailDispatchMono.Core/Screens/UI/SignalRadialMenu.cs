@@ -1,5 +1,5 @@
-ï»¿// ============================================================
-// SIGNALRADIALMENU.CS - MENU RADIALNE DLA SEMAFORÃ“W
+// ============================================================
+// SIGNALRADIALMENU.CS - MENU RADIALNE DLA SEMAFORÓW
 // ============================================================
 
 using System;
@@ -67,15 +67,15 @@ namespace RailDispatchMono.Core.Screens.UI
             ScreenPosition = screenPosition;
             CurrentSignal = signal;
 
-            // âœ… TWORZYMY KOPIÄ˜ LISTY - NIE REFERENCJÄ˜
+            // ? TWORZYMY KOPIÊ LISTY - NIE REFERENCJÊ
             _aspects = new List<SignalAspect>(signal.AvailableAspects);
 
-            System.Diagnostics.Debug.WriteLine($"[RADIAL] Otwieram menu dla semafora na {signal.Position}");
-            System.Diagnostics.Debug.WriteLine($"[RADIAL] Dostepne aspekty: {_aspects.Count}");
+            DebugManager.Log($"[RADIAL] Otwieram menu dla semafora na {signal.Position}");
+            DebugManager.Log($"[RADIAL] Dostepne aspekty: {_aspects.Count}");
 
             if (_aspects.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[RADIAL] UWAGA: Brak aspektow! Dodaje domyslne.");
+                DebugManager.Log("[RADIAL] UWAGA: Brak aspektow! Dodaje domyslne.");
                 _aspects = new List<SignalAspect>
         {
             SignalAspect.Stop,
@@ -94,7 +94,7 @@ namespace RailDispatchMono.Core.Screens.UI
             {
                 foreach (var a in _aspects)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[RADIAL] - {a}");
+                    DebugManager.Log($"[RADIAL] - {a}");
                 }
             }
 
@@ -106,10 +106,10 @@ namespace RailDispatchMono.Core.Screens.UI
         {
             IsOpen = false;
             CurrentSignal = null;
-            _aspects.Clear();  // âœ… CzyÅ›ci KOPIÄ˜
+            _aspects.Clear();  // ? Czyœci KOPIÊ
             _hoveredIndex = -1;
             MenuClosed?.Invoke(this, EventArgs.Empty);
-            System.Diagnostics.Debug.WriteLine("[RADIAL] Menu zamkniete");
+            DebugManager.Log("[RADIAL] Menu zamkniete");
         }
 
         public void Update(MouseState mouse, MouseState previousMouse)
@@ -136,7 +136,7 @@ namespace RailDispatchMono.Core.Screens.UI
                 if (_hoveredIndex != -1 && _hoveredIndex < _aspects.Count)
                 {
                     var selectedAspect = _aspects[_hoveredIndex];
-                    System.Diagnostics.Debug.WriteLine($"[RADIAL] Wybrano aspekt: {selectedAspect}");
+                    DebugManager.Log($"[RADIAL] Wybrano aspekt: {selectedAspect}");
                     CurrentSignal?.SetAspect(selectedAspect);
                     AspectSelected?.Invoke(this, selectedAspect);
                     Close();
@@ -145,7 +145,7 @@ namespace RailDispatchMono.Core.Screens.UI
 
                 if (Vector2.Distance(mousePos, ScreenPosition) > MenuRadius + 50f)
                 {
-                    System.Diagnostics.Debug.WriteLine("[RADIAL] Kliknieto poza menu - zamykam");
+                    DebugManager.Log("[RADIAL] Kliknieto poza menu - zamykam");
                     Close();
                 }
             }

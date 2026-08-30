@@ -1,4 +1,4 @@
-ï»¿// ============================================================
+// ============================================================
 // SIGNALSELECTIONMENU.CS - MENU WYBORU SEMAFORA
 // ============================================================
 
@@ -141,10 +141,10 @@ namespace RailDispatchMono.Core.Screens.UI
         {
             string direction = signal.Direction switch
             {
-                TrackConnections.North => "â†‘",
-                TrackConnections.South => "â†“",
-                TrackConnections.East => "â†’",
-                TrackConnections.West => "â†",
+                TrackConnections.North => "^",
+                TrackConnections.South => "¡",
+                TrackConnections.East => "›",
+                TrackConnections.West => "‹",
                 _ => "?"
             };
 

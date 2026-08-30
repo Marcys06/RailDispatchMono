@@ -1,4 +1,4 @@
-ï»¿// ============================================================
+// ============================================================
 // BLOCK.CS - REPREZENTACJA BLOKU TOROWEGO
 // ============================================================
 
@@ -12,7 +12,7 @@ using RailDispatchMono.Core.Game.Train;
 namespace RailDispatchMono.Core.Game.Railway
 {
     /// <summary>
-    /// Blok torowy - odcinek toru miÄ™dzy dwoma semaforami
+    /// Blok torowy - odcinek toru miêdzy dwoma semaforami
     /// </summary>
     public class Block
     {
@@ -27,10 +27,10 @@ namespace RailDispatchMono.Core.Game.Railway
         // DANE PRZESTRZENNE
         // ============================================================
 
-        /// <summary>KomÃ³rki toru w bloku (kolejnoÅ›Ä‡ = trasa)</summary>
+        /// <summary>Komórki toru w bloku (kolejnoœæ = trasa)</summary>
         public List<MapPosition> TrackCells { get; }
 
-        /// <summary>Punkty wÄ™zÅ‚owe dla ruchu pociÄ…gu</summary>
+        /// <summary>Punkty wêz³owe dla ruchu poci¹gu</summary>
         public List<Vector2> Waypoints { get; }
 
         // ============================================================
@@ -41,15 +41,26 @@ namespace RailDispatchMono.Core.Game.Railway
         public Signal? ExitSignal { get; set; }
 
         // ============================================================
-        // STAN - POCIÄ„GI NA BLOKU
+        // STAN - POCI¥GI NA BLOKU
         // ============================================================
 
-        /// <summary>Lista pociÄ…gÃ³w na bloku (obsÅ‚uga dÅ‚ugich pociÄ…gÃ³w)</summary>
+        /// <summary>Lista poci¹gów na bloku (obs³uga d³ugich poci¹gów)</summary>
         private readonly List<Train.Train> _trainsOnBlock = new();
         public IReadOnlyList<Train.Train> TrainsOnBlock => _trainsOnBlock;
 
         public bool IsOccupied => _trainsOnBlock.Count > 0;
         public Train.Train? OccupyingTrain => _trainsOnBlock.FirstOrDefault();
+
+        // ============================================================
+        // STAN - COOLDOWN SZYBKIEGO PRZE£¥CZANIA
+        // ============================================================
+
+        private float _coolDownTimer = 0f;
+        private bool _isCoolingDown = false;
+        private const float CoolDownDuration = 0.5f; // 0.5 sekundy
+
+        public bool IsCoolingDown => _isCoolingDown;
+        public bool IsOccupiedOrCoolingDown => IsOccupied || IsCoolingDown;
 
         // ============================================================
         // STAN - REZERWACJA
@@ -59,14 +70,14 @@ namespace RailDispatchMono.Core.Game.Railway
         public Train.Train? ReservedFor { get; private set; }
 
         // ============================================================
-        // WÅAÅšCIWOÅšCI
+        // W£AŒCIWOŒCI
         // ============================================================
 
         public float Length { get; private set; }
         public float LengthInMeters => Length * 100f; // 1 jednostka = 100m
 
         // ============================================================
-        // SÄ„SIEDZTWO
+        // S¥SIEDZTWO
         // ============================================================
 
         public Block? PreviousBlock { get; set; }
@@ -87,6 +98,8 @@ namespace RailDispatchMono.Core.Game.Railway
             Length = 0f;
             IsReserved = false;
             ReservedFor = null;
+            _coolDownTimer = 0f;
+            _isCoolingDown = false;
         }
 
         // ============================================================
@@ -95,11 +108,10 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public bool ContainsPosition(Vector2 position)
         {
-            // SprawdÅº czy pozycja znajduje siÄ™ w ktÃ³rymkolwiek polu bloku
             foreach (var cell in TrackCells)
             {
                 var cellPos = new Vector2(cell.X + 0.5f, cell.Y + 0.5f);
-                if (Vector2.Distance(position, cellPos) < 0.6f)
+                if (Vector2.Distance(position, cellPos) < 0.55f)
                     return true;
             }
             return false;
@@ -111,7 +123,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // METODY - POCIÄ„GI NA BLOKU
+        // METODY - POCI¥GI NA BLOKU
         // ============================================================
 
         public void AddTrain(Train.Train train)
@@ -138,11 +150,64 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // METODY - SPRAWDZANIE POCIÄ„GU
+        // METODY - COOLDOWN
+        // ============================================================
+
+        public void StartCooldown()
+        {
+            _coolDownTimer = CoolDownDuration;
+            _isCoolingDown = true;
+        }
+
+        public void UpdateCooldown(float deltaTime)
+        {
+            if (_isCoolingDown)
+            {
+                _coolDownTimer -= deltaTime;
+                if (_coolDownTimer <= 0f)
+                {
+                    _isCoolingDown = false;
+                    _coolDownTimer = 0f;
+                }
+            }
+        }
+
+        // ============================================================
+        // METODY - WYJŒCIE POCI¥GU Z BLOKU
+        // ============================================================
+
+        public void OnTrainExited(Train.Train train)
+        {
+            // Usuñ poci¹g z bloku
+            RemoveTrain(train);
+
+            // Jeœli blok jest pusty, rozpocznij cooldown
+            if (!IsOccupied)
+            {
+                StartCooldown();
+                // Semafor zostanie zresetowany w UpdateSignals() po cooldownie
+            }
+        }
+
+        // ============================================================
+        // METODY - RESETOWANIE SEMAFORÓW
+        // ============================================================
+
+        public void ResetEntrySignals()
+        {
+            if (EntrySignal != null)
+            {
+                EntrySignal.SetAspect(SignalAspect.Clear);
+                DebugManager.Log($"[BLOCK] {Name} › RESET entry signal to Clear");
+            }
+        }
+
+        // ============================================================
+        // METODY - SPRAWDZANIE POCI¥GU
         // ============================================================
 
         /// <summary>
-        /// Sprawdza czy caÅ‚y pociÄ…g (od gÅ‚owy do ogona) jest na bloku
+        /// Sprawdza czy ca³y poci¹g (od g³owy do ogona) jest na bloku
         /// </summary>
         public bool IsTrainFullyOnBlock(Train.Train train)
         {
@@ -153,15 +218,13 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         /// <summary>
-        /// Sprawdza czy jakakolwiek czÄ™Å›Ä‡ pociÄ…gu jest na bloku
+        /// Sprawdza czy jakakolwiek czêœæ poci¹gu jest na bloku
         /// </summary>
         public bool IsTrainPartiallyOnBlock(Train.Train train)
         {
-            // SprawdÅº gÅ‚owÄ™
             if (ContainsPosition(train.Position))
                 return true;
 
-            // SprawdÅº wszystkie wagony
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
             {
                 var transform = train.GetVehicleTransform(i);
@@ -169,7 +232,6 @@ namespace RailDispatchMono.Core.Game.Railway
                     return true;
             }
 
-            // SprawdÅº ogon
             if (ContainsPosition(train.GetLastVehiclePosition()))
                 return true;
 
@@ -212,7 +274,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // METODY - OBLICZANIE ODLEGÅOÅšCI
+        // METODY - OBLICZANIE ODLEG£OŒCI
         // ============================================================
 
         public float GetDistanceFromStart(Vector2 position)
@@ -220,7 +282,6 @@ namespace RailDispatchMono.Core.Game.Railway
             if (TrackCells.Count == 0)
                 return 0f;
 
-            // ZnajdÅº najbliÅ¼szy punkt na trasie
             float minDistance = float.MaxValue;
             float bestProgress = 0f;
 
@@ -232,11 +293,10 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (dist < minDistance)
                 {
                     minDistance = dist;
-                    bestProgress = i + 0.5f; // Åšrodek komÃ³rki
+                    bestProgress = i + 0.5f;
                 }
             }
 
-            // Przelicz na odlegÅ‚oÅ›Ä‡
             float cellLength = 1.0f;
             return bestProgress * cellLength;
         }
@@ -277,7 +337,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // METODY - USTAWIENIE DÅUGOÅšCI
+        // METODY - USTAWIENIE D£UGOŒCI
         // ============================================================
 
         public void SetLength(float length)

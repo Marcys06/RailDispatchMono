@@ -60,6 +60,8 @@ public sealed class TrainManager
         return false;
     }
 
+    private BlockController? _blockController;
+
     public void ClearAll()
     {
         foreach (var train in _trains)
@@ -67,6 +69,10 @@ public sealed class TrainManager
             if (!_trainsToRemove.Contains(train))
                 _trainsToRemove.Add(train);
         }
+    }
+    public void Initialize(BlockController blockController)
+    {
+        _blockController = blockController;
     }
 
     public void Update(float deltaTime)
@@ -100,6 +106,8 @@ public sealed class TrainManager
         {
             train.Update(deltaTime);
         }
+        _blockController?.UpdateOccupancy();
+        _blockController?.UpdateSignals();
     }
 
     public bool IsCellOccupied(MapPosition cell)

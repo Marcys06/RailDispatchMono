@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using RailDispatchMono.Core.Game.Railway;
 using System.Collections.Generic;
 using System;
@@ -90,7 +90,7 @@ public sealed class GameMap
                track?.Geometry == TrackGeometry.Junction ? track : null;
     }
 
-    // GameMap.cs - dodaj brakujące metody
+    // GameMap.cs - dodaj brakuj�ce metody
     public bool HasTrackAt(MapPosition position)
     {
         return _tracks.ContainsKey(position);

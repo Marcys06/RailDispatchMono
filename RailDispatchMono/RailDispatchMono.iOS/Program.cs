@@ -1,4 +1,4 @@
-﻿using Foundation;
+using Foundation;
 using RailDispatchMono.Core;
 using UIKit;
 

@@ -1,4 +1,4 @@
-ï»¿using RailDispatchMono.Core.Game.Map;
+using RailDispatchMono.Core.Game.Map;
 using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Railway;
@@ -18,12 +18,12 @@ public sealed class TrackCell
     // --- STAN ZWROTNICY ---
     public SwitchPosition CurrentSwitchPosition { get; private set; } = SwitchPosition.Straight;
 
-    // PoÅ‚Ä…czenia zwrotnicy
+    // Po³¹czenia zwrotnicy
     public TrackConnections StraightConnection { get; private set; } = TrackConnections.None;
     public TrackConnections DivergingConnection { get; private set; } = TrackConnections.None;
     public TrackConnections CommonStem { get; private set; } = TrackConnections.None;
 
-    // --- WÅAÅšCIWOÅšCI POMOCNICZE ---
+    // --- W£AŒCIWOŒCI POMOCNICZE ---
     public bool IsJunction => Geometry == TrackGeometry.Junction;
     public bool IsSwitchedToDiverging => CurrentSwitchPosition == SwitchPosition.Diverging;
     public TrackConnections StraightSide => StraightConnection;
@@ -80,14 +80,14 @@ public sealed class TrackCell
     }
 
     /// <summary>
-    /// Zwraca kierunek wyjÅ›cia z komÃ³rki na podstawie kierunku wjazdu pociÄ…gu (entryDir).
+    /// Zwraca kierunek wyjœcia z komórki na podstawie kierunku wjazdu poci¹gu (entryDir).
     /// </summary>
     public TrackConnections GetExitDirection(TrackConnections entrySide)
     {
         if (Geometry != TrackGeometry.Junction)
         {
-            // âœ… DLA PROSTEGO TORU - zwrÃ³Ä‡ przeciwne poÅ‚Ä…czenie
-            // Np. jeÅ›li wjeÅ¼dÅ¼amy od East, wyjeÅ¼dÅ¼amy West
+            // ? DLA PROSTEGO TORU - zwróæ przeciwne po³¹czenie
+            // Np. jeœli wje¿d¿amy od East, wyje¿d¿amy West
             return Connections & ~entrySide;
         }
 

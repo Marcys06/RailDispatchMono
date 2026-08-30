@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Input.Touch;
+using Microsoft.Xna.Framework.Input.Touch;
 
 namespace RailDispatchMono.Core.Inputs
 {

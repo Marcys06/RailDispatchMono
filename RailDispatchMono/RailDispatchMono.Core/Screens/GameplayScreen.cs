@@ -11,7 +11,6 @@ using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.Screens.UI;
 using System;
 using System.Collections.Generic;
-using Debug = System.Diagnostics.Debug;
 
 namespace RailDispatchMono.Core.Screens;
 
@@ -70,45 +69,45 @@ public sealed class GameplayScreen
         // ============================================================
         // TWORZENIE SIGNALCONTROLLER I MENU SEMAFORÓW
         // ============================================================
-        Debug.WriteLine("[GAMEPLAY] Tworzę SignalController...");
+        DebugManager.Log("[GAMEPLAY] Tworzę SignalController...");
         _signalController = new SignalController(_map);
-        Debug.WriteLine("[GAMEPLAY] SignalController utworzony!");
+        DebugManager.Log("[GAMEPLAY] SignalController utworzony!");
 
         // ============================================================
         // ✅ INICJALIZACJA BLOCKCONTROLLER
         // ============================================================
-        Debug.WriteLine("[GAMEPLAY] Tworzę BlockController...");
+        DebugManager.Log("[GAMEPLAY] Tworzę BlockController...");
         _blockController = new BlockController();
         _blockController.Initialize(_map, _trainManager, _signalController);
-        Debug.WriteLine("[GAMEPLAY] BlockController utworzony!");
+        DebugManager.Log("[GAMEPLAY] BlockController utworzony!");
 
-        Debug.WriteLine("[GAMEPLAY] Tworzę SignalRadialMenu...");
+        DebugManager.Log("[GAMEPLAY] Tworzę SignalRadialMenu...");
         _signalRadialMenu = new SignalRadialMenu(_graphicsDevice);
-        Debug.WriteLine("[GAMEPLAY] SignalRadialMenu utworzony!");
+        DebugManager.Log("[GAMEPLAY] SignalRadialMenu utworzony!");
 
-        Debug.WriteLine("[GAMEPLAY] Tworzę SignalDirectionMenu...");
+        DebugManager.Log("[GAMEPLAY] Tworzę SignalDirectionMenu...");
         _signalDirectionMenu = new SignalDirectionMenu(_graphicsDevice);
-        Debug.WriteLine("[GAMEPLAY] SignalDirectionMenu utworzony!");
+        DebugManager.Log("[GAMEPLAY] SignalDirectionMenu utworzony!");
 
-        Debug.WriteLine("[GAMEPLAY] Tworzę SignalSelectionMenu...");
+        DebugManager.Log("[GAMEPLAY] Tworzę SignalSelectionMenu...");
         _signalSelectionMenu = new SignalSelectionMenu(_graphicsDevice);
-        Debug.WriteLine("[GAMEPLAY] SignalSelectionMenu utworzony!");
+        DebugManager.Log("[GAMEPLAY] SignalSelectionMenu utworzony!");
 
         // ============================================================
         // TWORZENIE SIGNALRENDERER
         // ============================================================
         _signalRenderer = new SignalRenderer(_map, _signalController);
         _signalRenderer.LoadContent(_graphicsDevice);
-        Debug.WriteLine("[GAMEPLAY] SignalRenderer utworzony!");
+        DebugManager.Log("[GAMEPLAY] SignalRenderer utworzony!");
 
         // Przekaż SignalRenderer do TrackRenderer
         _renderer.SetSignalRenderer(_signalRenderer);
-        Debug.WriteLine("[GAMEPLAY] SignalRenderer przekazany do TrackRenderer");
+        DebugManager.Log("[GAMEPLAY] SignalRenderer przekazany do TrackRenderer");
 
         // ============================================================
         // TWORZENIE INPUTMANAGER
         // ============================================================
-        Debug.WriteLine("[GAMEPLAY] Tworzę InputManager z semaforami...");
+        DebugManager.Log("[GAMEPLAY] Tworzę InputManager z semaforami...");
         _inputManager = new InputManager(
             _graphicsDevice,
             _spriteBatch,
@@ -124,42 +123,42 @@ public sealed class GameplayScreen
             _signalSelectionMenu,
             _map
         );
-        Debug.WriteLine("[GAMEPLAY] InputManager utworzony!");
+        DebugManager.Log("[GAMEPLAY] InputManager utworzony!");
 
         // ============================================================
         // SUBKRYPCJA ZDARZEŃ SEMAFORÓW (DEBUG)
         // ============================================================
         _signalRadialMenu.AspectSelected += (s, aspect) =>
         {
-            Debug.WriteLine($"[SIGNAL] ✅ Wybrano aspekt: {aspect}");
+            DebugManager.Log($"[SIGNAL] ✅ Wybrano aspekt: {aspect}");
         };
 
         _signalRadialMenu.MenuClosed += (s, e) =>
         {
-            Debug.WriteLine("[SIGNAL] Menu aspektów zamknięte");
+            DebugManager.Log("[SIGNAL] Menu aspektów zamknięte");
         };
 
         _signalDirectionMenu.MenuClosed += (s, e) =>
         {
-            Debug.WriteLine("[SIGNAL] Menu kierunków zamknięte");
+            DebugManager.Log("[SIGNAL] Menu kierunków zamknięte");
         };
 
         _signalSelectionMenu.MenuClosed += (s, e) =>
         {
-            Debug.WriteLine("[SIGNAL] Menu wyboru semafora zamknięte");
+            DebugManager.Log("[SIGNAL] Menu wyboru semafora zamknięte");
         };
 
         CreateTestTrack();
         CreateTestTrain();
 
-        Debug.WriteLine("[GAMEPLAY] ========================================");
-        Debug.WriteLine("[GAMEPLAY] GameplayScreen utworzony!");
-        Debug.WriteLine("[GAMEPLAY] ========================================");
+        DebugManager.Log("[GAMEPLAY] ========================================");
+        DebugManager.Log("[GAMEPLAY] GameplayScreen utworzony!");
+        DebugManager.Log("[GAMEPLAY] ========================================");
     }
 
     public void LoadContent(ContentManager content)
     {
-        Debug.WriteLine("[GAMEPLAY] LoadContent() - START");
+        DebugManager.Log("[GAMEPLAY] LoadContent() - START");
 
         _renderer.LoadContent(_graphicsDevice);
         _trainRenderer.LoadContent(_graphicsDevice);
@@ -170,7 +169,7 @@ public sealed class GameplayScreen
         _signalDirectionMenu.SetFont(font);
         _signalSelectionMenu.SetFont(font);
 
-        Debug.WriteLine("[GAMEPLAY] LoadContent() - KONIEC");
+        DebugManager.Log("[GAMEPLAY] LoadContent() - KONIEC");
     }
 
     public void Update(GameTime gameTime)
@@ -182,6 +181,7 @@ public sealed class GameplayScreen
 
         _trainManager.Update(deltaTime);
         _trainDebugger.Update(deltaTime, _trainManager);
+        _blockController?.Update(deltaTime);
 
         _inputManager.Update(gameTime);
 
@@ -197,7 +197,15 @@ public sealed class GameplayScreen
 
     private void CreateTestTrack()
     {
-        Debug.WriteLine("[TRACK] Tworzę testową trasę 100x100 (bez zwrotnic)...");
+        DebugManager.SetLogToFile(true, "debug_log.txt");
+        DebugManager.EnableAll();
+
+        // Dodaj testowy wpis
+        DebugManager.Log("=== TEST LOG ===");
+        Console.WriteLine("=== TEST CONSOLE ===");
+        System.Diagnostics.Debug.WriteLine("=== TEST DEBUG ===");
+        DebugManager.Log("[DEBUG] System debugowania włączony!");
+        DebugManager.Log("[TRACK] Tworzę testową trasę 100x100...");
 
         // ============================================================
         // PARAMETRY TRASY
@@ -208,127 +216,79 @@ public sealed class GameplayScreen
         const int bottom = 89;
 
         // ============================================================
-        // 1. GÓRNA PROSTA
+        // 1. GÓRNA PROSTA (East)
         // ============================================================
         _builder.BuildCurve(new MapPosition(left, top), CurveDirection.EastSouth);
-
         for (var x = left + 1; x < right; x++)
-        {
             _builder.BuildStraight(new MapPosition(x, top), horizontal: true);
-        }
 
         // ============================================================
-        // 2. PRAWA PROSTA
+        // 2. PRAWA PROSTA (South)
         // ============================================================
         _builder.BuildCurve(new MapPosition(right, top), CurveDirection.SouthWest);
-
         for (var y = top + 1; y < bottom; y++)
-        {
             _builder.BuildStraight(new MapPosition(right, y), horizontal: false);
-        }
 
         // ============================================================
-        // 3. DOLNA PROSTA
+        // 3. DOLNA PROSTA (West)
         // ============================================================
         _builder.BuildCurve(new MapPosition(right, bottom), CurveDirection.WestNorth);
-
         for (var x = right - 1; x > left; x--)
-        {
             _builder.BuildStraight(new MapPosition(x, bottom), horizontal: true);
-        }
 
         // ============================================================
-        // 4. LEWA PROSTA
+        // 4. LEWA PROSTA (North)
         // ============================================================
         _builder.BuildCurve(new MapPosition(left, bottom), CurveDirection.NorthEast);
-
         for (var y = bottom - 1; y > top; y--)
-        {
             _builder.BuildStraight(new MapPosition(left, y), horizontal: false);
-        }
 
-        Debug.WriteLine("[TRACK] Testowa trasa 100x100 utworzona!");
+        DebugManager.Log("[TRACK] Testowa trasa 100x100 utworzona!");
 
         // ============================================================
-        // 5. SEMAFORY (co 10 komórek) - WSZYSTKIE Vmax40
+        // 5. SEMAFORY — TYLKO 4 (po jednym na każdej prostej)
         // ============================================================
-        Debug.WriteLine("[SIGNAL] Dodaję semafory na trasie 100x100 (Vmax40)...");
+        DebugManager.Log("[SIGNAL] Dodaję 4 semafory...");
 
-        // Górna prosta (East) - Speed40
-        for (int x = left + 5; x < right; x += 10)
-        {
-            _signalController.AddSignal(
-                new MapPosition(x, top),
-                TrackConnections.East,
-                new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
-            );
+        // Górna prosta (East) — Vmax (Clear)
+        _signalController.AddSignal(
+            new MapPosition(50, top),  // środek górnej prostej
+            TrackConnections.East,
+            new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
+        );
+        var signal1 = _signalController.GetSignalAt(new MapPosition(50, top), TrackConnections.East);
+        signal1?.SetAspect(SignalAspect.Clear);
+        DebugManager.Log($"[SIGNAL] Dodano Vmax na (50, {top}) East");
 
-            // ✅ Ustaw początkowy aspekt na Speed40
-            var signal = _signalController.GetSignalAt(new MapPosition(x, top), TrackConnections.East);
-            if (signal != null)
-            {
-                signal.SetAspect(SignalAspect.Speed40);
-            }
+        // Prawa prosta (South) — Speed40
+        _signalController.AddSignal(
+            new MapPosition(right, 50),  // środek prawej prostej
+            TrackConnections.South,
+            new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
+        );
+        var signal2 = _signalController.GetSignalAt(new MapPosition(right, 50), TrackConnections.South);
+        signal2?.SetAspect(SignalAspect.Speed40);
+        DebugManager.Log($"[SIGNAL] Dodano Speed40 na ({right}, 50) South");
 
-            Debug.WriteLine($"[SIGNAL] Dodano semafor na ({x}, {top}) East");
-        }
+        // Dolna prosta (West) — Vmax (Clear)
+        _signalController.AddSignal(
+            new MapPosition(50, bottom),  // środek dolnej prostej
+            TrackConnections.West,
+            new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
+        );
+        var signal3 = _signalController.GetSignalAt(new MapPosition(50, bottom), TrackConnections.West);
+        signal3?.SetAspect(SignalAspect.Clear);
+        DebugManager.Log($"[SIGNAL] Dodano Vmax na (50, {bottom}) West");
 
-        // Prawa prosta (South) - Speed40
-        for (int y = top + 5; y < bottom; y += 10)
-        {
-            _signalController.AddSignal(
-                new MapPosition(right, y),
-                TrackConnections.South,
-                new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
-            );
-
-            // ✅ Ustaw początkowy aspekt na Speed40
-            var signal = _signalController.GetSignalAt(new MapPosition(right, y), TrackConnections.South);
-            if (signal != null)
-            {
-                signal.SetAspect(SignalAspect.Speed40);
-            }
-
-            Debug.WriteLine($"[SIGNAL] Dodano semafor na ({right}, {y}) South");
-        }
-
-        // Dolna prosta (West) - Speed40
-        for (int x = right - 5; x > left; x -= 10)
-        {
-            _signalController.AddSignal(
-                new MapPosition(x, bottom),
-                TrackConnections.West,
-                new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
-            );
-
-            // ✅ Ustaw początkowy aspekt na Speed40
-            var signal = _signalController.GetSignalAt(new MapPosition(x, bottom), TrackConnections.West);
-            if (signal != null)
-            {
-                signal.SetAspect(SignalAspect.Speed40);
-            }
-
-            Debug.WriteLine($"[SIGNAL] Dodano semafor na ({x}, {bottom}) West");
-        }
-
-        // Lewa prosta (North) - Speed40
-        for (int y = bottom - 5; y > top; y -= 10)
-        {
-            _signalController.AddSignal(
-                new MapPosition(left, y),
-                TrackConnections.North,
-                new List<SignalAspect> { SignalAspect.Speed40, SignalAspect.Stop }
-            );
-
-            // ✅ Ustaw początkowy aspekt na Speed40
-            var signal = _signalController.GetSignalAt(new MapPosition(left, y), TrackConnections.North);
-            if (signal != null)
-            {
-                signal.SetAspect(SignalAspect.Speed40);
-            }
-
-            Debug.WriteLine($"[SIGNAL] Dodano semafor na ({left}, {y}) North");
-        }
+        // Lewa prosta (North) — Vmax (Clear)
+        _signalController.AddSignal(
+            new MapPosition(left, 50),  // środek lewej prostej
+            TrackConnections.North,
+            new List<SignalAspect> { SignalAspect.Clear, SignalAspect.Stop }
+        );
+        var signal4 = _signalController.GetSignalAt(new MapPosition(left, 50), TrackConnections.North);
+        signal4?.SetAspect(SignalAspect.Clear);
+        DebugManager.Log($"[SIGNAL] Dodano Vmax na ({left}, 50) North");
 
         // Semafor STOP na końcu (przed zakrętem na start)
         _signalController.AddSignal(
@@ -336,74 +296,72 @@ public sealed class GameplayScreen
             TrackConnections.North,
             new List<SignalAspect> { SignalAspect.Stop }
         );
-        Debug.WriteLine($"[SIGNAL] Dodano semafor STOP na ({left}, {top + 1}) North");
+        DebugManager.Log($"[SIGNAL] Dodano STOP na ({left}, {top + 1}) North");
 
-        Debug.WriteLine($"[SIGNAL] Łącznie dodano {_signalController.GetAllSignals().Count} semaforów");
+        DebugManager.Log($"[SIGNAL] Łącznie dodano {_signalController.GetAllSignals().Count} semaforów");
 
         // ============================================================
-        // 6. BLOKI
+        // 6. BLOKI (z 5 semaforów = 4 bloki)
         // ============================================================
         if (_blockController != null)
         {
             _blockController.CreateBlocksFromSignals();
-            Debug.WriteLine($"[BLOCK] Utworzono {_blockController.BlockCount} bloków");
+            DebugManager.Log($"[BLOCK] Utworzono {_blockController.BlockCount} bloków");
         }
+
+        // Dodatkowe tory na dole (dla bezpieczeństwa)
         _builder.BuildStraight(new MapPosition(88, bottom), horizontal: true);
         _builder.BuildStraight(new MapPosition(87, bottom), horizontal: true);
 
-        Debug.WriteLine("[TRACK] Sprawdzam tory na dolnej prostej:");
+        DebugManager.Log("[TRACK] Sprawdzam tory na dolnej prostej:");
         for (int x = 89; x >= left; x--)
         {
             if (_map.TryGetTrack(new MapPosition(x, bottom), out var track))
-            {
-                Debug.WriteLine($"  ({x}, {bottom}): Connections = {track.Connections}, Geometry = {track.Geometry}");
-            }
+                DebugManager.Log($"  ({x}, {bottom}): Connections = {track.Connections}, Geometry = {track.Geometry}");
             else
-            {
-                Debug.WriteLine($"  ({x}, {bottom}): ❌ BRAK TORU");
-            }
+                DebugManager.Log($"  ({x}, {bottom}): ❌ BRAK TORU");
         }
     }
 
+    // ✅ TYLKO JEDNA METODA CreateTestTrain()!
     private void CreateTestTrain()
     {
-        Debug.WriteLine("[TRAIN] Tworzę testowy pociąg...");
+        DebugManager.Log("[TRAIN] Tworzę testowy pociąg...");
 
         var locomotiveParameters = new VehicleParameters(
-            maxSpeed: 160.4f,
+            maxSpeed: 60.4f,
             acceleration: 0.8f,
             braking: 100.0f,
             mass: 80000f,
             length: 1.0f);
 
         var wagonParameters = new VehicleParameters(
-            maxSpeed: 160.4f,
+            maxSpeed: 60.4f,
             acceleration: 0.8f,
             braking: 100.0f,
             mass: 40000f,
             length: 1.0f);
 
-        // ✅ TWORZYMY LISTĘ POJAZDÓW
         var vehicles = new List<Vehicle>
-    {
-        new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
-        new Wagon(wagonParameters),
-        new Wagon(wagonParameters)
-    };
+        {
+            new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
+            new Wagon(wagonParameters),
+            new Wagon(wagonParameters)
+        };
 
-        // ✅ TERAZ vehicles ISTNIEJE
         var train = new Train(
             spawnPosition: new Vector2(25.5f, 10.5f),
             initialDirection: TrackConnections.East,
-            speed: 160.4f,
-            vehicles: vehicles);  // ✅ OK!
+            speed: 60.4f,
+            vehicles: vehicles);
 
         train.SetMap(_map);
         train.SetSignalController(_signalController);
+        train.SetBlockController(_blockController); // ✅ DODANE!
 
         _trainManager.Add(train);
 
-        Debug.WriteLine($"[TRAIN] Pociąg utworzony! ID: {train.Id}, Prędkość: {train.Speed}");
-        Debug.WriteLine($"[TRAIN] Liczba pojazdów: {train.Composition.Vehicles.Count}");
+        DebugManager.Log($"[TRAIN] Pociąg utworzony! ID: {train.Id}, Prędkość: {train.Speed}");
+        DebugManager.Log($"[TRAIN] Liczba pojazdów: {train.Composition.Vehicles.Count}");
     }
 }

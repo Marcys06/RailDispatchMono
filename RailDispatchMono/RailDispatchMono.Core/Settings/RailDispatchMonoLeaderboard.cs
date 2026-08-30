@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -33,7 +33,7 @@ namespace RailDispatchMono.Core.Settings
         /// <summary>
         /// Event triggered when a property value changes.
         /// </summary>
-        // ✅ Poprawna obsługa Nullable Reference Types (.NET 9)
+        // ? Poprawna obs�uga Nullable Reference Types (.NET 9)
         public event PropertyChangedEventHandler? PropertyChanged;
 
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

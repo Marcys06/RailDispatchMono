@@ -22,13 +22,13 @@ public sealed class TrackRenderer
     {
         _pixel = new Texture2D(graphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
-        System.Diagnostics.Debug.WriteLine("[TRACK_RENDERER] LoadContent - pixel texture created");// $2
+        DebugManager.Log("[TRACK_RENDERER] LoadContent - pixel texture created");// $2
     }
 
     public void SetSignalRenderer(SignalRenderer signalRenderer)
     {
         _signalRenderer = signalRenderer;
-        System.Diagnostics.Debug.WriteLine("[TRACK_RENDERER] SignalRenderer set");// $2
+        DebugManager.Log("[TRACK_RENDERER] SignalRenderer set");// $2
     }
 
     public void Draw(SpriteBatch spriteBatch, Camera camera)

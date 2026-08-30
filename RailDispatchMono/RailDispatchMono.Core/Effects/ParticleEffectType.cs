@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Core.Effects
+namespace RailDispatchMono.Core.Effects
 {
     /// <summary>
     /// Enum describes the type of particle effects we support.

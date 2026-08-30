@@ -1,4 +1,4 @@
-ï»¿// ============================================================
+// ============================================================
 // SIGNAL.CS - KLASA SEMAFORA
 // ============================================================
 
@@ -10,7 +10,7 @@ using RailDispatchMono.Core.Game.Map;
 namespace RailDispatchMono.Core.Game.Railway
 {
     /// <summary>
-    /// Semafor kolejowy - komunikacja z pociÄ…gami
+    /// Semafor kolejowy - komunikacja z poci¹gami
     /// </summary>
     public class Signal
     {
@@ -25,7 +25,7 @@ namespace RailDispatchMono.Core.Game.Railway
         public List<SignalAspect> AvailableAspects { get; }
         public bool IsLocked { get; set; }
 
-        // KOMUNIKACJA Z POCIÄ„GIEM
+        // KOMUNIKACJA Z POCI¥GIEM
         public Train.Train? CurrentTrain { get; private set; }
 
         // ZDARZENIA
@@ -49,6 +49,12 @@ namespace RailDispatchMono.Core.Game.Railway
                 NewAspect = newAspect;
                 Train = train;
             }
+        }
+
+        public void ResetToDefault()
+        {
+            // Ustaw na domyœlny aspekt (Clear/Vmax)
+            SetAspect(SignalAspect.Clear);
         }
 
         // KONSTRUKTOR

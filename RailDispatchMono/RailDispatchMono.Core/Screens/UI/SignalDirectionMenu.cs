@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // SIGNALDIRECTIONMENU.CS - MENU WYBORU KIERUNKU
 // ============================================================
 using System;
@@ -121,7 +121,7 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Kliknięcie poza menu zamyka je
+                // Klikni�cie poza menu zamyka je
                 if (Vector2.Distance(mousePos, ScreenPosition) > MenuRadius + 50f)
                 {
                     Close();

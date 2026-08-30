@@ -1,5 +1,5 @@
-Ôªø// ============================================================
-// SIGNALCONTROLLER.CS - KONTROLER SEMAFOR√ìW
+// ============================================================
+// SIGNALCONTROLLER.CS - KONTROLER SEMAFOR”W
 // ============================================================
 
 using System;
@@ -21,7 +21,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // W≈ÅA≈öCIWO≈öCI
+        // W£AåCIWOåCI
         // ============================================================
         public IReadOnlyDictionary<MapPosition, List<Signal>> Signals => _signals;
 
@@ -68,7 +68,7 @@ namespace RailDispatchMono.Core.Game.Railway
             {
                 signalList.Clear();
                 _signals.Remove(position);
-// Debug.WriteLine($"[SIGNAL] Usuniƒôto semafory na {position}");
+// DebugManager.Log($"[SIGNAL] UsuniÍto semafory na {position}");
             }
         }
 

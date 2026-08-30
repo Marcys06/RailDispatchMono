@@ -1,20 +1,20 @@
-锘縩amespace RailDispatchMono.Core.Game.Building;
+namespace RailDispatchMono.Core.Game.Building;
 
 public enum JunctionType
 {
-    // --- WJAZD Z PO艁UDNIA ---
-    South_NorthEast, // Wjazd z Po艂udnia -> Prosto na P贸艂noc | Skr臋t na Wsch贸d
-    South_NorthWest, // Wjazd z Po艂udnia -> Prosto na P贸艂noc | Skr臋t na Zach贸d
+    // --- WJAZD Z PODNIA ---
+    South_NorthEast, // Wjazd z Po硊dnia -> Prosto na P蟪noc | Skr阾 na Wsch骴
+    South_NorthWest, // Wjazd z Po硊dnia -> Prosto na P蟪noc | Skr阾 na Zach骴
 
     // --- WJAZD Z ZACHODU ---
-    West_EastSouth,  // Wjazd z Zachodu  -> Prosto na Wsch贸d  | Skr臋t na Po艂udnie
-    West_EastNorth,   // Wjazd z Zachodu  -> Prosto na Wsch贸d  | Skr臋t na P贸艂noc
+    West_EastSouth,  // Wjazd z Zachodu  -> Prosto na Wsch骴  | Skr阾 na Po硊dnie
+    West_EastNorth,   // Wjazd z Zachodu  -> Prosto na Wsch骴  | Skr阾 na P蟪noc
 
-    // --- WJAZD Z P脫艁NOCY ---
-    North_SouthEast, // Wjazd z P贸艂nocy  -> Prosto na Po艂udnie | Skr臋t na Wsch贸d
-    North_SouthWest, // Wjazd z P贸艂nocy  -> Prosto na Po艂udnie | Skr臋t na Zach贸d
+    // --- WJAZD Z P樱NOCY ---
+    North_SouthEast, // Wjazd z P蟪nocy  -> Prosto na Po硊dnie | Skr阾 na Wsch骴
+    North_SouthWest, // Wjazd z P蟪nocy  -> Prosto na Po硊dnie | Skr阾 na Zach骴
 
     // --- WJAZD ZE WSCHODU ---
-    East_WestSouth,  // Wjazd ze Wschodu -> Prosto na Zach贸d  | Skr臋t na Po艂udnie
-    East_WestNorth   // Wjazd ze Wschodu -> Prosto na Zach贸d  | Skr臋t na P贸艂noc
+    East_WestSouth,  // Wjazd ze Wschodu -> Prosto na Zach骴  | Skr阾 na Po硊dnie
+    East_WestNorth   // Wjazd ze Wschodu -> Prosto na Zach骴  | Skr阾 na P蟪noc
 }

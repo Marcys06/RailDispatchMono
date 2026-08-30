@@ -1,4 +1,4 @@
-ï»¿using RailDispatchMono.Core.Game.Map;
+using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 
 namespace RailDispatchMono.Core.Game.Building;
@@ -21,7 +21,7 @@ public sealed class TrackBuilder
     }
 
     /// <summary>
-    /// GÅ‚Ã³wna metoda stawiajÄ…ca tor/zwrotnicÄ™ zaleÅ¼nie od aktualnie wybranego Mode.
+    /// G³ówna metoda stawiaj¹ca tor/zwrotnicê zale¿nie od aktualnie wybranego Mode.
     /// </summary>
     public void BuildAt(MapPosition position)
     {
@@ -70,7 +70,7 @@ public sealed class TrackBuilder
         var track = GetOrCreate(position);
         track.ConfigureJunction(stem, straight, diverging);
 
-        // PoÅ‚Ä…cz sÄ…siadÃ³w dla wszystkich 3 wyjÅ›Ä‡
+        // Po³¹cz s¹siadów dla wszystkich 3 wyjœæ
         ConnectNeighbours(position, track.Connections);
     }
 
@@ -120,13 +120,13 @@ public sealed class TrackBuilder
 
         if (_map.TryGetTrack(position, out var track) && track != null)
         {
-            // Zapisz poÅ‚Ä…czenia przed usuniÄ™ciem
+            // Zapisz po³¹czenia przed usuniêciem
             var connections = track.Connections;
 
-            // UsuÅ„ tor
+            // Usuñ tor
             _map.RemoveTrack(position);
 
-            // Aktualizuj sÄ…siadÃ³w - usuÅ„ poÅ‚Ä…czenia do usuniÄ™tego toru
+            // Aktualizuj s¹siadów - usuñ po³¹czenia do usuniêtego toru
             UpdateNeighborsAfterRemoval(position, connections);
         }
     }
@@ -226,11 +226,11 @@ public sealed class TrackBuilder
         if (!_map.TryGetTrack(position, out var neighbour) || neighbour is null)
             return;
 
-        // UsuÅ„ poÅ‚Ä…czenie
+        // Usuñ po³¹czenie
         var updated = neighbour.Connections & ~connection;
         neighbour.SetConnections(updated);
 
-        // JeÅ›li nie ma juÅ¼ poÅ‚Ä…czeÅ„, usuÅ„ tor
+        // Jeœli nie ma ju¿ po³¹czeñ, usuñ tor
         if (updated == TrackConnections.None)
         {
             _map.RemoveTrack(position);

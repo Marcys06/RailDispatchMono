@@ -1,18 +1,18 @@
 // ============================================================
-// BLOCKCONTROLLER.CS - KONTROLER BLOKoW TOROWYCH
+// BLOCKCONTROLLER.CS - KONTROLER BLOKÓW TOROWYCH
 // ============================================================
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Train;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Railway
 {
     /// <summary>
-    /// Kontroler zarzadzajacy wszystkimi blokami torowymi
+    /// Kontroler zarządzający wszystkimi blokami torowymi
     /// </summary>
     public class BlockController
     {
@@ -32,7 +32,7 @@ namespace RailDispatchMono.Core.Game.Railway
         private SignalController? _signalController;
 
         // ============================================================
-        // WlAsCIWOsCI
+        // WŁAŚCIWOŚCI
         // ============================================================
 
         public IReadOnlyList<Block> Blocks => _blocks;
@@ -51,53 +51,49 @@ namespace RailDispatchMono.Core.Game.Railway
 
             IsInitialized = true;
 
-            Console.WriteLine("[BLOCK_CONTROLLER] Zainicjalizowano");
+            DebugManager.Log("[BLOCK_CONTROLLER] Zainicjalizowano");
         }
 
         // ============================================================
-        // TWORZENIE BLOKoW Z SEMAFORoW
+        // TWORZENIE BLOKÓW Z SEMAFORÓW
         // ============================================================
 
         public void CreateBlocksFromSignals()
         {
             if (!IsInitialized)
             {
-                Console.WriteLine("[BLOCK_CONTROLLER] ? Nie zainicjalizowano!");
+                DebugManager.Log("[BLOCK_CONTROLLER] ? Nie zainicjalizowano!");
                 return;
             }
 
             if (_signalController == null)
             {
-                Console.WriteLine("[BLOCK_CONTROLLER] ? Brak SignalController!");
+                DebugManager.Log("[BLOCK_CONTROLLER] ? Brak SignalController!");
                 return;
             }
 
             if (_map == null)
             {
-                Console.WriteLine("[BLOCK_CONTROLLER] ? Brak mapy!");
+                DebugManager.Log("[BLOCK_CONTROLLER] ? Brak mapy!");
                 return;
             }
 
-            // 1. Wyczysc istniejace bloki
             ClearBlocks();
-            Console.WriteLine("[BLOCK_CONTROLLER] Tworzenie blokow z semaforow...");
+            DebugManager.Log("[BLOCK_CONTROLLER] Tworzenie bloków z semaforów...");
 
-            // 2. Pobierz wszystkie semafory
             var allSignals = _signalController.GetAllSignals();
             if (allSignals.Count == 0)
             {
-                Console.WriteLine("[BLOCK_CONTROLLER] ?? Brak semaforow - nie mozna utworzyc blokow");
+                DebugManager.Log("[BLOCK_CONTROLLER] ?? Brak semaforów - nie można utworzyć bloków");
                 return;
             }
 
-            Console.WriteLine($"[BLOCK_CONTROLLER] Znaleziono {allSignals.Count} semaforow");
+            DebugManager.Log($"[BLOCK_CONTROLLER] Znaleziono {allSignals.Count} semaforów");
 
-            // 3. Posortuj semafory wedlug pozycji (dla determinizmu)
             var sortedSignals = allSignals.OrderBy(s => s.Position.X)
                                           .ThenBy(s => s.Position.Y)
                                           .ToList();
 
-            // 4. Dla kazdego semafora utworz blok do nastepnego
             var visitedSignals = new HashSet<Guid>();
             Block? previousBlock = null;
 
@@ -106,50 +102,44 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (visitedSignals.Contains(startSignal.Id))
                     continue;
 
-                // Znajdz sciezke od tego semafora do nastepnego
                 var path = FindPathFromSignal(startSignal, visitedSignals);
 
                 if (path != null && path.Count > 0)
                 {
-                    // Znajdz semafor na koncu sciezki
                     var endSignal = FindSignalAtPosition(path[^1]);
                     if (endSignal != null && !visitedSignals.Contains(endSignal.Id))
                     {
-                        // Utworz blok
                         var block = new Block();
                         block.TrackCells.AddRange(path);
                         block.EntrySignal = startSignal;
                         block.ExitSignal = endSignal;
                         block.SetLength(CalculateBlockLength(block));
 
-                        // Polacz z poprzednim blokiem
                         if (previousBlock != null)
                         {
                             previousBlock.NextBlock = block;
                             block.PreviousBlock = previousBlock;
                         }
 
-                        // Dodaj blok
                         AddBlock(block);
                         visitedSignals.Add(startSignal.Id);
                         visitedSignals.Add(endSignal.Id);
                         previousBlock = block;
 
-                        Console.WriteLine($"[BLOCK_CONTROLLER] ? Utworzono blok: {startSignal.GetAspectName()} ? {endSignal.GetAspectName()}, Komorek: {path.Count}, Dlugosc: {block.Length:F2}");
+                        DebugManager.Log($"[BLOCK_CONTROLLER] ? Utworzono blok: {startSignal.GetAspectName()} ? {endSignal.GetAspectName()}, Komórek: {path.Count}, Długość: {block.Length:F2}");
                     }
                 }
                 else
                 {
-                    // Jesli nie znaleziono sciezki - oznacz jako odwiedzony
                     visitedSignals.Add(startSignal.Id);
                 }
             }
 
-            Console.WriteLine($"[BLOCK_CONTROLLER] ? Utworzono {_blocks.Count} blokow");
+            DebugManager.Log($"[BLOCK_CONTROLLER] ? Utworzono {_blocks.Count} bloków");
         }
 
         // ============================================================
-        // ZNAJDOWANIE sCIEzKI OD SEMAFORA
+        // ZNAJDOWANIE ŚCIEŻKI OD SEMAFORA
         // ============================================================
 
         private List<MapPosition>? FindPathFromSignal(Signal startSignal, HashSet<Guid> visitedSignals)
@@ -218,12 +208,17 @@ namespace RailDispatchMono.Core.Game.Railway
             if (!IsInitialized)
                 return;
 
+            foreach (var block in _blocks)
+            {
+                block.UpdateCooldown(deltaTime);
+            }
+
             UpdateOccupancy();
             UpdateSignals();
         }
 
         // ============================================================
-        // AKTUALIZACJA ZAJeTOsCI
+        // AKTUALIZACJA ZAJĘTOŚCI
         // ============================================================
 
         public void UpdateOccupancy()
@@ -247,7 +242,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // AKTUALIZACJA SEMAFORoW
+        // AKTUALIZACJA SEMAFORÓW
         // ============================================================
 
         public void UpdateSignals()
@@ -260,23 +255,33 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (block.EntrySignal == null)
                     continue;
 
+                // 1. Blok zajęty → NIE ZMIENIAJ
                 if (block.IsOccupied)
                 {
-                    block.EntrySignal.SetAspect(SignalAspect.Stop);
+                    continue;
                 }
-                else if (block.NextBlock != null && block.NextBlock.IsOccupied)
+
+                // 2. Cooldown → STOP
+                if (block.IsCoolingDown)
+                {
+                    block.EntrySignal.SetAspect(SignalAspect.Stop);
+                    continue;
+                }
+
+                // 3. Następny blok zajęty → WARNING
+                if (block.NextBlock != null && block.NextBlock.IsOccupiedOrCoolingDown)
                 {
                     block.EntrySignal.SetAspect(SignalAspect.Warning);
+                    continue;
                 }
-                else
-                {
-                    block.EntrySignal.SetAspect(SignalAspect.Clear);
-                }
+
+                // 4. ✅ WOLNY → RESETUJ NA CLEAR
+                block.EntrySignal.SetAspect(SignalAspect.Clear);
             }
         }
 
         // ============================================================
-        // POBIERANIE BLOKoW
+        // POBIERANIE BLOKÓW
         // ============================================================
 
         public Block? GetBlockAtPosition(Vector2 position)
@@ -330,7 +335,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // REZERWACJA BLOKoW
+        // REZERWACJA BLOKÓW
         // ============================================================
 
         public bool ReserveBlock(Block block, Train.Train train)
@@ -350,7 +355,7 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         // ============================================================
-        // OBLICZANIE DlUGOsCI BLOKU
+        // OBLICZANIE DŁUGOŚCI BLOKU
         // ============================================================
 
         public float CalculateBlockLength(Block block)

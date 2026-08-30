@@ -1,4 +1,4 @@
-Ôªøusing Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using System;
@@ -16,10 +16,20 @@ public sealed partial class Train
         if (deltaTime <= 0.0f || !CanMove || _map is null)
             return;
 
-        System.Diagnostics.Debug.WriteLine(
-            $"[TRAIN] üü¢ START - Pos: ({Position.X:F4}, {Position.Y:F4}), " +
+        DebugManager.Log(
+            $"[TRAIN] ?? START - Pos: ({Position.X:F4}, {Position.Y:F4}), " +
             $"Dir: {Direction}, Speed: {Speed:F2} m/s ({Speed * 3.6f:F1} km/h)");
 
+        // ============================================================
+        // ? KROK 1: ZAKTUALIZUJ SYSTEM BLOKOWY PRZED SYGNA£AMI
+        // ============================================================
+        // DziÍki temu semafory sπ aktualne, zanim pociπg sprawdzi sygna≥.
+        // Pociπg zobaczy Stop, zanim wjedzie na zajÍty blok.
+        // ============================================================
+    
+        // ============================================================
+        // KROK 2: SPRAWDè SYGNA£Y
+        // ============================================================
         var nextSignal = GetNextSignal();
         if (nextSignal != null)
         {
@@ -29,6 +39,9 @@ public sealed partial class Train
 
         _targetSpeed = _lastSignalSpeed;
 
+        // ============================================================
+        // KROK 3: OBLICZ PARAMETRY JAZDY
+        // ============================================================
         float maxSpeed = float.MaxValue;
         float maxAcceleration = 0f;
         float maxBraking = 0f;
@@ -46,6 +59,9 @@ public sealed partial class Train
 
         float decelerationRate = maxBraking > 0 ? maxBraking : 20.0f;
 
+        // ============================================================
+        // KROK 4: ZMIE— PR DKOå∆
+        // ============================================================
         if (Speed < _targetSpeed)
         {
             Speed = Math.Min(
@@ -61,13 +77,16 @@ public sealed partial class Train
             );
         }
 
+        // ============================================================
+        // KROK 5: WYKONAJ RUCH
+        // ============================================================
         float distance = Speed * deltaTime;
         if (distance > MovementEpsilon)
             Move(distance);
     }
 
     // ============================================================
-    // MOVE - G≈Å√ìWNA LOGIKA
+    // MOVE - G£”WNA LOGIKA
     // ============================================================
 
     private void Move(float distance)
@@ -77,7 +96,7 @@ public sealed partial class Train
         if (Position.X < 0 || Position.X > _map.Size.Width ||
             Position.Y < 0 || Position.Y > _map.Size.Height)
         {
-            System.Diagnostics.Debug.WriteLine($"[TRAIN] WARNING: Train out of bounds! {Position}");
+            DebugManager.Log($"[TRAIN] WARNING: Train out of bounds! {Position}");
             _speed = 0;
             return;
         }
@@ -91,7 +110,7 @@ public sealed partial class Train
         {
             if (++iterations > MaxMovementIterations)
             {
-                System.Diagnostics.Debug.WriteLine("[TRAIN] Movement iteration limit reached.");
+                DebugManager.Log("[TRAIN] Movement iteration limit reached.");
                 break;
             }
 
@@ -102,7 +121,7 @@ public sealed partial class Train
                 sameCellCount++;
                 if (sameCellCount > 10)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[TRAIN] Stuck in cell {currentCell} - forcing exit");
+                    DebugManager.Log($"[TRAIN] Stuck in cell {currentCell} - forcing exit");
                     if (!EnterNextCell())
                         break;
                     sameCellCount = 0;
@@ -123,7 +142,7 @@ public sealed partial class Train
 
             if (!_map.TryGetTrack(currentCell, out TrackCell? track) || track is null)
             {
-                System.Diagnostics.Debug.WriteLine($"[TRAIN] No track at {currentCell} - stopping");
+                DebugManager.Log($"[TRAIN] No track at {currentCell} - stopping");
                 _speed = 0;
                 break;
             }
@@ -131,7 +150,7 @@ public sealed partial class Train
             TrackConnections entrySide = GetOppositeDirection(Direction);
 
             // ============================================================
-            // OBS≈ÅUGA ROZJAZDU (JUNCTION)
+            // OBS£UGA ROZJAZDU (JUNCTION)
             // ============================================================
             if (track.Geometry == TrackGeometry.Junction)
             {
@@ -141,7 +160,7 @@ public sealed partial class Train
             }
 
             // ============================================================
-            // OBS≈ÅUGA ZAKRƒòTU (CURVE)
+            // OBS£UGA ZAKR TU (CURVE)
             // ============================================================
             if (track.Geometry == TrackGeometry.Curve)
             {
@@ -156,14 +175,14 @@ public sealed partial class Train
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[CURVE] Invalid entry {entrySide} at {currentCell} - stopping");
+                    DebugManager.Log($"[CURVE] Invalid entry {entrySide} at {currentCell} - stopping");
                     _speed = 0;
                     break;
                 }
             }
 
             // ============================================================
-            // OBS≈ÅUGA TORU PROSTEGO (STRAIGHT)
+            // OBS£UGA TORU PROSTEGO (STRAIGHT)
             // ============================================================
             if (!HandleStraight(currentCell, ref remaining))
                 break;
@@ -183,7 +202,7 @@ public sealed partial class Train
 
         if (!track.HasConnection(Direction))
         {
-            System.Diagnostics.Debug.WriteLine($"[STRAIGHT] No connection {Direction} at {currentCell} - stopping");
+            DebugManager.Log($"[STRAIGHT] No connection {Direction} at {currentCell} - stopping");
             _speed = 0;
             return false;
         }
@@ -209,7 +228,7 @@ public sealed partial class Train
         {
             if (!EnterNextCell())
             {
-                System.Diagnostics.Debug.WriteLine($"[STRAIGHT] Cannot enter next cell after boundary - stopping");
+                DebugManager.Log($"[STRAIGHT] Cannot enter next cell after boundary - stopping");
                 _speed = 0;
                 return false;
             }
@@ -231,14 +250,14 @@ public sealed partial class Train
 
         if (newCell != oldCell && newCell != GetNextCell(oldCell, Direction))
         {
-            System.Diagnostics.Debug.WriteLine(
+            DebugManager.Log(
                 $"[STRAIGHT] WARNING: Moving through multiple cells! {oldCell} -> {newCell}");
             newPos = GetPositionAtEntry(newCell, Direction);
         }
 
         Position = newPos;
 
-        System.Diagnostics.Debug.WriteLine(
+        DebugManager.Log(
             $"[STRAIGHT] Dir:{Direction} Dist:{distance:F6} " +
             $"Old:({oldPos.X:F4},{oldPos.Y:F4}) New:({Position.X:F4},{Position.Y:F4})");
 
@@ -253,27 +272,27 @@ public sealed partial class Train
 
     private bool HandleJunction(TrackCell track, MapPosition currentCell, TrackConnections entrySide, ref float remaining)
     {
-        System.Diagnostics.Debug.WriteLine($"[JUNCTION] Entering {currentCell}, Dir: {Direction}, Entry: {entrySide}");
+        DebugManager.Log($"[JUNCTION] Entering {currentCell}, Dir: {Direction}, Entry: {entrySide}");
 
         TrackConnections exitSide = track.GetExitDirection(entrySide);
 
         if (exitSide == TrackConnections.None)
         {
-            System.Diagnostics.Debug.WriteLine($"[JUNCTION] No exit from {entrySide} - stopping");
+            DebugManager.Log($"[JUNCTION] No exit from {entrySide} - stopping");
             _speed = 0;
             return false;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[JUNCTION] Exit: {exitSide}, Switch: {track.CurrentSwitchPosition}");
+        DebugManager.Log($"[JUNCTION] Exit: {exitSide}, Switch: {track.CurrentSwitchPosition}");
 
         bool isTurning = IsPerpendicular(entrySide, exitSide);
 
         if (isTurning)
         {
-            System.Diagnostics.Debug.WriteLine($"[JUNCTION] Turning {entrySide} -> {exitSide} - entering curve");
+            DebugManager.Log($"[JUNCTION] Turning {entrySide} -> {exitSide} - entering curve");
             if (!EnterCurve(track, entrySide, exitSide))
             {
-                System.Diagnostics.Debug.WriteLine($"[JUNCTION] Failed to enter curve - stopping");
+                DebugManager.Log($"[JUNCTION] Failed to enter curve - stopping");
                 _speed = 0;
                 return false;
             }
@@ -281,7 +300,7 @@ public sealed partial class Train
         }
 
         Direction = exitSide;
-        System.Diagnostics.Debug.WriteLine($"[JUNCTION] Going straight, new direction: {Direction}");
+        DebugManager.Log($"[JUNCTION] Going straight, new direction: {Direction}");
 
         Vector2 exitPos = GetPositionAtEntry(currentCell, exitSide);
         float transitionDist = Vector2.Distance(Position, exitPos);
@@ -338,7 +357,7 @@ public sealed partial class Train
         _curveDistance = 0.0f;
         _isOnCurve = true;
 
-        System.Diagnostics.Debug.WriteLine(
+        DebugManager.Log(
             $"[CURVE] Enter cell:{cell} Entry:{entrySide} Exit:{exitSide} " +
             $"Center:{_arcCenter} Start:{_arcStartAngle:F4} Sweep:{_arcSweepAngle:F4} Length:{_curveLength:F4}");
 
@@ -402,7 +421,7 @@ public sealed partial class Train
         Position = GetArcPosition(1.0f);
         Direction = _curveExitSide;
 
-        System.Diagnostics.Debug.WriteLine(
+        DebugManager.Log(
             $"[FINISH CURVE] Cell:{savedCurveCell} Position:{Position} " +
             $"Exit:{savedExitSide} CurveDistance:{savedCurveDistance:F6}");
 
@@ -431,7 +450,7 @@ public sealed partial class Train
 
                 Position = entryPos;
 
-                System.Diagnostics.Debug.WriteLine(
+                DebugManager.Log(
                     $"[FINISH CURVE] Entered {nextCell}, " +
                     $"curve distance: {savedCurveDistance:F6}, " +
                     $"transition: {transitionDistance:F6}");
@@ -450,14 +469,14 @@ public sealed partial class Train
         MapPosition currentCell = GetCurrentCell();
         MapPosition nextCell = GetNextCell(currentCell, Direction);
 
-        System.Diagnostics.Debug.WriteLine(
+        DebugManager.Log(
             $"[ENTER] Current:{currentCell} Next:{nextCell} Dir:{Direction} Pos:{Position}");
 
         if (currentCell == nextCell) return false;
 
         if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
         {
-            System.Diagnostics.Debug.WriteLine($"[ENTER] No track at {nextCell}");
+            DebugManager.Log($"[ENTER] No track at {nextCell}");
             return false;
         }
 
@@ -465,7 +484,7 @@ public sealed partial class Train
 
         if (!nextTrack.HasConnection(entrySide))
         {
-            System.Diagnostics.Debug.WriteLine($"[ENTER] No connection {entrySide} at {nextCell}");
+            DebugManager.Log($"[ENTER] No connection {entrySide} at {nextCell}");
             return false;
         }
 
@@ -473,7 +492,7 @@ public sealed partial class Train
 
         if (exitSide == TrackConnections.None)
         {
-            System.Diagnostics.Debug.WriteLine($"[ENTER] No exit path available from {entrySide} at {nextCell}");
+            DebugManager.Log($"[ENTER] No exit path available from {entrySide} at {nextCell}");
             return false;
         }
 
@@ -489,7 +508,7 @@ public sealed partial class Train
         Vector2 oldPos = Position;
         float actualDistance = Vector2.Distance(oldPos, entryPos);
 
-        System.Diagnostics.Debug.WriteLine($"[ENTER] OldPos:{oldPos} NewPos:{entryPos} Distance:{actualDistance:F6}");
+        DebugManager.Log($"[ENTER] OldPos:{oldPos} NewPos:{entryPos} Distance:{actualDistance:F6}");
 
         if (actualDistance > MovementEpsilon)
         {

@@ -18,7 +18,7 @@ namespace RailDispatchMono.Core.Game.Rendering
         {
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
-            System.Diagnostics.Debug.WriteLine("[SIGNAL_RENDERER] Utworzono SignalRenderer");// $2
+            DebugManager.Log("[SIGNAL_RENDERER] Utworzono SignalRenderer");// $2
         }
 
         public void LoadContent(GraphicsDevice graphicsDevice)
@@ -27,7 +27,7 @@ namespace RailDispatchMono.Core.Game.Rendering
             _pixel.SetData(new[] { Color.White });
 
             CreateSignalTexture(graphicsDevice);
-            System.Diagnostics.Debug.WriteLine("[SIGNAL_RENDERER] LoadContent - tekstury utworzone");// $2
+            DebugManager.Log("[SIGNAL_RENDERER] LoadContent - tekstury utworzone");// $2
         }
 
         private void CreateSignalTexture(GraphicsDevice graphicsDevice)
@@ -69,7 +69,7 @@ namespace RailDispatchMono.Core.Game.Rendering
             if (totalSignals == 0)
                 return;
 
-            System.Diagnostics.Debug.WriteLine($"[SIGNAL_RENDERER] Rysuje {totalSignals} semaforow");// $2
+            DebugManager.Log($"[SIGNAL_RENDERER] Rysuje {totalSignals} semaforow");// $2
 
             foreach (var kvp in _signalController.Signals)
             {

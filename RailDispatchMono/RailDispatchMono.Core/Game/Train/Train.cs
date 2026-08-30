@@ -21,6 +21,7 @@ public sealed partial class Train
     public TrackConnections Direction { get; private set; }
     public bool CanMove => Composition.CanMove;
     public float Length => Composition.Length;
+    private BlockController? _blockController;
 
     private float _speed;
     public float Speed
@@ -36,6 +37,11 @@ public sealed partial class Train
             }
             _speed = Math.Clamp(value, 0f, maxSpeed);
         }
+    }
+
+    public void SetBlockController(BlockController controller)
+    {
+        _blockController = controller ?? throw new ArgumentNullException(nameof(controller));
     }
 
     public bool IsOnCurve => _isOnCurve;
@@ -346,14 +352,14 @@ public sealed partial class Train
         var currentCell = GetCurrentCell();
         var nextCell = GetNextCell(currentCell, Direction);
 
-        System.Diagnostics.Debug.WriteLine($"[TRAIN] GetNextSignal - Current: {currentCell}, Next: {nextCell}, Dir: {Direction}");
+        DebugManager.Log($"[TRAIN] GetNextSignal - Current: {currentCell}, Next: {nextCell}, Dir: {Direction}");
 
         var currentSignals = _signalController.GetSignalsAt(currentCell);
         var signal = currentSignals?.FirstOrDefault(s => s.Direction == Direction);
 
         if (signal != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[TRAIN] ✅ Found signal at CURRENT cell: {signal.Aspect} ({signal.GetAspectName()})");
+            DebugManager.Log($"[TRAIN] ✅ Found signal at CURRENT cell: {signal.Aspect} ({signal.GetAspectName()})");
             return signal;
         }
 
@@ -362,11 +368,11 @@ public sealed partial class Train
 
         if (signal != null)
         {
-            System.Diagnostics.Debug.WriteLine($"[TRAIN] ✅ Found signal at NEXT cell: {signal.Aspect} ({signal.GetAspectName()})");
+            DebugManager.Log($"[TRAIN] ✅ Found signal at NEXT cell: {signal.Aspect} ({signal.GetAspectName()})");
             return signal;
         }
 
-        System.Diagnostics.Debug.WriteLine("[TRAIN] ❌ No signal found");
+        DebugManager.Log("[TRAIN] ❌ No signal found");
         return null;
     }
 
@@ -417,7 +423,7 @@ public sealed partial class Train
         if (result < 0.0f) result = 0.0f;
         if (result < MovementEpsilon && result > 0) result = MovementEpsilon;
 
-        System.Diagnostics.Debug.WriteLine(
+        DebugManager.Log(
             $"[BOUNDARY] Cell:{cell} Dir:{Direction} Pos:{Position} Result:{result:F6}");
 
         return result;

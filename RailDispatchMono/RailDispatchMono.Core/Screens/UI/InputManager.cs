@@ -83,10 +83,10 @@ namespace RailDispatchMono.Core.Screens.UI
             _signalDirectionMenu.DirectionSelected += OnDirectionSelected;
             _signalDirectionMenu.MenuClosed += (s, e) =>
             {
-                System.Diagnostics.Debug.WriteLine("[SIGNAL] Menu kierunków zamknięte");
+                DebugManager.Log("[SIGNAL] Menu kierunków zamknięte");
             };
 
-            System.Diagnostics.Debug.WriteLine("[INPUT] InputManager utworzony z SignalController i SignalRenderer");
+            DebugManager.Log("[INPUT] InputManager utworzony z SignalController i SignalRenderer");
         }
 
         // ============================================================
@@ -94,24 +94,24 @@ namespace RailDispatchMono.Core.Screens.UI
         // ============================================================
         private void OnDirectionSelected(object? sender, SignalDirectionMenu.SignalDirectionSelectedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"[INPUT] OnDirectionSelected - kierunek: {e.Direction} dla {e.Position}");
+            DebugManager.Log($"[INPUT] OnDirectionSelected - kierunek: {e.Direction} dla {e.Position}");
 
             bool result = _signalController.AddSignal(e.Position, e.Direction);
-            System.Diagnostics.Debug.WriteLine($"[INPUT] AddSignal({e.Position}, {e.Direction}) = {result}");
+            DebugManager.Log($"[INPUT] AddSignal({e.Position}, {e.Direction}) = {result}");
 
             if (result)
             {
-                System.Diagnostics.Debug.WriteLine("[INPUT] ✅ Semafor dodany pomyślnie!");
+                DebugManager.Log("[INPUT] ✅ Semafor dodany pomyślnie!");
 
                 // Sprawdź ile jest teraz semaforów
                 int total = 0;
                 foreach (var kvp in _signalController.Signals)
                     total += kvp.Value.Count;
-                System.Diagnostics.Debug.WriteLine($"[INPUT] Łączna liczba semaforów: {total}");
+                DebugManager.Log($"[INPUT] Łączna liczba semaforów: {total}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[INPUT] ❌ Nie udało się dodać semafora!");
+                DebugManager.Log("[INPUT] ❌ Nie udało się dodać semafora!");
             }
         }
 
@@ -231,26 +231,93 @@ namespace RailDispatchMono.Core.Screens.UI
             if (IsKeyPressed(keyboard, Keys.D1))
             {
                 _builder.Mode = TrackBuildMode.Straight;
-                Debug.WriteLine("[INPUT] Tryb: Straight");
+                DebugManager.Log("[INPUT] Tryb: Straight");
             }
             if (IsKeyPressed(keyboard, Keys.D2))
             {
                 _builder.Mode = TrackBuildMode.Curve;
-                Debug.WriteLine("[INPUT] Tryb: Curve");
+                DebugManager.Log("[INPUT] Tryb: Curve");
             }
             if (IsKeyPressed(keyboard, Keys.D3))
             {
                 _builder.Mode = TrackBuildMode.Junction;
-                Debug.WriteLine("[INPUT] Tryb: Junction");
+                DebugManager.Log("[INPUT] Tryb: Junction");
             }
             if (IsKeyPressed(keyboard, Keys.D4) || IsKeyPressed(keyboard, Keys.NumPad4))
             {
                 _builder.Mode = TrackBuildMode.Signal;
-                Debug.WriteLine("[INPUT] Tryb: Signal");
+                DebugManager.Log("[INPUT] Tryb: Signal");
+            }
+            // ============================================================
+            // KLAWISZE DEBUGOWANIA (F1-F5, F12)
+            // ============================================================
+
+            // F1 - przełącz BLOCK
+            if (IsKeyPressed(keyboard, Keys.F1))
+            {
+                DebugManager.ToggleCategory(DebugManager.DebugCategory.Block);
+                DebugManager.Log($"[INPUT] Toggle BLOCK: {(DebugManager.IsCategoryEnabled(DebugManager.DebugCategory.Block) ? "ON" : "OFF")}");
             }
 
-           
-            
+            // F2 - przełącz SIGNAL
+            if (IsKeyPressed(keyboard, Keys.F2))
+            {
+                DebugManager.ToggleCategory(DebugManager.DebugCategory.Signal);
+                DebugManager.Log($"[INPUT] Toggle SIGNAL: {(DebugManager.IsCategoryEnabled(DebugManager.DebugCategory.Signal) ? "ON" : "OFF")}");
+            }
+
+            // F3 - przełącz TRAIN
+            if (IsKeyPressed(keyboard, Keys.F3))
+            {
+                DebugManager.ToggleCategory(DebugManager.DebugCategory.Train);
+                DebugManager.Log($"[INPUT] Toggle TRAIN: {(DebugManager.IsCategoryEnabled(DebugManager.DebugCategory.Train) ? "ON" : "OFF")}");
+            }
+
+            // F4 - przełącz TRAIN MOVEMENT
+            if (IsKeyPressed(keyboard, Keys.F4))
+            {
+                DebugManager.ToggleCategory(DebugManager.DebugCategory.TrainMovement);
+                DebugManager.Log($"[INPUT] Toggle TRAIN_MOVEMENT: {(DebugManager.IsCategoryEnabled(DebugManager.DebugCategory.TrainMovement) ? "ON" : "OFF")}");
+            }
+
+            // F5 - przełącz WSZYSTKIE
+            if (IsKeyPressed(keyboard, Keys.F5))
+            {
+                // Przełącz wszystkie kategorie
+                bool allEnabled = true;
+                foreach (DebugManager.DebugCategory cat in Enum.GetValues(typeof(DebugManager.DebugCategory)))
+                {
+                    if (cat != DebugManager.DebugCategory.All && cat != DebugManager.DebugCategory.General)
+                    {
+                        if (!DebugManager.IsCategoryEnabled(cat))
+                        {
+                            allEnabled = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (allEnabled)
+                {
+                    DebugManager.DisableAll();
+                    DebugManager.Log("[INPUT] All categories DISABLED");
+                }
+                else
+                {
+                    DebugManager.EnableAll();
+                    DebugManager.Log("[INPUT] All categories ENABLED");
+                }
+            }
+
+            // F12 - zapisz log do pliku
+            if (IsKeyPressed(keyboard, Keys.F12))
+            {
+                string fileName = $"debug_log_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.txt";
+                DebugManager.SaveLogToFile(fileName);
+                DebugManager.Log($"[INPUT] Log saved to: {fileName}");
+            }
+
+
 
             // ============================================================
             // KLAWISZ R - OBRÓT / ZMIANA
@@ -260,17 +327,17 @@ namespace RailDispatchMono.Core.Screens.UI
                 if (_builder.Mode == TrackBuildMode.Straight)
                 {
                     _builder.StraightHorizontal = !_builder.StraightHorizontal;
-                    Debug.WriteLine($"[INPUT] R - StraightHorizontal: {_builder.StraightHorizontal}");
+                    DebugManager.Log($"[INPUT] R - StraightHorizontal: {_builder.StraightHorizontal}");
                 }
                 else if (_builder.Mode == TrackBuildMode.Curve)
                 {
                     _builder.Curve = (CurveDirection)(((int)_builder.Curve + 1) % 4);
-                    Debug.WriteLine($"[INPUT] R - Curve: {_builder.Curve}");
+                    DebugManager.Log($"[INPUT] R - Curve: {_builder.Curve}");
                 }
                 else if (_builder.Mode == TrackBuildMode.Junction)
                 {
                     _builder.Junction = (JunctionType)(((int)_builder.Junction + 1) % 8);
-                    Debug.WriteLine($"[INPUT] R - Junction: {_builder.Junction}");
+                    DebugManager.Log($"[INPUT] R - Junction: {_builder.Junction}");
                 }
             }
 
@@ -297,7 +364,7 @@ namespace RailDispatchMono.Core.Screens.UI
                         else
                             signal.SetAspect(SignalAspect.Stop);
                     }
-                    Debug.WriteLine($"[INPUT] J - przełączono semafor na {worldPos}");
+                    DebugManager.Log($"[INPUT] J - przełączono semafor na {worldPos}");
                     return;
                 }
 
@@ -305,11 +372,11 @@ namespace RailDispatchMono.Core.Screens.UI
                 if (_map.TryGetTrack(worldPos, out var track) && track is not null && track.IsJunction)
                 {
                     track.ToggleSwitch();
-                    Debug.WriteLine($"[INPUT] J - przełączono zwrotnicę na {worldPos}");
+                    DebugManager.Log($"[INPUT] J - przełączono zwrotnicę na {worldPos}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[INPUT] J - brak semafora lub zwrotnicy na {worldPos}");
+                    DebugManager.Log($"[INPUT] J - brak semafora lub zwrotnicy na {worldPos}");
                 }
             }
         }
@@ -344,23 +411,23 @@ namespace RailDispatchMono.Core.Screens.UI
                         if (directions.Count == 1)
                         {
                             _signalController.AddSignal(mapPos, directions[0]);
-                            Debug.WriteLine($"[INPUT] SIGNAL - dodano semafor na {mapPos} w kierunku {directions[0]}");
+                            DebugManager.Log($"[INPUT] SIGNAL - dodano semafor na {mapPos} w kierunku {directions[0]}");
                         }
                         else
                         {
                             _signalDirectionMenu.Open(mouseScreenPosition, mapPos, directions);
-                            Debug.WriteLine($"[INPUT] SIGNAL - otwarto menu kierunków na {mapPos}");
+                            DebugManager.Log($"[INPUT] SIGNAL - otwarto menu kierunków na {mapPos}");
                         }
                     }
                     else
                     {
-                        Debug.WriteLine($"[INPUT] SIGNAL - brak toru na {mapPos}");
+                        DebugManager.Log($"[INPUT] SIGNAL - brak toru na {mapPos}");
                     }
                 }
                 else
                 {
                     _builder.BuildAt(mapPos);
-                    Debug.WriteLine($"[INPUT] Budowanie na {mapPos}, tryb: {_builder.Mode}");
+                    DebugManager.Log($"[INPUT] Budowanie na {mapPos}, tryb: {_builder.Mode}");
                 }
             }
 
@@ -369,7 +436,7 @@ namespace RailDispatchMono.Core.Screens.UI
             // ============================================================
             if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
             {
-                Debug.WriteLine($"[INPUT] PPM na {mapPos}, Shift: {shiftPressed}");
+                DebugManager.Log($"[INPUT] PPM na {mapPos}, Shift: {shiftPressed}");
 
                 // ============================================================
                 // 1. SEMAFORY
@@ -381,7 +448,7 @@ namespace RailDispatchMono.Core.Screens.UI
                     if (shiftPressed)
                     {
                         _signalController.RemoveSignalsAt(mapPos);
-                        Debug.WriteLine($"[INPUT] ✅ Usunięto semafor na {mapPos} (Shift+PPM)");
+                        DebugManager.Log($"[INPUT] ✅ Usunięto semafor na {mapPos} (Shift+PPM)");
                         return;
                     }
 
@@ -389,12 +456,12 @@ namespace RailDispatchMono.Core.Screens.UI
                     if (signals.Count == 1)
                     {
                         _signalRadialMenu.Open(mouseScreenPosition, signals[0]);
-                        Debug.WriteLine($"[INPUT] 📋 Otwarto menu aspektów na {mapPos}");
+                        DebugManager.Log($"[INPUT] 📋 Otwarto menu aspektów na {mapPos}");
                     }
                     else if (signals.Count > 1)
                     {
                         _signalSelectionMenu.Open(mouseScreenPosition, signals);
-                        Debug.WriteLine($"[INPUT] 📋 Otwarto menu wyboru semafora na {mapPos}");
+                        DebugManager.Log($"[INPUT] 📋 Otwarto menu wyboru semafora na {mapPos}");
                     }
                     return;
                 }
@@ -408,13 +475,13 @@ namespace RailDispatchMono.Core.Screens.UI
                     if (shiftPressed)
                     {
                         _builder.Remove(mapPos);
-                        Debug.WriteLine($"[INPUT] ✅ Usunięto rozjazd na {mapPos} (Shift+PPM)");
+                        DebugManager.Log($"[INPUT] ✅ Usunięto rozjazd na {mapPos} (Shift+PPM)");
                         return;
                     }
 
                     // PPM bez Shift = MENU ROZJAZDU
                     _junctionRadialMenu.Open(mouseScreenPosition, track);
-                    Debug.WriteLine($"[INPUT] 📋 Otwarto menu rozjazdu na {mapPos}");
+                    DebugManager.Log($"[INPUT] 📋 Otwarto menu rozjazdu na {mapPos}");
                     return;
                 }
 
@@ -424,11 +491,11 @@ namespace RailDispatchMono.Core.Screens.UI
                 if (_map.TryGetTrack(mapPos, out var existingTrack) && existingTrack != null)
                 {
                     _builder.Remove(mapPos);
-                    Debug.WriteLine($"[INPUT] ✅ Usunięto tor na {mapPos} (PPM)");
+                    DebugManager.Log($"[INPUT] ✅ Usunięto tor na {mapPos} (PPM)");
                     return;
                 }
 
-                Debug.WriteLine($"[INPUT] PPM - brak elementu na {mapPos}");
+                DebugManager.Log($"[INPUT] PPM - brak elementu na {mapPos}");
             }
         }
 

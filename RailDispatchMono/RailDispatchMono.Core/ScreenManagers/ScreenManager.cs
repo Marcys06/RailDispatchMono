@@ -169,7 +169,7 @@ namespace RailDispatchMono.Core.ScreenManagers
         private void TraceScreens()
         {
             var screenNames = screens.Select(screen => screen.GetType().Name).ToList();
-            Debug.WriteLine(string.Join(", ", screenNames));
+            DebugManager.Log(string.Join(", ", screenNames));
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using RailDispatchMono.Core.Game.Map;
+using RailDispatchMono.Core.Game.Map;
 using System.Collections.Generic;
 using System;
 namespace RailDispatchMono.Core.Game.Railway;

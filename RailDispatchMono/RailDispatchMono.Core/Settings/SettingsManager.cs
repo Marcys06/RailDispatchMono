@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 
 namespace RailDispatchMono.Core.Settings
@@ -55,7 +55,7 @@ namespace RailDispatchMono.Core.Settings
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to save settings: {ex}");
+                DebugManager.Log($"Failed to save settings: {ex}");
             }
         }
 
@@ -70,7 +70,7 @@ namespace RailDispatchMono.Core.Settings
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to load settings, initializing defaults: {ex}");
+                DebugManager.Log($"Failed to load settings, initializing defaults: {ex}");
                 settings = new T();
             }
 

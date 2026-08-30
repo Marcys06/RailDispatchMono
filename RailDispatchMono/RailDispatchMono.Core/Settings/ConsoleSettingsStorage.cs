@@ -1,4 +1,4 @@
-﻿namespace RailDispatchMono.Core.Settings
+namespace RailDispatchMono.Core.Settings
 {
     /// <summary>
     /// Provides a storage mechanism for game settings on console platforms.
