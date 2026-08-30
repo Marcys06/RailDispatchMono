@@ -13,6 +13,7 @@ namespace RailDispatchMono.Core
     /// <summary>
     /// Centralny system debugowania - zarz¹dza logowaniem i histori¹ komunikatów.
     /// Logi trafiaj¹ jednoczeœnie do Debug/Trace oraz do pliku.
+    /// High-frequency movement diagnostics are throttled to keep the debugger usable.
     /// </summary>
     public static class DebugManager
     {
@@ -35,6 +36,7 @@ namespace RailDispatchMono.Core
         }
 
         private static readonly Dictionary<DebugCategory, bool> _enabledCategories = new();
+        private static readonly Dictionary<string, DateTime> _lastThrottledLog = new();
         private static bool _logToConsole = true;
         private static bool _logToFile = true;
         private static string _logFilePath = "debug_log.txt";
@@ -43,6 +45,10 @@ namespace RailDispatchMono.Core
         private static int _maxLogEntries = 1000;
         private static readonly List<string> _logHistory = new();
         private static readonly object _lock = new();
+
+        // Movement/geometry calculations can execute many times per frame.
+        // Keep these diagnostics available, but do not write them on every call.
+        private static readonly TimeSpan MovementLogInterval = TimeSpan.FromMilliseconds(250);
 
         public static bool IsDebugEnabled { get; set; } = true;
         public static bool LogToConsole { get => _logToConsole; set => _logToConsole = value; }
@@ -133,6 +139,29 @@ namespace RailDispatchMono.Core
             if (!_enabledCategories.TryGetValue(category, out bool enabled) || !enabled)
                 return;
 
+            if (category == DebugCategory.TrainMovement && ShouldThrottle("CATEGORY:TrainMovement"))
+                return;
+
+            WriteLog(category, message);
+        }
+
+        public static void Log(string message)
+        {
+            if (!IsDebugEnabled)
+                return;
+
+            // Existing movement diagnostics currently use the generic Log(string)
+            // overload. Detect only the known high-frequency prefixes here so the
+            // rest of the existing logging behaviour remains unchanged.
+            string throttleKey = GetThrottleKey(message);
+            if (throttleKey != null && ShouldThrottle(throttleKey))
+                return;
+
+            WriteLog(DebugCategory.General, message);
+        }
+
+        private static void WriteLog(DebugCategory category, string message)
+        {
             string formattedMessage = FormatMessage(category, message);
 
             lock (_lock)
@@ -141,8 +170,6 @@ namespace RailDispatchMono.Core
                 if (_logHistory.Count > _maxLogEntries)
                     _logHistory.RemoveAt(0);
 
-                // Console.WriteLine is not reliably visible in all MonoGame hosts.
-                // Debug.WriteLine/Trace.WriteLine are visible in the IDE debugger.
                 try
                 {
                     if (_logToConsole)
@@ -169,14 +196,40 @@ namespace RailDispatchMono.Core
                     }
                     catch (Exception ex)
                     {
-                        // Try the debugger even when file access is unavailable.
                         Debug.WriteLine($"[DEBUG] Error saving log to '{_logFilePath}': {ex.Message}");
                     }
                 }
             }
         }
 
-        public static void Log(string message) => Log(DebugCategory.General, message);
+        private static string GetThrottleKey(string message)
+        {
+            if (message.StartsWith("[BOUNDARY]", StringComparison.OrdinalIgnoreCase))
+                return "BOUNDARY";
+
+            if (message.StartsWith("[STRAIGHT]", StringComparison.OrdinalIgnoreCase))
+                return "STRAIGHT";
+
+            return null;
+        }
+
+        private static bool ShouldThrottle(string key)
+        {
+            lock (_lock)
+            {
+                DateTime now = DateTime.UtcNow;
+
+                if (_lastThrottledLog.TryGetValue(key, out DateTime last)
+                    && now - last < MovementLogInterval)
+                {
+                    return true;
+                }
+
+                _lastThrottledLog[key] = now;
+                return false;
+            }
+        }
+
         public static void LogError(string message) => Log(DebugCategory.Error, $"[ERR] {message}");
         public static void LogWarning(string message) => Log(DebugCategory.General, $"[WARN] {message}");
         public static void LogSuccess(string message) => Log(DebugCategory.General, $"[OK] {message}");
