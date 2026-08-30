@@ -1,6 +1,88 @@
 Changelog
+[0.0.7c] — System debugowania i automatyczne resetowanie semaforow
+Data: 2026-08-30
 
-0.0.7b] — Refaktoryzacja klasy Train na częściowe pliki
+
+Debug System
+
+- Utworzono centralny system debugowania (DebugManager.cs)
+- Dodano kategorie debugowania: General, Block, Signal, Train, TrainMovement, Camera, Input, Render, Map, TrackBuilder, UI, Performance, Error, All
+- Logi zapisywane do pliku debug_log_*.txt w folderze gry
+- Dodano mozliwosc wlaczania/wylaczania poszczegolnych kategorii debugowania
+- Dodano klawisze skrotow do sterowania debugowaniem:
+  - F1 - przełącz kategorie BLOCK
+  - F2 - przełącz kategorie SIGNAL
+  - F3 - przełącz kategorie TRAIN
+  - F4 - przełącz kategorie TRAIN_MOVEMENT
+  - F5 - przełącz wszystkie kategorie (ON/OFF)
+  - F12 - zapisz logi do pliku
+- Dodano metody skrotu dla kazdej kategorii: DebugManager.Block(), DebugManager.Signal(), DebugManager.Train(), DebugManager.Input(), DebugManager.Render()
+- Dodano historie logow (ostatnie 1000 wpisow)
+- Dodano mozliwosc czyszczenia historii logow
+
+
+Block System / Automatic Signal Reset
+
+- Dodano automatyczne resetowanie semaforow po opuszczeniu bloku przez pociag
+- Dodano mechanizm cooldown (0.5s) po opuszczeniu bloku przed zmiana semafora
+- Zaktualizowano UpdateSignals() w BlockController:
+  - Blok zajety -> nie zmieniaj semafora
+  - Blok w cooldown -> ustaw STOP
+  - Nastepny blok zajety -> ustaw WARNING
+  - Blok wolny -> resetuj na Clear
+- Dodano OnTrainExited() w Block do obslugi opuszczenia bloku przez pociag
+- Dodano ResetEntrySignals() w Block do resetowania semafora na wejsciu
+- Dodano StartCooldown() w Block do rozpoczecia odliczania cooldown
+- Zaktualizowano UpdateOccupancy() do prawidlowego przypisywania pociagow do blokow
+
+
+Signal System
+
+- Dodano mozliwosc recznego przelaczania semaforow (klawisz J)
+- Dodano menu wyboru aspektow (PPM na semaforze)
+- Semafor automatycznie resetuje sie na Clear po opuszczeniu bloku
+
+
+Train System / Block Tracking
+
+- Dodano sledzenie blokow przez pociag (CheckBlockChange)
+- Dodano SetBlockController() do przekazywania kontrolera blokow do pociagu
+- Zaktualizowano TrainMovement o powiadamianie BlockController o zmianie pozycji
+
+
+Controls
+
+- F1 — przełącz kategorie BLOCK
+- F2 — przełącz kategorie SIGNAL
+- F3 — przełącz kategorie TRAIN
+- F4 — przełącz kategorie TRAIN_MOVEMENT
+- F5 — przełącz wszystkie kategorie
+- F12 — zapisz logi do pliku
+- J — przełącz semafor (Stop ↔ Clear) / przełącz rozjazd
+
+
+Build
+
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+- Dodano DebugManager.cs
+- Dodano using RailDispatchMono.Core.Game.Debug we wszystkich plikach
+
+
+Known gaps / Poza zakresem tego wpisu
+
+- Usuwanie toru nie aktualizuje jeszcze polaczen sasiednich elementow
+- Ruch pociagu nie obsluguje jeszcze pelnego przebiegu po sieci torowej
+- Pociag nie zatrzymuje sie jeszcze automatycznie przed koncem istniejacego toru
+- Brak obslugi kierunku jazdy i zmiany kierunku na rozjazdach
+- Brak interlockingu
+- Brak wykolejenia
+- Brak manewrow i sprzegania w warstwie symulacji
+- Brak planowania jazdy
+- Brak pasazerow
+- Brak harmonogramow
+
+[0.0.7b] — Refaktoryzacja klasy Train na częściowe pliki
 Data: 2026-08-30
 
 **Train System / Code Refactoring**
