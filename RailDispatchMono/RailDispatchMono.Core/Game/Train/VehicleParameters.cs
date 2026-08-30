@@ -1,5 +1,7 @@
 namespace RailDispatchMono.Core.Game.Train;
 
+using System;  // Required for Math
+
 public class VehicleParameters
 {
     public float MaxSpeed { get; }
@@ -35,14 +37,14 @@ public class VehicleParameters
         float technicalCondition = 1.0f)
     {
         MaxSpeed = maxSpeed;
-        Mass = MathF.Max(0.001f, mass);
+        Mass = Math.Max(0.001f, mass);           // MathF -> Math
         Length = length;
 
-        MassCoefficient = MathF.Max(0.000001f, massCoefficient);
-        TechnicalCondition = MathF.Max(0.5f, MathF.Min(1.5f, technicalCondition));
+        MassCoefficient = Math.Max(0.000001f, massCoefficient);  // MathF -> Math
+        TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));  // MathF -> Math
 
-        AccelerationCoefficient = MathF.Max(0f, acceleration);
-        BrakingCoefficient = MathF.Max(0f, braking > 10f ? braking / 100f : braking);
+        AccelerationCoefficient = Math.Max(0f, acceleration);    // MathF -> Math
+        BrakingCoefficient = Math.Max(0f, braking > 10f ? braking / 100f : braking);  // MathF -> Math
 
         Acceleration = CalculateRate(AccelerationCoefficient);
         Braking = CalculateRate(BrakingCoefficient);
