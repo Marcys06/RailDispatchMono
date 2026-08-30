@@ -16,6 +16,7 @@ namespace RailDispatchMono.Core.Game.Railway
         private readonly List<Block> _blocks = new();
         private readonly Dictionary<MapPosition, Block> _cellToBlock = new();
         private readonly Dictionary<Guid, bool> _previousOccupancy = new();
+        private readonly HashSet<Guid> _pendingAutomaticStops = new();
 
         private GameMap? _map;
         private TrainManager? _trainManager;
@@ -175,10 +176,12 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (isOccupied)
                 {
                     block.CancelCooldown();
+                    _pendingAutomaticStops.Remove(block.Id);
                 }
                 else if (wasOccupied)
                 {
                     block.StartCooldown();
+                    _pendingAutomaticStops.Add(block.Id);
                     DebugManager.Log($"[BLOCK] {block.Name} opuszczony - semafor pozostanie bez zmian przez {Block.CoolDownDuration:F1}s");
                 }
 
@@ -187,8 +190,9 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         /// <summary>
-        /// Automatic signal control is deliberately one-way for now:
-        /// only Clear -> Stop is automatic. Stop -> permissive aspects remain manual.
+        /// Automatic signal control is intentionally one-way and event-driven:
+        /// after a block becomes free, Clear -> Stop occurs once after 3 seconds.
+        /// Stop -> permissive aspects are never automated.
         /// </summary>
         public void UpdateSignals()
         {
@@ -201,16 +205,17 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (signal == null || block.IsOccupied || block.IsCoolingDown)
                     continue;
 
-                if (signal.Aspect == SignalAspect.Clear)
+                if (!_pendingAutomaticStops.Remove(block.Id))
+                    continue;
+
+                if (signal.Aspect == SignalAspect.Clear && signal.SetAspect(SignalAspect.Stop))
                 {
-                    if (signal.SetAspect(SignalAspect.Stop))
-                        DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: Clear -> Stop po zwolnieniu bloku {block.Name}");
+                    DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: Clear -> Stop po zwolnieniu bloku {block.Name}");
                 }
             }
         }
 
         public Block? GetBlockAtPosition(Vector2 position) => _blocks.FirstOrDefault(block => block.ContainsPosition(position));
-
         public Block? GetBlockAtPosition(MapPosition position) => GetBlockAtPosition(new Vector2(position.X + 0.5f, position.Y + 0.5f));
 
         public Block? GetBlockForSignal(Signal signal)
@@ -308,6 +313,7 @@ namespace RailDispatchMono.Core.Game.Railway
             _blocks.Clear();
             _cellToBlock.Clear();
             _previousOccupancy.Clear();
+            _pendingAutomaticStops.Clear();
         }
 
         public override string ToString() => $"[BlockController] Blocks: {_blocks.Count}, Initialized: {IsInitialized}";
