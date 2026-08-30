@@ -11,9 +11,6 @@ using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Railway
 {
-    /// <summary>
-    /// Blok torowy - odcinek toru między dwoma semaforami.
-    /// </summary>
     public class Block
     {
         public Guid Id { get; }
@@ -31,9 +28,10 @@ namespace RailDispatchMono.Core.Game.Railway
 
         private float _coolDownTimer;
         private bool _isCoolingDown;
-        private const float CoolDownDuration = 3.0f;
+        public const float CoolDownDuration = 3.0f;
 
         public bool IsCoolingDown => _isCoolingDown;
+        public float CoolDownRemaining => _coolDownTimer;
         public bool IsOccupiedOrCoolingDown => IsOccupied || IsCoolingDown;
 
         public bool IsReserved { get; private set; }
@@ -84,6 +82,12 @@ namespace RailDispatchMono.Core.Game.Railway
             _isCoolingDown = true;
         }
 
+        public void CancelCooldown()
+        {
+            _coolDownTimer = 0f;
+            _isCoolingDown = false;
+        }
+
         public void UpdateCooldown(float deltaTime)
         {
             if (!_isCoolingDown)
@@ -104,15 +108,16 @@ namespace RailDispatchMono.Core.Game.Railway
                 StartCooldown();
         }
 
+        /// <summary>
+        /// Kept for API compatibility. Signal aspect changes from Stop to a permissive
+        /// aspect are intentionally manual and are not performed here.
+        /// </summary>
         public void ResetEntrySignals()
         {
-            // Intentionally does not change the aspect. Signal release is manual.
         }
 
-        public bool IsTrainFullyOnBlock(Train.Train train)
-        {
-            return ContainsPosition(train.Position) && ContainsPosition(train.GetLastVehiclePosition());
-        }
+        public bool IsTrainFullyOnBlock(Train.Train train) =>
+            ContainsPosition(train.Position) && ContainsPosition(train.GetLastVehiclePosition());
 
         public bool IsTrainPartiallyOnBlock(Train.Train train)
         {
@@ -130,9 +135,7 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public bool TryReserve(Train.Train train)
         {
-            if (IsOccupied)
-                return false;
-            if (IsReserved && ReservedFor != train)
+            if (IsOccupied || (IsReserved && ReservedFor != train))
                 return false;
 
             IsReserved = true;
@@ -198,6 +201,7 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public void SetLength(float length) => Length = length;
 
-        public override string ToString() => $"[Block {Id.ToString()[..8]}] Cells: {TrackCells.Count}, Length: {Length:F2}, Occupied: {IsOccupied}";
+        public override string ToString() =>
+            $"[Block {Id.ToString()[..8]}] Cells: {TrackCells.Count}, Length: {Length:F2}, Occupied: {IsOccupied}";
     }
 }
