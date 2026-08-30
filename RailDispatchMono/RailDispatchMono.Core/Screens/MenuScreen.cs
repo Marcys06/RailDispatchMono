@@ -202,9 +202,14 @@ namespace RailDispatchMono.Core.Screens
         /// </summary>
         protected virtual void UpdateMenuEntryLocations()
         {
-            // ✅ Sprawdź czy Font jest załadowany
+            DebugManager.Log("[MENU] UpdateMenuEntryLocations() - START");
+
             var font = ScreenManager?.Font;
-            if (font == null) return;
+            if (font == null)
+            {
+                DebugManager.Log("[MENU] UpdateMenuEntryLocations() - BRAK FONT!");
+                return;
+            }
 
             float transitionOffset = (float)Math.Pow(TransitionPosition, 2);
 
@@ -223,8 +228,12 @@ namespace RailDispatchMono.Core.Screens
 
                 menuEntry.Position = position;
 
+                DebugManager.Log($"[MENU] Entry {i}: '{menuEntry.Text}' -> Position: {position}");
+
                 position.Y += menuEntry.GetHeight(this);
             }
+
+            DebugManager.Log("[MENU] UpdateMenuEntryLocations() - KONIEC");
         }
 
         /// <summary>
@@ -249,44 +258,55 @@ namespace RailDispatchMono.Core.Screens
         /// </summary>
         public override void Draw(GameTime gameTime)
         {
-            // ✅ Sprawdź czy Font i SpriteBatch są załadowane
+            DebugManager.Log("[MENU] 🔥 Draw() - START");
+
             var font = ScreenManager?.Font;
             var spriteBatch = ScreenManager?.SpriteBatch;
             var graphics = ScreenManager?.GraphicsDevice;
 
+            DebugManager.Log($"[MENU] Font: {font != null}, SpriteBatch: {spriteBatch != null}");
+
             if (font == null || spriteBatch == null || graphics == null)
-                return; // ✅ Nie rysuj, jeśli nie ma czcionki lub SpriteBatch
+            {
+                DebugManager.Log("[MENU] ❌ BRAK ZASOBÓW - nie rysuję!");
+                return;
+            }
+
+            DebugManager.Log($"[MENU] Liczba entries: {menuEntries.Count}");
 
             // Make sure our entries are in the right place before we draw them.
             UpdateMenuEntryLocations();
 
+            DebugManager.Log("[MENU] Po UpdateMenuEntryLocations()");
+
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, ScreenManager.GlobalTransformation);
 
-            // Draw each menu entry in turn.
             for (int i = 0; i < menuEntries.Count; i++)
             {
                 MenuEntry menuEntry = menuEntries[i];
-
                 bool isSelected = IsActive && (i == selectedEntry);
+
+                DebugManager.Log($"[MENU] Rysuję entry {i}: '{menuEntry.Text}' at {menuEntry.Position}");
 
                 menuEntry.Draw(this, isSelected, gameTime);
             }
 
-            // Make the menu slide into place during transitions.
+            // Rysuj tytuł
             float transitionOffset = (float)Math.Pow(TransitionPosition, 2);
-
-            // Draw the menu title centered on the screen.
             Vector2 titlePosition = new Vector2(ScreenManager.BaseScreenSize.X / 2, 80);
             Vector2 titleOrigin = font.MeasureString(menuTitle) / 2;
             Color titleColor = menuTitleColor * TransitionAlpha;
             float titleScale = 1.25f;
-
             titlePosition.Y -= transitionOffset * 100;
+
+            DebugManager.Log($"[MENU] Tytuł: '{menuTitle}' at {titlePosition}");
 
             spriteBatch.DrawString(font, menuTitle, titlePosition, titleColor, 0,
                                    titleOrigin, titleScale, SpriteEffects.None, 0);
 
             spriteBatch.End();
+
+            DebugManager.Log("[MENU] 🔥 Draw() - KONIEC");
         }
     }
 }

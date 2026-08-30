@@ -1,5 +1,52 @@
 Changelog
 
+[0.0.8b] — System pauzy - naprawa wyświetlania menu
+Data: 2026-08-30
+
+Pause System / Bug Fixes
+
+- Naprawiono wyświetlanie opcji menu pauzy (Resume, Quit)
+- Dodano logi debugowania w MenuScreen.Draw() i UpdateMenuEntryLocations()
+- Poprawiono wywołanie base.Draw() w PauseScreen
+- Zaktualizowano MenuScreen o szczegółowe logi diagnostyczne
+
+Screen Management
+
+- Dodano właściwość InputState w ScreenManager (publiczny dostęp)
+- Poprawiono obsługę wejścia dla menu pauzy
+- Zaktualizowano GameplayScreen o korzystanie z InputState
+
+Input System
+
+- Dodano metodę IsPauseKeyJustPressed() w InputState
+- Zintegrowano InputState z GameplayScreen.Update()
+
+Build
+
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+- Usunięto projekty Android i iOS z rozwiązania (tylko DesktopGL)
+
+Controls
+
+- Escape / P — włącz / wyłącz pauzę (Pause Menu)
+- Strzałki GÓRA / DÓŁ (lub W / S) — nawigacja po pozycjach menu pauzy
+- Enter / Space — zatwierdzenie wybranej opcji w menu
+
+Known gaps / Poza zakresem tego wpisu
+
+- Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów
+- Ruch pociągu nie obsługuje jeszcze pełnego przebiegu po sieci torowej
+- Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru
+- Brak obsługi kierunku jazdy i zmiany kierunku na rozjazdach
+- Brak interlockingu
+- Brak wykolejenia
+- Brak manewrów i sprzęgania w warstwie symulacji
+- Brak planowania jazdy
+- Brak pasażerów
+- Brak harmonogramów
+
+
 [0.0.8a] — System pauzy i wsparcie menu ekranowego
 Data: 2026-08-30
 

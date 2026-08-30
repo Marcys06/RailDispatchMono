@@ -8,53 +8,73 @@ namespace RailDispatchMono.Core.Screens
     {
         // ✅ ZDARZENIA DLA GAMEPLAYSCREEN
         public event EventHandler? OnQuit;
+        public event EventHandler? OnResume;
 
         public PauseScreen() : base(Resources.Paused)
         {
             IsPopup = true;
+            TransitionOnTime = TimeSpan.FromSeconds(0.2);
+            TransitionOffTime = TimeSpan.FromSeconds(0.2);
 
             MenuEntry resumeGameMenuEntry = new MenuEntry(Resources.Resume);
             MenuEntry quitGameMenuEntry = new MenuEntry(Resources.Quit);
 
-            // ✅ Wznów grę — użyj OnCancel (ESC lub kliknięcie)
-            resumeGameMenuEntry.Selected += OnCancel;
-
-            // ✅ Wyjście z gry
+            resumeGameMenuEntry.Selected += ResumeGameEntrySelected;
             quitGameMenuEntry.Selected += QuitGameMenuEntrySelected;
 
             MenuEntries.Add(resumeGameMenuEntry);
             MenuEntries.Add(quitGameMenuEntry);
+
+            DebugManager.Log($"[PAUSE] Konstruktor - Liczba entries: {MenuEntries.Count}");
+            DebugManager.Log($"[PAUSE] Entry 1: '{resumeGameMenuEntry.Text}'");
+            DebugManager.Log($"[PAUSE] Entry 2: '{quitGameMenuEntry.Text}'");
         }
 
-        private void QuitGameMenuEntrySelected(object sender, PlayerIndexEventArgs e)
+        // ✅ DODAJ TĘ METODĘ!
+        public override void Draw(GameTime gameTime)
+        {
+            DebugManager.Log($"[PAUSE] Draw() - Wywołuję base.Draw()");
+            base.Draw(gameTime);
+            DebugManager.Log($"[PAUSE] Draw() - Po base.Draw()");
+        }
+
+        private void ResumeGameEntrySelected(object? sender, PlayerIndexEventArgs e)
+        {
+            OnResume?.Invoke(this, EventArgs.Empty);
+            ExitScreen();
+        }
+
+        private void QuitGameMenuEntrySelected(object? sender, PlayerIndexEventArgs e)
         {
             string message = Resources.QuitQuestion;
 
             MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen(message);
             confirmQuitMessageBox.Accepted += ConfirmQuitMessageBoxAccepted;
+            confirmQuitMessageBox.Cancelled += ConfirmQuitMessageBoxCancelled;
 
             ScreenManager.AddScreen(confirmQuitMessageBox, ControllingPlayer);
         }
 
-        private void ConfirmQuitMessageBoxAccepted(object sender, PlayerIndexEventArgs e)
+        private void ConfirmQuitMessageBoxAccepted(object? sender, PlayerIndexEventArgs e)
         {
-            // ✅ Powiadom GameplayScreen o wyjściu
             OnQuit?.Invoke(this, EventArgs.Empty);
-
-            // Wyjdź z gry
             ScreenManager.Game.Exit();
+        }
+
+        private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e)
+        {
+            // Nic nie rób - wróć do menu pauzy
+        }
+
+        protected override void OnCancel(PlayerIndex playerIndex)
+        {
+            OnResume?.Invoke(this, EventArgs.Empty);
+            ExitScreen();
         }
 
         public void Cancel(PlayerIndex playerIndex)
         {
-            OnCancel(playerIndex); // wywołuje chronioną metodę
-        }
-
-        // ✅ Nadpisanie OnCancel — ESC zamyka menu pauzy i wznawia grę
-        protected override void OnCancel(PlayerIndex playerIndex)
-        {
-            // ✅ To zamknie menu pauzy — GameplayScreen zareaguje na to
-            ExitScreen();
+            OnCancel(playerIndex);
         }
     }
 }

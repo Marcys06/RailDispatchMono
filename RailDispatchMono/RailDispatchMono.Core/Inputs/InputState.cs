@@ -275,6 +275,29 @@ namespace RailDispatchMono.Core.Inputs
             }
         }
 
+        /// <summary>
+        /// Helper for checking if a key is currently pressed.
+        /// </summary>
+        /// <param name="key">The key to check.</param>
+        /// <param name="controllingPlayer">The player to read input for, or null for any player.</param>
+        /// <returns>True if the key is currently pressed, false otherwise.</returns>
+        public bool IsKeyDown(Keys key, PlayerIndex? controllingPlayer = null)
+        {
+            if (controllingPlayer.HasValue)
+            {
+                int i = (int)controllingPlayer.Value;
+                return CurrentKeyboardStates[i].IsKeyDown(key);
+            }
+            else
+            {
+                for (int i = 0; i < MaxInputs; i++)
+                {
+                    if (CurrentKeyboardStates[i].IsKeyDown(key))
+                        return true;
+                }
+                return false;
+            }
+        }
 
         /// <summary>
         /// Helper for checking if a button was newly pressed during this update.
@@ -306,7 +329,6 @@ namespace RailDispatchMono.Core.Inputs
             }
         }
 
-
         /// <summary>
         /// Checks for a "menu select" input action.
         /// </summary>
@@ -322,7 +344,6 @@ namespace RailDispatchMono.Core.Inputs
                    IsNewButtonPress(Buttons.Start, controllingPlayer, out playerIndex);
         }
 
-
         /// <summary>
         /// Checks for a "menu cancel" input action.
         /// </summary>
@@ -336,7 +357,6 @@ namespace RailDispatchMono.Core.Inputs
                    IsNewButtonPress(Buttons.B, controllingPlayer, out playerIndex) ||
                    IsNewButtonPress(Buttons.Back, controllingPlayer, out playerIndex);
         }
-
 
         /// <summary>
         /// Checks for a "menu up" input action.
@@ -353,7 +373,6 @@ namespace RailDispatchMono.Core.Inputs
                    IsMouseWheelScrolledUp;
         }
 
-
         /// <summary>
         /// Checks for a "menu down" input action.
         /// </summary>
@@ -368,7 +387,6 @@ namespace RailDispatchMono.Core.Inputs
                    IsNewButtonPress(Buttons.LeftThumbstickDown, controllingPlayer, out playerIndex) ||
                    IsMouseWheelScrolledDown;
         }
-
 
         /// <summary>
         /// Checks for a "pause the game" input action.
@@ -396,6 +414,19 @@ namespace RailDispatchMono.Core.Inputs
                 || IsNewButtonPress(Buttons.Back, controllingPlayer, out playerIndex)
                 || IsNewButtonPress(Buttons.Start, controllingPlayer, out playerIndex)
                 || pointInRect;
+        }
+
+        /// <summary>
+        /// ✅ NOWA METODA: Sprawdza czy klawisz pauzy (ESC) został właśnie wciśnięty.
+        /// Używa InternalIsNewKeyPress dla szybszego sprawdzenia bez output.
+        /// </summary>
+        /// <param name="controllingPlayer">The player to read input for, or null for any player.</param>
+        /// <returns>True if pause key was just pressed, false otherwise.</returns>
+        public bool IsPauseKeyJustPressed(PlayerIndex? controllingPlayer = null)
+        {
+            // Użyj istniejącej metody IsNewKeyPress, ale ignoruj playerIndex
+            PlayerIndex playerIndex;
+            return IsNewKeyPress(Keys.Escape, controllingPlayer, out playerIndex);
         }
 
         /// <summary>

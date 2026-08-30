@@ -64,6 +64,11 @@ namespace RailDispatchMono.Core.ScreenManagers
         public SpriteFont Font => font;
 
         /// <summary>
+        /// Provides access to the shared InputState for input handling.
+        /// </summary>
+        public InputState InputState => inputState;
+
+        /// <summary>
         /// Enables or disables screen tracing for debugging purposes.
         /// When enabled, the manager prints a list of active screens during updates.
         /// </summary>

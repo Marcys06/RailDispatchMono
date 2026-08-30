@@ -1,8 +1,12 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34723.18
 MinimumVisualStudioVersion = 15.0.26124.0
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RailDispatchMono.Android", "RailDispatchMono.Android\RailDispatchMono.Android.csproj", "{6161B64E-0BF7-42D9-B2BA-6BB16460BFE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RailDispatchMono.iOS", "RailDispatchMono.iOS\RailDispatchMono.iOS.csproj", "{109593E3-17AE-4482-9556-4B2068F9479B}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RailDispatchMono.Core", "RailDispatchMono.Core\RailDispatchMono.Core.csproj", "{47BD21C1-2170-456C-AF98-6D92C5F73BA9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RailDispatchMono.DesktopGL", "RailDispatchMono.DesktopGL\RailDispatchMono.DesktopGL.csproj", "{85B968E5-2E46-45A3-AD10-1F3F1FB6F9B6}"
@@ -50,4 +54,3 @@ Global
 		SolutionGuid = {51ECE597-0299-4753-B7F5-4E8EDECD7BB4}
 	EndGlobalSection
 EndGlobal
-

@@ -36,7 +36,7 @@ public sealed class GameplayScreen : GameScreen
     private readonly JunctionRadialMenu _junctionRadialMenu;
 
     // ============================================================
-    // NOWE POLA DLA SEMAFORÓW
+    // POLA DLA SEMAFORÓW
     // ============================================================
     private SignalController _signalController;
     private SignalRadialMenu _signalRadialMenu;
@@ -49,6 +49,9 @@ public sealed class GameplayScreen : GameScreen
     private MouseState _previousMouse;
     private KeyboardState _previousKeyboard;
     private int _previousScrollWheelValue;
+
+    // ✅ REFERENCJA DO INPUTSTATE (przekazana przez ScreenManager)
+    private Inputs.InputState? _inputState;
 
     public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager)
     {
@@ -70,6 +73,9 @@ public sealed class GameplayScreen : GameScreen
         _trainDebugger = new TrainDebugger(1.0f);
 
         _junctionRadialMenu = new JunctionRadialMenu(_graphicsDevice, _builder);
+
+        // ✅ ZAPISZ REFERENCJĘ DO INPUTSTATE
+        _inputState = screenManager.InputState;
 
         // ============================================================
         // TWORZENIE SIGNALCONTROLLER I MENU SEMAFORÓW
@@ -186,11 +192,8 @@ public sealed class GameplayScreen : GameScreen
     {
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        var mouse = Mouse.GetState();
-        var keyboard = Keyboard.GetState();
-
-        // ✅ OBSŁUGA ESC — otwieranie/zamykanie pauzy
-        if (keyboard.IsKeyDown(Keys.Escape) && _previousKeyboard.IsKeyUp(Keys.Escape))
+        // ✅ OBSŁUGA ESC — używamy zapisanego InputState
+        if (_inputState != null && _inputState.IsPauseKeyJustPressed())
         {
             TogglePause();
         }
@@ -199,8 +202,6 @@ public sealed class GameplayScreen : GameScreen
         if (_isPaused)
         {
             _inputManager.Update(gameTime);
-            _previousKeyboard = keyboard;
-            _previousMouse = mouse;
             return;
         }
 
@@ -209,6 +210,9 @@ public sealed class GameplayScreen : GameScreen
         _blockController?.Update(deltaTime);
         _inputManager.Update(gameTime);
 
+        // ✅ Aktualizuj stany klawiszy dla innych potrzeb
+        var mouse = Mouse.GetState();
+        var keyboard = Keyboard.GetState();
         _previousScrollWheelValue = mouse.ScrollWheelValue;
         _previousMouse = mouse;
         _previousKeyboard = keyboard;
@@ -235,7 +239,8 @@ public sealed class GameplayScreen : GameScreen
         // ✅ Utwórz menu pauzy
         _pauseScreen = new PauseScreen();
 
-        // ✅ Dodaj event przed dodaniem ekranu
+        // ✅ Subskrybuj eventy
+        _pauseScreen.OnResume += (s, e) => ResumeGame();
         _pauseScreen.OnQuit += (s, e) => QuitToMainMenu();
 
         // ✅ Dodaj ekran do menedżera
@@ -251,6 +256,7 @@ public sealed class GameplayScreen : GameScreen
         // ✅ Usuń menu pauzy
         if (_pauseScreen != null && ScreenManager != null)
         {
+            // ✅ Sprawdź czy ekran nadal istnieje (używamy RemoveScreen które samo sprawdza)
             ScreenManager.RemoveScreen(_pauseScreen);
             _pauseScreen = null;
         }
@@ -262,6 +268,9 @@ public sealed class GameplayScreen : GameScreen
         // TODO: Przejście do menu głównego
         // ScreenManager?.AddScreen(new MainMenuScreen(), null);
         // ExitScreen();
+
+        // ✅ TYMCZASOWO: wyjście z gry
+        ScreenManager?.Game.Exit();
     }
 
     // ============================================================
@@ -273,11 +282,11 @@ public sealed class GameplayScreen : GameScreen
         _inputManager.Draw(gameTime);
         DrawTooltip();
 
-        // ✅ NAPIS "PAUZA"
+        // ✅ NAPIS "PAUZA" - bez emoji, które mogą nie być obsługiwane przez czcionkę
         if (_isPaused && _tooltipFont != null)
         {
             var viewport = _graphicsDevice.Viewport;
-            string pauseText = "⏸ PAUZA";
+            string pauseText = "PAUZA";
             var textSize = _tooltipFont.MeasureString(pauseText);
 
             Vector2 position = new Vector2(
