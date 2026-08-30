@@ -49,7 +49,7 @@ namespace RailDispatchMono.Core.Game.Railway
             { SignalAspect.Reserve1, new AspectInfo("S12", "Rezerwa 1", 120, "Rezerwowy 1") },
             { SignalAspect.Reserve2, new AspectInfo("S13", "Rezerwa 2", 80, "Rezerwowy 2") },
             { SignalAspect.Reserve3, new AspectInfo("S14", "Rezerwa 3", 60, "Rezerwowy 3") },
-            { SignalAspect.Reserve4, new AspectInfo("S15", "Rezerwa 4", 30, "Rezerwowy 4") }
+            { SignalAspect.Reserve4, new AspectInfo("S15", "Rezerwa 4", 5, "Rezerwowy 4") }
         };
     }
 

@@ -491,14 +491,14 @@ public sealed class GameplayScreen : GameScreen
         DebugManager.Log("[TRAIN] Tworzę testowy pociąg...");
 
         var locomotiveParameters = new VehicleParameters(
-            maxSpeed: 60.4f,
+            maxSpeed: 25.4f,
             acceleration: 0.8f,
             braking: 100.0f,
             mass: 80000f,
             length: 1.0f);
 
         var wagonParameters = new VehicleParameters(
-            maxSpeed: 60.4f,
+            maxSpeed: 25.4f,
             acceleration: 0.8f,
             braking: 100.0f,
             mass: 40000f,
@@ -514,7 +514,7 @@ public sealed class GameplayScreen : GameScreen
         var train = new Train(
             spawnPosition: new Vector2(25.5f, 10.5f),
             initialDirection: TrackConnections.East,
-            speed: 60.4f,
+            speed: 25.4f,
             vehicles: vehicles);
 
         train.SetMap(_map);

@@ -44,7 +44,7 @@ public class VehicleParameters
         TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));  // MathF -> Math
 
         AccelerationCoefficient = Math.Max(0f, acceleration);    // MathF -> Math
-        BrakingCoefficient = Math.Max(0f, braking > 10f ? braking / 100f : braking);  // MathF -> Math
+        BrakingCoefficient = Math.Max(0f, (braking > 10f ? braking / 100f : braking) * 20.0f);
 
         Acceleration = CalculateRate(AccelerationCoefficient);
         Braking = CalculateRate(BrakingCoefficient);
@@ -62,12 +62,12 @@ public class VehicleParameters
         if (d <= 0f)
             return 0f;
 
-        double exponent = d * Math.Pow(MassCoefficient, 0.9d);
+        double exponent = d * Math.Pow(MassCoefficient, 1d);
         double rate = Math.Pow(Mass, exponent) * TechnicalCondition;
 
         if (double.IsNaN(rate) || double.IsInfinity(rate))
             return 0f;
 
-        return (float)Math.Clamp(rate, 0d, 1000d);
+        return (float)Math.Clamp(rate, 0d, 5000d);
     }
 }
