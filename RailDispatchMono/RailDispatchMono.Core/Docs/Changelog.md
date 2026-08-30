@@ -1,5 +1,77 @@
 Changelog
 
+0.0.7b] — Refaktoryzacja klasy Train na częściowe pliki
+Data: 2026-08-30
+
+**Train System / Code Refactoring**
+
+Przeprowadzono refaktoryzację klasy Train, dzieląc ją na trzy osobne pliki
+częściowe (partial), aby poprawić czytelność i utrzymanie kodu:
+
+- **Train.cs** — Główna część klasy:
+  - Publiczne API (właściwości, metody publiczne)
+  - Konstruktory
+  - Zarządzanie składami pojazdów
+  - Transformacje pojazdów
+  - System sygnalizacji (SignalController)
+  - Debugger helpers
+  - Publiczne metody gridowe (GetCurrentCell, GetDistanceToBoundary)
+
+- **TrainMovement.cs** — Logika ruchu:
+  - Update() — główna pętla aktualizacji
+  - Move() — główna logika przemieszczania
+  - Obsługa torów prostych (MoveStraight, HandleStraight)
+  - Obsługa rozjazdów (HandleJunction)
+  - Obsługa zakrętów (EnterCurve, MoveOnCurve, FinishCurve)
+  - Przechodzenie między komórkami (EnterNextCell)
+  - Metody pomocnicze gridowe
+
+- **TrainGeometry.cs** — Geometria i helpery:
+  - Stan łuku (IsOnCurve, ArcCenter, StartAngle, SweepAngle)
+  - Parametry łuku (SetupArcParams, GetArcPosition)
+  - Historia trajektorii (ResetTrajectory, AddTrajectoryPoint)
+  - Pomocnicze metody kierunków (DirectionToVector, GetOppositeDirection)
+  - Pomocnicze metody geometryczne (IsPerpendicular, GetCurveExitDirection)
+  - Stałe (CurveRadius, DefaultCurveLength, MovementEpsilon)
+  - MathHelper (Clamp, LerpAngle)
+
+**Bug Fixes**
+
+- Poprawiono błędy kompilacji CS1061 (brakujące metody)
+- Poprawiono błędy kompilacji CS0103 (brakujące konteksty)
+- Dodano brakującą publiczną metodę GetCurrentCell() dla TrainManager
+- Dodano brakującą publiczną metodę GetDistanceToBoundary() dla debuggera
+- Poprawiono sygnatury wywołań GetNextCell() z jawnym parametrem direction
+- Poprawiono sygnatury wywołań GetPositionAtEntry() z jawnym parametrem direction
+- Dodano brakującą metodę ValidateDirection()
+- Dodano brakującą metodę VectorToDirection()
+
+**Build**
+
+- RailDispatchMono.Core — build OK
+- RailDispatchMono.DesktopGL — build OK
+
+**Test Results**
+
+- Wszystkie metody publiczne są dostępne dla TrainManager i TrainDebugger
+- Pociąg prawidłowo porusza się po torach prostych, zakrętach i rozjazdach
+- System sygnalizacji działa poprawnie
+- Trajektoria pojazdów jest prawidłowo obliczana
+
+**Known gaps / Poza zakresem tego wpisu**
+
+- Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów
+- Ruch pociągu nie obsługuje jeszcze pełnego przebiegu po sieci torowej
+- Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru
+- Brak obsługi kierunku jazdy i zmiany kierunku na rozjazdach
+- Brak sekcji blokowych (BlockSection)
+- Brak interlockingu
+- Brak wykolejenia
+- Brak manewrów i sprzęgania w warstwie symulacji
+- Brak planowania jazdy
+- Brak pasażerów
+- Brak harmonogramów
+
 [0.0.7a] — Naprawa wykrywania połączeń w prostych torach Data: 2026-08-29
 
 Bug Fixes
