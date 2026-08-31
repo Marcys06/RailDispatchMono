@@ -10,15 +10,24 @@
 - `4` / NumPad `4` — signal
 - `5` / NumPad `5` — station
 - `9` / NumPad `9` — depot building
+- `S` — toggle wagon route edit mode
 - `H` / `V` — straight-track orientation where supported
 - `R` — rotate current track/junction; in station mode cycle station size
 - `J` — toggle signal or junction switch
-- `LMB` — build/select
-- `PPM` — remove/open object menu
+- `LMB` — build/select; in `S` mode, clicking a wagon opens its route editor
+- `PPM` — remove/open object menu; in the wagon route editor, closes the editor
 - `Shift + PPM` — explicit removal for objects that support it
 - `MMB` — move camera
 - mouse wheel — zoom camera
 - `Escape` / `P` — pause
+
+## Wagon route edit mode
+
+Pressing `S` toggles wagon route edit mode and clears the active build mode. While the mode is active, the HUD/menu shows a small active `S` indicator.
+
+With the mode active, a new LPM click on a wagon opens its screen-space route editor. The editor handles station buttons independently, supports adding/removing/clearing stations and persists route changes through the existing schedule storage. PPM closes the editor.
+
+The editor consumes the opening input state so the click that opened it cannot immediately be reused as a second menu action or close the menu.
 
 ## Station building
 
