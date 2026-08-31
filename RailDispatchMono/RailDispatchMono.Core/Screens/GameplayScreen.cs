@@ -242,19 +242,19 @@ public sealed class GameplayScreen : GameScreen
         {
             if (new Rectangle(16, 36, 50, 22).Contains(mouse.Position))
             {
-                _clock.SetSimulationSpeed(1f);
+                _clock.SetSpeed(1f);
                 return true;
             }
 
             if (new Rectangle(70, 36, 50, 22).Contains(mouse.Position))
             {
-                _clock.SetSimulationSpeed(2f);
+                _clock.SetSpeed(2f);
                 return true;
             }
 
             if (new Rectangle(124, 36, 50, 22).Contains(mouse.Position))
             {
-                _clock.SetSimulationSpeed(5f);
+                _clock.SetSpeed(5f);
                 return true;
             }
 
@@ -440,12 +440,7 @@ public sealed class GameplayScreen : GameScreen
     public override void Draw(GameTime gameTime)
     {
         _inputManager.Draw(gameTime);
-
-        // Floating notifications are world-space UI. They must be drawn after
-        // the gameplay world and before the screen-space HUD so that they are
-        // transformed by the active camera and remain visible above wagons.
         _floatingText.Draw(_spriteBatch, _camera);
-
         DrawHud();
         DrawTooltip();
     }
@@ -658,6 +653,22 @@ public sealed class GameplayScreen : GameScreen
             _tooltipFont,
             text,
             position,
+            Color.White,
+            0f,
+            Vector2.Zero,
+            scale,
+            SpriteEffects.None,
+            0f);
+    }
+
+    private void DrawListItem(Rectangle rect, string text, float scale = 1f)
+    {
+        DrawRect(rect, new Color(38, 38, 38, 255));
+
+        _spriteBatch.DrawString(
+            _tooltipFont!,
+            text,
+            new Vector2(rect.X + 8, rect.Y + 8),
             Color.White,
             0f,
             Vector2.Zero,
