@@ -44,7 +44,6 @@ public sealed class StationRenderer
         width = Math.Max(1, width);
         height = Math.Max(1, height);
 
-        // Keep the cursor on the center of the preview.
         var origin = new MapPosition(
             position.X - (width - 1) / 2,
             position.Y - (height - 1) / 2);
@@ -62,7 +61,6 @@ public sealed class StationRenderer
         float bottom = origin.Y + height;
         Color color = preview ? Color.CornflowerBlue * 0.65f : Color.CornflowerBlue;
 
-        // Area fill is intentionally subtle so rails, signals and trains remain visible.
         spriteBatch.Draw(_pixel,
             new Rectangle((int)left, (int)top, Math.Max(1, width), Math.Max(1, height)),
             color * fillAlpha);
@@ -73,13 +71,19 @@ public sealed class StationRenderer
         DrawLine(spriteBatch, new Vector2(right, bottom), new Vector2(left, bottom), color, thickness);
         DrawLine(spriteBatch, new Vector2(left, bottom), new Vector2(left, top), color, thickness);
 
-        // Station marker in the center of the area.
+        // Wyraźny znak '+' identyfikujący stację. Jest widoczny także dla stacji 1x1.
         Vector2 center = new(origin.X + width / 2f, origin.Y + height / 2f);
-        float marker = MathF.Min(0.30f, MathF.Min(width, height) * 0.18f);
-        float half = marker / 2f;
-        spriteBatch.Draw(_pixel,
-            new Rectangle((int)(center.X - half), (int)(center.Y - half), Math.Max(1, (int)marker), Math.Max(1, (int)marker)),
-            color);
+        float markerLength = MathF.Min(0.55f, MathF.Max(0.28f, MathF.Min(width, height) * 0.22f));
+        float markerThickness = MathF.Max(0.06f, markerLength * 0.22f);
+
+        DrawLine(spriteBatch,
+            center - new Vector2(markerLength / 2f, 0f),
+            center + new Vector2(markerLength / 2f, 0f),
+            color, markerThickness);
+        DrawLine(spriteBatch,
+            center - new Vector2(0f, markerLength / 2f),
+            center + new Vector2(0f, markerLength / 2f),
+            color, markerThickness);
     }
 
     private void DrawLine(SpriteBatch spriteBatch, Vector2 start, Vector2 end, Color color, float thickness)
