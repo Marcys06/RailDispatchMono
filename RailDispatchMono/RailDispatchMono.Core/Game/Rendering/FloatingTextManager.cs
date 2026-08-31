@@ -1,12 +1,13 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using RailDispatchMono.Core.Game.Passengers;
 using System;
 using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Rendering;
 
-/// <summary>Small world-space notifications used for per-wagon passenger exchange.</summary>
+/// <summary>Small world-space notifications used for gameplay events.</summary>
 public sealed class FloatingTextManager
 {
     private sealed class Item
@@ -24,7 +25,38 @@ public sealed class FloatingTextManager
 
     public void Add(string text, Vector2 worldPosition, float lifetime = 1.75f)
     {
+        // Passenger exchange can be reported both by the domain event and by
+        // the existing wagon snapshot fallback. Avoid rendering the same
+        // notification twice during the same simulation step.
+        foreach (var item in _items)
+        {
+            if (item.Age <= 0.15f && item.Text == text && Vector2.Distance(item.Position, worldPosition) <= 1.5f)
+                return;
+        }
+
         _items.Add(new Item { Text = text, Position = worldPosition, Lifetime = MathF.Max(0.1f, lifetime) });
+    }
+
+    public static void NotifyPassengerExchange(PassengerExchange exchange)
+    {
+        var manager = Current;
+        if (manager == null)
+            return;
+
+        (Vector2 position, float rotation) = exchange.Train.GetVehicleTransform(exchange.WagonIndex);
+
+        if (exchange.Boarded > 0)
+            manager.Add($"+{exchange.Boarded}", position + new Vector2(0f, -0.5f));
+
+        if (exchange.Alighted > 0)
+            manager.Add($"-{exchange.Alighted}", position + new Vector2(0f, 0.5f));
+    }
+
+    private static FloatingTextManager? Current { get; set; }
+
+    public FloatingTextManager()
+    {
+        Current = this;
     }
 
     public void Update(float deltaTime)
