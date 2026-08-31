@@ -7,10 +7,12 @@ using System.Text.Json.Serialization;
 using RailDispatchMono.Core.Game.Building;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
+using RailDispatchMono.Core.Game.Simulation;
+using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Save;
 
-/// <summary>Save/load service for the infrastructure map.</summary>
+/// <summary>Infrastructure persistence service. In 0.0.16 it writes inside the active save slot.</summary>
 public sealed class MapSaveService
 {
     private const string SaveDirectoryName = "RailDispatchMono";
@@ -27,7 +29,9 @@ public sealed class MapSaveService
 
     public MapSaveService(string? rootDirectory = null)
     {
-        SaveDirectoryPath = rootDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SaveDirectoryName, SaveFolderName);
+        SaveDirectoryPath = rootDirectory
+            ?? SaveSlotContext.ActiveSlotDirectory
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SaveDirectoryName, SaveFolderName);
     }
 
     public string Save(GameMap map, SignalController signals, StationController stations, DepotController depots)
@@ -39,6 +43,7 @@ public sealed class MapSaveService
 
         var data = new MapSaveData
         {
+            GameVersion = "0.0.16",
             Map = new MapInfoSaveData { Width = map.Size.Width, Height = map.Size.Height }
         };
 
@@ -94,16 +99,31 @@ public sealed class MapSaveService
         }
 
         foreach (var depot in depots.Depots.OrderBy(d => d.Position.Y).ThenBy(d => d.Position.X))
-        {
             data.Depots.Add(new DepotSaveData { Id = depot.Id, Name = depot.Name, X = depot.Position.X, Y = depot.Position.Y });
-        }
 
         Directory.CreateDirectory(SaveDirectoryPath);
         string tempPath = MapFilePath + ".tmp";
         File.WriteAllText(tempPath, JsonSerializer.Serialize(data, _jsonOptions));
         if (File.Exists(MapFilePath)) File.Replace(tempPath, MapFilePath, null);
         else File.Move(tempPath, MapFilePath);
+
+        if (SaveSlotContext.ActiveSlotDirectory != null)
+        {
+            if (TrainManager.Current != null && GameClock.Current != null)
+                RuntimeSaveService.Save(TrainManager.Current, GameClock.Current);
+            SaveEmptyDocumentIfMissing("schedules.json");
+            SaveEmptyDocumentIfMissing("passengers.json");
+            SaveEmptyDocumentIfMissing("economy.json");
+            SaveSlotService.Touch();
+        }
+
         return MapFilePath;
+    }
+
+    private static void SaveEmptyDocumentIfMissing(string fileName)
+    {
+        string path = Path.Combine(SaveSlotContext.ActiveSlotDirectory!, fileName);
+        if (!File.Exists(path)) File.WriteAllText(path, "{\n  \"schemaVersion\": 1\n}\n");
     }
 
     public bool Exists => File.Exists(MapFilePath);
@@ -164,5 +184,16 @@ public sealed class MapSaveService
 
         foreach (var saved in data.Depots)
             depots.AddDepot(new Depot(saved.Id, saved.Name, new MapPosition(saved.X, saved.Y)));
+
+        if (SaveSlotContext.ActiveSlotDirectory != null && TrainManager.Current != null && GameClock.Current != null)
+        {
+            string trainPath = RuntimeSaveService.FilePath;
+            if (File.Exists(trainPath))
+            {
+                var blocks = TrainManager.Current.BlockController;
+                if (blocks != null)
+                    RuntimeSaveService.Load(TrainManager.Current, signals, blocks, stations, GameClock.Current);
+            }
+        }
     }
 }
