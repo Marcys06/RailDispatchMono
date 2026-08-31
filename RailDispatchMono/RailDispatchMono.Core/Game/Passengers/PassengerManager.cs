@@ -27,10 +27,14 @@ public sealed class PassengerManager
     }
 
     public IEnumerable<Passenger> GetWaitingAt(Station station) =>
-        _passengers.Where(p => p.State == PassengerState.WaitingAtStation && p.OriginStation.Id == station.Id);
+        _passengers.Where(p => p.State == PassengerState.WaitingAtStation &&
+                               p.CurrentStationId == station.Id);
 
     public IEnumerable<Passenger> GetOnBoard(TrainClass train) =>
         _passengers.Where(p => p.State == PassengerState.OnBoard && p.CurrentTrainId == train.Id);
+
+    public int GetWaitingCount(Station station) => GetWaitingAt(station).Count();
+    public int GetOnBoardCount(TrainClass train) => GetOnBoard(train).Count();
 
     public int BoardPassengers(TrainClass train, Station station)
     {
@@ -64,13 +68,11 @@ public sealed class PassengerManager
         int alighted = 0;
         foreach (var vehicle in train.Composition.Vehicles)
         {
-            if (vehicle is Wagon wagon && wagon.TryAlightAt(station, train.Id))
-            {
-                alighted++;
-            }
+            if (vehicle is Wagon wagon)
+                alighted += wagon.TryAlightAt(station, train.Id);
         }
 
-        return _passengers.Count(p => p.State == PassengerState.Arrived && p.DestinationStation.Id == station.Id);
+        return alighted;
     }
 
     public void RemoveCompletedPassengers()
