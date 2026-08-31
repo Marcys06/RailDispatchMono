@@ -3,11 +3,6 @@ using System;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
-/// <summary>
-/// Lightweight depot model. It intentionally stores a map position and a display
-/// name only; train creation remains a Gameplay/UI concern for now. The model is
-/// ready to become a route origin in 0.0.13.
-/// </summary>
 public sealed class Depot
 {
     public Guid Id { get; } = Guid.NewGuid();
@@ -16,6 +11,13 @@ public sealed class Depot
 
     public Depot(string name, MapPosition position)
     {
+        Name = string.IsNullOrWhiteSpace(name) ? "Depot" : name;
+        Position = position;
+    }
+
+    public Depot(Guid id, string name, MapPosition position)
+    {
+        Id = id;
         Name = string.IsNullOrWhiteSpace(name) ? "Depot" : name;
         Position = position;
     }
