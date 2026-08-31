@@ -4,6 +4,7 @@ using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
+using System.IO;
 
 namespace RailDispatchMono.Core;
 
@@ -47,11 +48,11 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     private void StartGameplay(string slotDirectory)
     {
-        bool loadExisting = !string.IsNullOrWhiteSpace(SaveSlotContext.ActiveSlotDirectory)
-                             && string.Equals(
-                                 System.IO.Path.GetFullPath(SaveSlotContext.ActiveSlotDirectory),
-                                 System.IO.Path.GetFullPath(slotDirectory),
-                                 StringComparison.OrdinalIgnoreCase);
+        bool loadExisting = false;
+        if (slotDirectory.StartsWith("NEW:", StringComparison.Ordinal))
+            slotDirectory = slotDirectory[4..];
+        else
+            loadExisting = true;
 
         SaveSlotService.Activate(slotDirectory);
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
