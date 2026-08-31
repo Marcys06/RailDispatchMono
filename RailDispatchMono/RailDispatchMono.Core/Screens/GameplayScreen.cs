@@ -220,10 +220,6 @@ public sealed class GameplayScreen : GameScreen
             DebugManager.Log("[PAUSE] Adding PauseScreen to ScreenManager");
             ScreenManager.AddScreen(_pauseScreen, null);
         }
-        else
-        {
-            DebugManager.Log("[PAUSE] ERROR: ScreenManager is null!");
-        }
     }
 
     private void ResumeGame()
@@ -231,12 +227,9 @@ public sealed class GameplayScreen : GameScreen
         if (!_isPaused)
             return;
 
-        DebugManager.Log("[PAUSE] ResumeGame() called");
         _isPaused = false;
-
         if (_pauseScreen != null && ScreenManager != null)
         {
-            DebugManager.Log("[PAUSE] Removing PauseScreen from ScreenManager");
             ScreenManager.RemoveScreen(_pauseScreen);
             _pauseScreen = null;
         }
@@ -245,109 +238,77 @@ public sealed class GameplayScreen : GameScreen
     private bool HandleHudInput()
     {
         MouseState mouse = Mouse.GetState();
-
-        if (mouse.LeftButton != ButtonState.Pressed || _previousMouse.LeftButton == ButtonState.Pressed)
-            return false;
-
-        if (new Rectangle(16, 36, 50, 22).Contains(mouse.Position))
+        if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
         {
-            _clock.SetSpeed(1f);
-            return true;
-        }
-
-        if (new Rectangle(70, 36, 50, 22).Contains(mouse.Position))
-        {
-            _clock.SetSpeed(2f);
-            return true;
-        }
-
-        if (new Rectangle(124, 36, 50, 22).Contains(mouse.Position))
-        {
-            _clock.SetSpeed(5f);
-            return true;
-        }
-
-        if (_depotOpen)
-        {
-            Rectangle spawnButton = new(80, 150, 250, 50);
-            Rectangle closeButton = new(80, 215, 250, 42);
-
-            if (spawnButton.Contains(mouse.Position))
+            if (new Rectangle(16, 36, 50, 22).Contains(mouse.Position))
             {
-                _spawnArmed = true;
-                _depotOpen = false;
+                _clock.SetSimulationSpeed(1f);
                 return true;
             }
 
-            if (closeButton.Contains(mouse.Position))
+            if (new Rectangle(70, 36, 50, 22).Contains(mouse.Position))
             {
-                _depotOpen = false;
+                _clock.SetSimulationSpeed(2f);
                 return true;
             }
 
-            return true;
-        }
+            if (new Rectangle(124, 36, 50, 22).Contains(mouse.Position))
+            {
+                _clock.SetSimulationSpeed(5f);
+                return true;
+            }
 
-        if (_spawnArmed)
-        {
             if (PanelBounds.Contains(mouse.Position))
-                return true;
-
-            MapPosition cell = _camera.ScreenToMap(new Vector2(mouse.X, mouse.Y));
-            if (_map.TryGetTrack(cell, out TrackCell? track) && track != null)
             {
-                SpawnDefaultTrain(cell, track.GetAvailableDirections().FirstOrDefault());
-                _spawnArmed = false;
-            }
+                int y = 86;
 
-            return true;
+                if (new Rectangle(PanelBounds.X + 10, y, 120, 36).Contains(mouse.Position))
+                {
+                    _showTrains = true;
+                    return true;
+                }
+
+                if (new Rectangle(PanelBounds.X + 135, y, 120, 36).Contains(mouse.Position))
+                {
+                    _showTrains = false;
+                    return true;
+                }
+
+                if (_showTrains)
+                {
+                    y += 50;
+                    foreach (Train train in _trainManager.Trains)
+                    {
+                        if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
+                        {
+                            _camera.Position = train.Position;
+                            return true;
+                        }
+                        y += 38;
+                    }
+                }
+                else
+                {
+                    y += 50;
+                    foreach (Station station in _trainManager.StationController.Stations)
+                    {
+                        if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
+                        {
+                            _camera.Position = new Vector2(
+                                station.Position.X + station.Width / 2f,
+                                station.Position.Y + station.Height / 2f);
+                            return true;
+                        }
+                        y += 38;
+                    }
+                }
+
+                return true;
+            }
         }
 
         if (PanelBounds.Contains(mouse.Position))
         {
-            int y = 86;
-
-            if (new Rectangle(PanelBounds.X + 10, y, 120, 36).Contains(mouse.Position))
-            {
-                _showTrains = true;
-                return true;
-            }
-
-            if (new Rectangle(PanelBounds.X + 135, y, 120, 36).Contains(mouse.Position))
-            {
-                _showTrains = false;
-                return true;
-            }
-
-            if (_showTrains)
-            {
-                y += 50;
-                foreach (Train train in _trainManager.Trains)
-                {
-                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
-                    {
-                        _camera.Position = train.Position;
-                        return true;
-                    }
-                    y += 38;
-                }
-            }
-            else
-            {
-                y += 50;
-                foreach (Station station in _trainManager.StationController.Stations)
-                {
-                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
-                    {
-                        _camera.Position = new Vector2(
-                            station.Position.X + station.Width / 2f,
-                            station.Position.Y + station.Height / 2f);
-                        return true;
-                    }
-                    y += 38;
-                }
-            }
-
             return true;
         }
 
@@ -479,6 +440,12 @@ public sealed class GameplayScreen : GameScreen
     public override void Draw(GameTime gameTime)
     {
         _inputManager.Draw(gameTime);
+
+        // Floating notifications are world-space UI. They must be drawn after
+        // the gameplay world and before the screen-space HUD so that they are
+        // transformed by the active camera and remain visible above wagons.
+        _floatingText.Draw(_spriteBatch, _camera);
+
         DrawHud();
         DrawTooltip();
     }
@@ -691,22 +658,6 @@ public sealed class GameplayScreen : GameScreen
             _tooltipFont,
             text,
             position,
-            Color.White,
-            0f,
-            Vector2.Zero,
-            scale,
-            SpriteEffects.None,
-            0f);
-    }
-
-    private void DrawListItem(Rectangle rect, string text, float scale = 1f)
-    {
-        DrawRect(rect, new Color(38, 38, 38, 255));
-
-        _spriteBatch.DrawString(
-            _tooltipFont!,
-            text,
-            new Vector2(rect.X + 8, rect.Y + 8),
             Color.White,
             0f,
             Vector2.Zero,
