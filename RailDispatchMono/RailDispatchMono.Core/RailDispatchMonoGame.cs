@@ -4,7 +4,6 @@ using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
-using System.Reflection;
 
 namespace RailDispatchMono.Core;
 
@@ -39,7 +38,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
-        _screenManager = new ScreenManager(this) { TraceEnabled = true };
+        _screenManager = new ScreenManager(this) { TraceEnabled = false };
         Components.Add(_screenManager);
         _mainMenu = new MainMenuScreen(StartGameplay);
         _screenManager.AddScreen(_mainMenu, null);
@@ -48,25 +47,21 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     private void StartGameplay(string slotDirectory)
     {
+        bool loadExisting = !string.IsNullOrWhiteSpace(SaveSlotContext.ActiveSlotDirectory)
+                             && string.Equals(
+                                 System.IO.Path.GetFullPath(SaveSlotContext.ActiveSlotDirectory),
+                                 System.IO.Path.GetFullPath(slotDirectory),
+                                 StringComparison.OrdinalIgnoreCase);
+
         SaveSlotService.Activate(slotDirectory);
-        _gameplay = new GameplayScreen(GraphicsDevice, _screenManager);
+        _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
         _screenManager.AddScreen(_gameplay, null);
 
-        // GameplayScreen currently owns its legacy test bootstrap. For a menu-created
-        // slot, immediately load the selected slot so New Game starts empty and Load
-        // restores the persisted state. This bridge can be removed when the gameplay
-        // bootstrap is moved into an explicit scenario factory.
+        if (loadExisting)
+            _gameplay.LoadSavedGame();
+
         if (_mainMenu != null)
         {
-            try
-            {
-                MethodInfo? load = typeof(GameplayScreen).GetMethod("LoadMap", BindingFlags.Instance | BindingFlags.NonPublic);
-                load?.Invoke(_gameplay, null);
-            }
-            catch (Exception ex)
-            {
-                DebugManager.LogWarning("[STARTUP] Save load failed: " + ex.Message);
-            }
             _screenManager.RemoveScreen(_mainMenu);
             _mainMenu = null;
         }
@@ -74,19 +69,19 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void LoadContent()
     {
-        // ScreenManager is a DrawableGameComponent and loads every registered screen.
-        // GameplayScreen is therefore loaded when it is added after initialization.
+        // ScreenManager is a DrawableGameComponent and owns screen content loading.
     }
 
     protected override void Update(GameTime gameTime)
     {
-        _screenManager.Update(gameTime);
+        // ScreenManager is registered in Components. Game invokes it automatically.
+        // Do not call _screenManager.Update here: doing so updates every screen twice per frame.
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        _screenManager.Draw(gameTime);
+        // ScreenManager is a DrawableGameComponent and is drawn by Game automatically.
         base.Draw(gameTime);
     }
 }
