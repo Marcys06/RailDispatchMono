@@ -1,66 +1,41 @@
 # Input system
 
-## `InputState`
+`InputState` remains the shared input snapshot/action layer used by the screen system. Gameplay construction is handled by `InputManager` on top of that shared state.
 
-`InputState` is the shared input snapshot/action layer used by the screen system.
+## Current build controls
 
-It tracks current and previous state for:
+- `1` / NumPad `1` — straight track
+- `2` / NumPad `2` — curve
+- `3` / NumPad `3` — junction
+- `4` / NumPad `4` — signal
+- `5` / NumPad `5` — station
+- `9` / NumPad `9` — depot building
+- `H` / `V` — straight-track orientation where supported
+- `R` — rotate current track/junction; in station mode cycle station size
+- `J` — toggle signal or junction switch
+- `LMB` — build/select
+- `PPM` — remove/open object menu
+- `Shift + PPM` — explicit removal for objects that support it
+- `MMB` — move camera
+- mouse wheel — zoom camera
+- `Escape` / `P` — pause
 
-- keyboard, up to four player slots;
-- gamepads, up to four player slots;
-- mouse;
-- touch;
-- queued touch gestures.
+## Station building
 
-The constant `MaxInputs` is currently 4.
+Station mode supports `1x1`, `2x2`, `3x3` and `4x4` areas. The complete selected rectangle must contain track and cannot overlap another station.
 
-## Frame model
+## Depot building
 
-At the start of each `ScreenManager.Update`, `InputState.Update` copies current keyboard/gamepad/mouse/touch state into the previous-state fields and reads fresh device state.
-
-This enables edge-triggered actions such as `IsNewKeyPress` and `IsNewButtonPress`.
-
-## High-level actions
-
-The class provides semantic actions including:
-
-- menu select;
-- menu cancel;
-- menu up/down;
-- pause;
-- select next/previous.
-
-Prefer these semantic methods in screens instead of duplicating raw key/button combinations.
-
-## Supported interaction paths
-
-The current implementation combines keyboard, gamepad, mouse and touch. Mouse clicks are also interpreted as touch-like interaction for selected operations.
-
-The cursor can be moved with:
-
-- gamepad 0 left thumbstick;
-- keyboard arrow keys.
-
-Cursor movement is clamped to the configured base screen dimensions.
+Depot mode is activated with `9`. A depot is a world building and does not require a track cell. The building is rendered using programmatic geometry. Clicking an existing depot is reserved for opening its depot/train-selection workflow; removal is available through the existing right-click interaction.
 
 ## Coordinate transformation
 
-Input coordinates are transformed from physical screen coordinates into game/presentation coordinates. `ScreenManager.ScalePresentationArea()` calculates the rendering transformation and passes its inverse to `InputState`.
+World clicks are converted through `Camera.ScreenToMap`. Do not compare raw mouse coordinates with map cells.
 
-When adding clickable UI, use the transformed cursor coordinates rather than comparing raw window coordinates against logical game rectangles.
+## Window resizing
 
-## Touch gestures
-
-`ScreenManager` updates `TouchPanel.EnabledGestures` from the current screen's `EnabledGestures`. `GameScreen` also updates the touch panel when its gesture configuration changes while active.
-
-A screen should request only the gestures it actually needs.
-
-## Platform flags
-
-`InputState` checks `RailDispatchMonoGame.IsMobile` and `IsDesktop` during construction. The current shared `RailDispatchMonoGame` implementation reports `IsMobile == false` and `IsDesktop == true`.
-
-If platform behavior changes, review these flags and all consumers together; they are part of the input initialization contract.
+The desktop game window is user-resizable. UI should use the current viewport/client bounds and measure text where required instead of assuming `1280x720`.
 
 ## AI rule
 
-Do not introduce a second input singleton, a second cursor coordinate system, or per-screen device polling unless the existing input abstraction is demonstrably insufficient. First inspect `InputState` and its semantic action methods.
+Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding controls.
