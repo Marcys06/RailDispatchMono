@@ -5,43 +5,44 @@ using System;
 
 namespace RailDispatchMono.Core.Screens;
 
-/// <summary>Main entry point for the game. Save selection happens before gameplay is created.</summary>
 internal sealed class MainMenuScreen : MenuScreen
 {
     private readonly Action<string> _startGame;
-    private readonly MenuEntry _newGame;
-    private readonly MenuEntry _loadGame;
-    private readonly MenuEntry _settings;
-    private readonly MenuEntry _about;
-    private readonly MenuEntry _quit;
 
     public MainMenuScreen(Action<string> startGame) : base("RAIL DISPATCHER")
     {
         _startGame = startGame;
-        _newGame = new MenuEntry("NOWA GRA");
-        _loadGame = new MenuEntry("WCZYTAJ GRĘ");
-        _settings = new MenuEntry(Resources.Settings);
-        _about = new MenuEntry(Resources.About);
-        _quit = new MenuEntry(Resources.Quit);
+        var newGame = new MenuEntry("NOWA GRA");
+        var loadGame = new MenuEntry("WCZYTAJ GRĘ");
+        var settings = new MenuEntry(Resources.Settings);
+        var about = new MenuEntry(Resources.About);
+        var quit = new MenuEntry(Resources.Quit);
 
-        _newGame.Selected += (_, _) => StartNewGame();
-        _loadGame.Selected += (_, _) => OpenLoadMenu();
-        _settings.Selected += (_, _) => ScreenManager.AddScreen(new SettingsScreen(), ControllingPlayer);
-        _about.Selected += (_, _) => ScreenManager.AddScreen(new AboutScreen(), ControllingPlayer);
-        _quit.Selected += (_, _) => ScreenManager.Game.Exit();
+        newGame.Selected += (_, _) => StartNewGame();
+        loadGame.Selected += (_, _) => OpenLoadMenu();
+        settings.Selected += (_, _) => ScreenManager.AddScreen(new SettingsScreen(), ControllingPlayer);
+        about.Selected += (_, _) => ScreenManager.AddScreen(new AboutScreen(), ControllingPlayer);
+        quit.Selected += (_, _) => ScreenManager.Game.Exit();
 
-        MenuEntries.Add(_newGame);
-        MenuEntries.Add(_loadGame);
-        MenuEntries.Add(_settings);
-        MenuEntries.Add(_about);
-        MenuEntries.Add(_quit);
+        MenuEntries.Add(newGame);
+        MenuEntries.Add(loadGame);
+        MenuEntries.Add(settings);
+        MenuEntries.Add(about);
+        MenuEntries.Add(quit);
     }
 
     private void StartNewGame()
     {
-        string slot = SaveSlotService.CreateSlot();
-        ExitScreen();
-        _startGame(slot);
+        try
+        {
+            string slot = SaveSlotService.CreateSlot();
+            ExitScreen();
+            _startGame(slot);
+        }
+        catch (Exception ex)
+        {
+            ScreenManager.AddScreen(new MessageBoxScreen("NIE MOŻNA UTWORZYĆ ZAPISU\n" + ex.Message), ControllingPlayer);
+        }
     }
 
     private void OpenLoadMenu()
@@ -52,7 +53,6 @@ internal sealed class MainMenuScreen : MenuScreen
             ScreenManager.AddScreen(new MessageBoxScreen("BRAK ZAPISANYCH GIER."), ControllingPlayer);
             return;
         }
-
         ScreenManager.AddScreen(new LoadGameScreen(slots, _startGame), ControllingPlayer);
     }
 }
@@ -69,25 +69,9 @@ internal sealed class LoadGameScreen : MenuScreen
             {
                 try
                 {
-                    string directory = System.IO.Path.Combine(SaveSlotContext.RootDirectory, slot.Name.Replace(':', '-'));
-                    if (!System.IO.Directory.Exists(directory))
-                    {
-                        foreach (string candidate in System.IO.Directory.GetDirectories(SaveSlotContext.RootDirectory))
-                        {
-                            if (System.IO.File.Exists(System.IO.Path.Combine(candidate, "metadata.json")))
-                            {
-                                var text = System.IO.File.ReadAllText(System.IO.Path.Combine(candidate, "metadata.json"));
-                                if (text.Contains("\"Name\": \"" + slot.Name + "\"", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    directory = candidate;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    SaveSlotService.Activate(directory);
+                    SaveSlotService.Activate(slot.DirectoryPath);
                     ExitScreen();
-                    startGame(directory);
+                    startGame(slot.DirectoryPath);
                 }
                 catch (Exception ex)
                 {
