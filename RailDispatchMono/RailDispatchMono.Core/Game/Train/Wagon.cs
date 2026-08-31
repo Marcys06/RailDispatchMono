@@ -20,7 +20,7 @@ public sealed class Wagon : Vehicle
     public Wagon(
         VehicleParameters parameters,
         WagonType wagonType = WagonType.Passenger,
-        int passengerCapacity = 0,
+        int passengerCapacity = 80,
         IEnumerable<Guid>? serviceRoute = null)
         : base(parameters)
     {
