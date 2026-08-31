@@ -4,10 +4,6 @@ using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
-/// <summary>
-/// Passenger station represented by an area of map cells.
-/// Semaphores remain responsible for the physical stopping point.
-/// </summary>
 public sealed class Station
 {
     public Guid Id { get; }
@@ -15,7 +11,6 @@ public sealed class Station
     public MapPosition Position { get; }
     public int Width { get; }
     public int Height { get; }
-
     public float StopRadius { get; set; } = 0.35f;
     public float DwellTimeSeconds { get; set; } = 5f;
     public bool PassengerServiceEnabled { get; set; } = true;
@@ -23,15 +18,18 @@ public sealed class Station
     public float PassengerGenerationIntervalSeconds { get; set; } = 10f;
     public int PassengerGenerationBatchSize { get; set; } = 2;
     public int PassengerWaitingCapacity { get; set; } = 100;
-
     public int AreaSize => Width * Height;
 
     public Station(string name, MapPosition position, int width = 1, int height = 1)
+        : this(Guid.NewGuid(), name, position, width, height)
+    {
+    }
+
+    public Station(Guid id, string name, MapPosition position, int width = 1, int height = 1)
     {
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
-
-        Id = Guid.NewGuid();
+        Id = id;
         Name = string.IsNullOrWhiteSpace(name) ? $"Station-{Id.ToString()[..8]}" : name;
         Position = position;
         Width = width;
@@ -49,6 +47,5 @@ public sealed class Station
                 yield return new MapPosition(Position.X + x, Position.Y + y);
     }
 
-    public MapPosition GetCenterCell() =>
-        new(Position.X + Width / 2, Position.Y + Height / 2);
+    public MapPosition GetCenterCell() => new(Position.X + Width / 2, Position.Y + Height / 2);
 }
