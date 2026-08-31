@@ -85,6 +85,9 @@ public sealed class TrainManager
             _trains.Remove(train);
         _trainsToRemove.Clear();
 
+        // Passenger demand is a world/station system, not a train-only concern.
+        StationController.Update(deltaTime);
+
         foreach (var train in _trains)
         {
             bool holdAtStation = StationController.BeforeTrainUpdate(train, deltaTime);
@@ -93,9 +96,6 @@ public sealed class TrainManager
             StationController.AfterTrainUpdate(train, deltaTime);
         }
 
-        // Important: BlockController.Update() must be used here, not only
-        // UpdateOccupancy()/UpdateSignals(), because the 3-second cooldown is
-        // advanced by Update(deltaTime).
         _blockController?.Update(deltaTime);
     }
 
