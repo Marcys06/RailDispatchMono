@@ -108,7 +108,6 @@ public sealed class TrainManager
             {
                 train.RadioStop();
                 DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {2f:F0} cells without a protecting signal.");
-                StationController.AfterTrainUpdate(train, deltaTime);
                 continue;
             }
 
