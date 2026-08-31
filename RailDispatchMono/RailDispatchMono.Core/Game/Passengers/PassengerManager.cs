@@ -1,5 +1,6 @@
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Train;
+using RailDispatchMono.Core.Game.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,7 +55,11 @@ public sealed class PassengerManager
             }
 
             if (wagonBoarded > 0)
-                PassengerExchangeOccurred?.Invoke(new PassengerExchange(train, wagon, wagonIndex, wagonBoarded, 0));
+            {
+                var exchange = new PassengerExchange(train, wagon, wagonIndex, wagonBoarded, 0);
+                PassengerExchangeOccurred?.Invoke(exchange);
+                FloatingTextManager.NotifyPassengerExchange(exchange);
+            }
         }
 
         return boarded;
@@ -73,7 +78,11 @@ public sealed class PassengerManager
             alighted += wagonAlighted;
 
             if (wagonAlighted > 0)
-                PassengerExchangeOccurred?.Invoke(new PassengerExchange(train, wagon, wagonIndex, 0, wagonAlighted));
+            {
+                var exchange = new PassengerExchange(train, wagon, wagonIndex, 0, wagonAlighted);
+                PassengerExchangeOccurred?.Invoke(exchange);
+                FloatingTextManager.NotifyPassengerExchange(exchange);
+            }
         }
 
         return alighted;
