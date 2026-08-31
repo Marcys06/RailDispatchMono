@@ -6,14 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-// Alias zapobiegający konfliktowi CS0118 (Namespace vs Typ)
 using TrainClass = RailDispatchMono.Core.Game.Train.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
 /// <summary>
-/// Station stop controller. It is deliberately outside Train so the train
-/// physics remains reusable and station policy can evolve independently.
+/// Station stop controller. Station geometry is an area; semaphores remain
+/// responsible for the actual stopping point of a train.
 /// </summary>
 public sealed class StationController
 {
@@ -36,17 +35,29 @@ public sealed class StationController
     public IReadOnlyList<Station> Stations => _stations;
     public PassengerManager Passengers => _passengers;
 
-    public StationController(PassengerManager? passengers = null) => _passengers = passengers ?? new PassengerManager();
+    public StationController(PassengerManager? passengers = null) =>
+        _passengers = passengers ?? new PassengerManager();
 
     public void AddStation(Station station)
     {
         if (station == null) throw new ArgumentNullException(nameof(station));
-        if (_stations.All(s => s.Id != station.Id)) _stations.Add(station);
+        if (_stations.Any(s => s.Id == station.Id)) return;
+
+        // Do not allow two station areas to overlap.
+        if (_stations.Any(s => s.GetCells().Any(station.Contains)))
+            throw new InvalidOperationException("Station area overlaps an existing station.");
+
+        _stations.Add(station);
     }
 
-    public bool RemoveStation(Station station) => station != null && _stations.Remove(station);
+    public bool RemoveStation(Station station) =>
+        station != null && _stations.Remove(station);
 
-    public Station? GetStationAt(MapPosition position) => _stations.FirstOrDefault(s => s.Position == position);
+    public Station? GetStationAt(MapPosition position) =>
+        _stations.FirstOrDefault(s => s.Contains(position));
+
+    public IReadOnlyList<Station> GetStationsAt(MapPosition position) =>
+        _stations.Where(s => s.Contains(position)).ToList();
 
     public bool BeforeTrainUpdate(TrainClass train, float deltaTime)
     {
@@ -102,10 +113,19 @@ public sealed class StationController
     private Station? FindStationAtTrain(TrainClass train)
     {
         var cell = train.GetCurrentCell();
-        return _stations.FirstOrDefault(s =>
-            s.PassengerServiceEnabled &&
-            s.Position == cell &&
-            Vector2.Distance(train.Position, new Vector2(s.Position.X + 0.5f, s.Position.Y + 0.5f)) <= s.StopRadius + 0.5f);
+        var station = _stations.FirstOrDefault(s =>
+            s.PassengerServiceEnabled && s.Contains(cell));
+
+        if (station == null) return null;
+
+        Vector2 stationCenter = new(
+            station.Position.X + station.Width / 2f,
+            station.Position.Y + station.Height / 2f);
+
+        return Vector2.Distance(train.Position, stationCenter) <=
+               MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f
+            ? station
+            : null;
     }
 
     private Station? FindNextStation(TrainClass train)
@@ -116,19 +136,8 @@ public sealed class StationController
 
         foreach (var station in _stations)
         {
-            if (!station.PassengerServiceEnabled || station.Position == current) continue;
-
-            int dx = station.Position.X - current.X;
-            int dy = station.Position.Y - current.Y;
-            bool ahead = train.Direction switch
-            {
-                TrackConnections.East => dx > 0 && Math.Abs(dy) <= 1,
-                TrackConnections.West => dx < 0 && Math.Abs(dy) <= 1,
-                TrackConnections.South => dy > 0 && Math.Abs(dx) <= 1,
-                TrackConnections.North => dy < 0 && Math.Abs(dx) <= 1,
-                _ => false
-            };
-            if (!ahead) continue;
+            if (!station.PassengerServiceEnabled || station.Contains(current)) continue;
+            if (!IsStationAhead(train, station, current)) continue;
 
             float distance = EstimateDistanceToStation(train, station);
             if (distance < bestDistance)
@@ -137,14 +146,42 @@ public sealed class StationController
                 best = station;
             }
         }
+
         return best;
+    }
+
+    private static bool IsStationAhead(TrainClass train, Station station, MapPosition current)
+    {
+        foreach (var cell in station.GetCells())
+        {
+            int dx = cell.X - current.X;
+            int dy = cell.Y - current.Y;
+
+            bool ahead = train.Direction switch
+            {
+                TrackConnections.East => dx > 0 && Math.Abs(dy) <= 1,
+                TrackConnections.West => dx < 0 && Math.Abs(dy) <= 1,
+                TrackConnections.South => dy > 0 && Math.Abs(dx) <= 1,
+                TrackConnections.North => dy < 0 && Math.Abs(dx) <= 1,
+                _ => false
+            };
+
+            if (ahead) return true;
+        }
+
+        return false;
     }
 
     private static float EstimateDistanceToStation(TrainClass train, Station station)
     {
-        float dx = station.Position.X - train.Position.X;
-        float dy = station.Position.Y - train.Position.Y;
-        return MathF.Sqrt(dx * dx + dy * dy);
+        float best = float.MaxValue;
+        foreach (var cell in station.GetCells())
+        {
+            float dx = cell.X + 0.5f - train.Position.X;
+            float dy = cell.Y + 0.5f - train.Position.Y;
+            best = MathF.Min(best, MathF.Sqrt(dx * dx + dy * dy));
+        }
+        return best;
     }
 
     private static float GetTrainBraking(TrainClass train)
