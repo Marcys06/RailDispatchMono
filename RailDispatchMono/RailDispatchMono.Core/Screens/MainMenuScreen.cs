@@ -37,7 +37,7 @@ internal sealed class MainMenuScreen : MenuScreen
         {
             string slot = SaveSlotService.CreateSlot();
             ExitScreen();
-            _startGame(slot);
+            _startGame("NEW:" + slot);
         }
         catch (Exception ex)
         {
