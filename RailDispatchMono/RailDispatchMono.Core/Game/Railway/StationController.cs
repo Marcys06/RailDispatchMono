@@ -11,33 +11,19 @@ using TrainClass = RailDispatchMono.Core.Game.Train.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
-/// <summary>
-/// Coordinates station detection and train dwell, while delegating the actual
-/// stop decision and passenger handling to independent services.
-/// </summary>
 public sealed class StationController
 {
     private sealed class DwellState
     {
         public Station Station { get; }
         public float RemainingSeconds { get; set; }
-
-        public DwellState(Station station)
-        {
-            Station = station;
-            RemainingSeconds = station.DwellTimeSeconds;
-        }
+        public DwellState(Station station) { Station = station; RemainingSeconds = station.DwellTimeSeconds; }
     }
 
     private readonly List<Station> _stations = new();
     private readonly Dictionary<Guid, DwellState> _dwellingTrains = new();
     private readonly Dictionary<Guid, float> _generationTimers = new();
-
-    // A train must physically leave the station's detection area before the
-    // same station can trigger another stop. This prevents the post-dwell
-    // 0.1 m/s release impulse from immediately starting another dwell cycle.
     private readonly Dictionary<Guid, Guid> _completedStationVisits = new();
-
     private readonly PassengerManager _passengers;
     private readonly ITrainStopDecision _stopDecision;
     private readonly IPassengerService _passengerService;
@@ -49,11 +35,7 @@ public sealed class StationController
     public IPassengerService PassengerService => _passengerService;
     public IPassengerDemandProvider DemandProvider => _demandProvider;
 
-    public StationController(
-        PassengerManager? passengers = null,
-        ITrainStopDecision? stopDecision = null,
-        IPassengerService? passengerService = null,
-        IPassengerDemandProvider? demandProvider = null)
+    public StationController(PassengerManager? passengers = null, ITrainStopDecision? stopDecision = null, IPassengerService? passengerService = null, IPassengerDemandProvider? demandProvider = null)
     {
         _passengers = passengers ?? new PassengerManager();
         _stopDecision = stopDecision ?? new DefaultTrainStopDecision();
@@ -65,9 +47,7 @@ public sealed class StationController
     {
         if (station == null) throw new ArgumentNullException(nameof(station));
         if (_stations.Any(s => s.Id == station.Id)) return;
-        if (_stations.Any(s => s.GetCells().Any(station.Contains)))
-            throw new InvalidOperationException("Station area overlaps an existing station.");
-
+        if (_stations.Any(s => s.GetCells().Any(station.Contains))) throw new InvalidOperationException("Station area overlaps an existing station.");
         _stations.Add(station);
         _generationTimers[station.Id] = station.PassengerGenerationIntervalSeconds;
     }
@@ -76,43 +56,29 @@ public sealed class StationController
     {
         if (station == null || !_stations.Remove(station)) return false;
         _generationTimers.Remove(station.Id);
-
-        foreach (var trainId in _completedStationVisits
-                     .Where(x => x.Value == station.Id)
-                     .Select(x => x.Key)
-                     .ToList())
-        {
-            _completedStationVisits.Remove(trainId);
-        }
-
+        foreach (var trainId in _completedStationVisits.Where(x => x.Value == station.Id).Select(x => x.Key).ToList()) _completedStationVisits.Remove(trainId);
         return true;
     }
 
-    public Station? GetStationAt(MapPosition position) =>
-        _stations.FirstOrDefault(s => s.Contains(position));
+    public void Clear()
+    {
+        _stations.Clear();
+        _generationTimers.Clear();
+        _dwellingTrains.Clear();
+        _completedStationVisits.Clear();
+    }
 
-    public IReadOnlyList<Station> GetStationsAt(MapPosition position) =>
-        _stations.Where(s => s.Contains(position)).ToList();
+    public Station? GetStationAt(MapPosition position) => _stations.FirstOrDefault(s => s.Contains(position));
+    public IReadOnlyList<Station> GetStationsAt(MapPosition position) => _stations.Where(s => s.Contains(position)).ToList();
 
-    /// <summary>Advances automatic passenger generation.</summary>
     public void Update(float deltaTime)
     {
         deltaTime = MathF.Max(0f, deltaTime);
         foreach (var station in _stations)
         {
-            if (!station.PassengerGenerationEnabled || station.PassengerGenerationIntervalSeconds <= 0f)
-                continue;
-
-            float timer = _generationTimers.TryGetValue(station.Id, out var value)
-                ? value - deltaTime
-                : station.PassengerGenerationIntervalSeconds - deltaTime;
-
-            while (timer <= 0f)
-            {
-                GeneratePassengers(station);
-                timer += station.PassengerGenerationIntervalSeconds;
-            }
-
+            if (!station.PassengerGenerationEnabled || station.PassengerGenerationIntervalSeconds <= 0f) continue;
+            float timer = _generationTimers.TryGetValue(station.Id, out var value) ? value - deltaTime : station.PassengerGenerationIntervalSeconds - deltaTime;
+            while (timer <= 0f) { GeneratePassengers(station); timer += station.PassengerGenerationIntervalSeconds; }
             _generationTimers[station.Id] = timer;
         }
     }
@@ -123,175 +89,66 @@ public sealed class StationController
         int available = Math.Max(0, origin.PassengerWaitingCapacity - waiting);
         int requested = Math.Min(Math.Max(0, origin.PassengerGenerationBatchSize), available);
         if (requested <= 0 || _stations.Count < 2) return;
-
         int generated = 0;
         foreach (var destination in _demandProvider.GetDestinations(origin, _stations, requested))
         {
             if (generated >= requested || destination.Id == origin.Id) break;
-            _passengers.CreatePassenger(origin, destination);
-            generated++;
+            _passengers.CreatePassenger(origin, destination); generated++;
         }
-
-        if (generated > 0)
-            DebugManager.Log($"[STATION] {origin.Name}: generated {generated} passenger(s)");
+        if (generated > 0) DebugManager.Log($"[STATION] {origin.Name}: generated {generated} passenger(s)");
     }
 
     public bool BeforeTrainUpdate(TrainClass train, float deltaTime)
     {
         if (!_dwellingTrains.TryGetValue(train.Id, out var dwell)) return false;
-
-        dwell.RemainingSeconds -= MathF.Max(0f, deltaTime);
-        train.Speed = 0f;
+        dwell.RemainingSeconds -= MathF.Max(0f, deltaTime); train.Speed = 0f;
         if (dwell.RemainingSeconds > 0f) return true;
-
-        _dwellingTrains.Remove(train.Id);
-        DebugManager.Log($"[STATION] Train {train.Id} released from {dwell.Station.Name}");
-        return false;
+        _dwellingTrains.Remove(train.Id); return false;
     }
 
     public void AfterTrainUpdate(TrainClass train, float deltaTime)
     {
         ClearCompletedVisitIfTrainLeftStation(train);
-
         var currentStation = FindStationAtTrain(train);
-        if (currentStation != null &&
-            _stopDecision.ShouldStopAt(train, currentStation) &&
-            train.Speed <= 0.75f &&
-            (!_completedStationVisits.TryGetValue(train.Id, out var completedStationId) ||
-             completedStationId != currentStation.Id))
+        if (currentStation != null && _stopDecision.ShouldStopAt(train, currentStation) && train.Speed <= 0.75f && (!_completedStationVisits.TryGetValue(train.Id, out var completedStationId) || completedStationId != currentStation.Id))
         {
             train.Speed = 0f;
             if (!_dwellingTrains.ContainsKey(train.Id))
             {
-                var result = _passengerService.ServiceTrainAtStation(train, currentStation);
+                _passengerService.ServiceTrainAtStation(train, currentStation);
                 _dwellingTrains[train.Id] = new DwellState(currentStation);
-
-                // Mark the visit immediately. The train remains inside the
-                // station detection radius during the dwell and for the first
-                // few frames after release, so without this latch it would
-                // repeatedly re-enter the same station.
                 _completedStationVisits[train.Id] = currentStation.Id;
-
-                DebugManager.Log($"[STATION] Train {train.Id} arrived at {currentStation.Name}; " +
-                                 $"alighted={result.Alighted}, boarded={result.Boarded}, dwell started.");
             }
             return;
         }
-
         var nextStation = FindNextStation(train);
         if (nextStation == null || !_stopDecision.ShouldStopAt(train, nextStation)) return;
-
-        float distance = EstimateDistanceToStation(train, nextStation);
-        float braking = GetTrainBraking(train);
+        float distance = EstimateDistanceToStation(train, nextStation), braking = GetTrainBraking(train);
         if (braking <= 0f || distance <= 0f) return;
-
         float available = MathF.Max(0f, distance - nextStation.StopRadius);
         float safeSpeed = MathF.Sqrt(MathF.Max(0f, 2f * braking * available));
-        if (safeSpeed < train.Speed)
-        {
-            train.Speed = safeSpeed;
-            DebugManager.Log($"[STATION] Braking for {nextStation.Name}: distance={distance:F2}, safe={safeSpeed:F2} m/s");
-        }
+        if (safeSpeed < train.Speed) train.Speed = safeSpeed;
     }
 
     public bool IsDwelling(TrainClass train) => _dwellingTrains.ContainsKey(train.Id);
 
     private void ClearCompletedVisitIfTrainLeftStation(TrainClass train)
     {
-        if (!_completedStationVisits.TryGetValue(train.Id, out var stationId))
-            return;
-
+        if (!_completedStationVisits.TryGetValue(train.Id, out var stationId)) return;
         var station = _stations.FirstOrDefault(s => s.Id == stationId);
-        if (station == null || !IsTrainWithinStationArea(train, station))
-        {
-            _completedStationVisits.Remove(train.Id);
-            DebugManager.Log($"[STATION] Train {train.Id} left {station?.Name ?? stationId.ToString()}; visit re-armed");
-        }
+        if (station == null || !IsTrainWithinStationArea(train, station)) _completedStationVisits.Remove(train.Id);
     }
 
     private static bool IsTrainWithinStationArea(TrainClass train, Station station)
     {
         var cell = train.GetCurrentCell();
         if (!station.Contains(cell)) return false;
-
-        Vector2 stationCenter = new(
-            station.Position.X + station.Width / 2f,
-            station.Position.Y + station.Height / 2f);
-
-        return Vector2.Distance(train.Position, stationCenter) <=
-               MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f;
+        Vector2 stationCenter = new(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f);
+        return Vector2.DistanceSquared(train.Position, stationCenter) <= MathF.Max(1f, station.StopRadius * station.StopRadius);
     }
 
-    private Station? FindStationAtTrain(TrainClass train)
-    {
-        var cell = train.GetCurrentCell();
-        var station = _stations.FirstOrDefault(s => s.PassengerServiceEnabled && s.Contains(cell));
-        if (station == null) return null;
-
-        return IsTrainWithinStationArea(train, station) ? station : null;
-    }
-
-    private Station? FindNextStation(TrainClass train)
-    {
-        Station? best = null;
-        float bestDistance = float.MaxValue;
-        var current = train.GetCurrentCell();
-
-        foreach (var station in _stations)
-        {
-            if (!station.PassengerServiceEnabled || station.Contains(current)) continue;
-            if (!_stopDecision.ShouldStopAt(train, station) || !IsStationAhead(train, station, current)) continue;
-
-            float distance = EstimateDistanceToStation(train, station);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                best = station;
-            }
-        }
-
-        return best;
-    }
-
-    private static bool IsStationAhead(TrainClass train, Station station, MapPosition current)
-    {
-        foreach (var cell in station.GetCells())
-        {
-            int dx = cell.X - current.X;
-            int dy = cell.Y - current.Y;
-
-            bool ahead = train.Direction switch
-            {
-                TrackConnections.East => dx > 0 && Math.Abs(dy) <= 1,
-                TrackConnections.West => dx < 0 && Math.Abs(dy) <= 1,
-                TrackConnections.South => dy > 0 && Math.Abs(dx) <= 1,
-                TrackConnections.North => dy < 0 && Math.Abs(dx) <= 1,
-                _ => false
-            };
-
-            if (ahead) return true;
-        }
-
-        return false;
-    }
-
-    private static float EstimateDistanceToStation(TrainClass train, Station station)
-    {
-        float best = float.MaxValue;
-        foreach (var cell in station.GetCells())
-        {
-            float dx = cell.X + 0.5f - train.Position.X;
-            float dy = cell.Y + 0.5f - train.Position.Y;
-            best = MathF.Min(best, MathF.Sqrt(dx * dx + dy * dy));
-        }
-        return best;
-    }
-
-    private static float GetTrainBraking(TrainClass train)
-    {
-        float braking = 0f;
-        foreach (var vehicle in train.Composition.Vehicles)
-            braking = MathF.Max(braking, vehicle.Parameters.Braking);
-        return braking;
-    }
+    private Station? FindStationAtTrain(TrainClass train) => _stations.FirstOrDefault(s => s.Contains(train.GetCurrentCell()));
+    private Station? FindNextStation(TrainClass train) => _stations.FirstOrDefault(s => s.Id != FindStationAtTrain(train)?.Id);
+    private static float EstimateDistanceToStation(TrainClass train, Station station) => Vector2.Distance(train.Position, new Vector2(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f));
+    private static float GetTrainBraking(TrainClass train) => MathF.Max(0.1f, train.MaxSpeed * 0.5f);
 }
