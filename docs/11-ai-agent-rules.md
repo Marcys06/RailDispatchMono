@@ -1,14 +1,14 @@
 # AI agent rules
 
-This file is intentionally explicit. It is the first document an AI coding agent should read before modifying RailDispatchMono.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.0`.
 
 ## 1. Never invent architecture
 
-The source code is authoritative. Do not infer a subsystem contract from a directory name, class name, old comment, or generic MonoGame template.
+The source code is authoritative. Do not infer a subsystem contract from a directory name, class name, old comment, changelog entry, or generic MonoGame template.
 
 ## 2. Core is shared
 
-`RailDispatchMono.Core` is shared by platform hosts. Avoid platform-specific APIs in Core unless they are already abstracted or the project explicitly requires them.
+`RailDispatchMono.Core` is shared by platform hosts. Avoid platform-specific APIs in Core unless they are already abstracted or explicitly required.
 
 ## 3. Do not bypass `ScreenManager`
 
@@ -16,62 +16,84 @@ Screens are registered, updated, drawn and removed through `ScreenManager`. Do n
 
 ## 4. Respect screen lifecycle
 
-`GameScreen.Update` runs even for screens that are not currently receiving input. `HandleInput` is the input-specific hook and is selected by `ScreenManager`.
-
-Understand `TransitionOn`, `Active`, `TransitionOff` and `Hidden` before changing visibility behavior.
+Understand `GameScreen`, `TransitionOn`, `Active`, `TransitionOff`, `Hidden`, popup behavior and input routing before changing visibility behavior. Pause is an overlay, not a second game loop.
 
 ## 5. Input has one shared source
 
-Use `InputState`. It tracks current/previous keyboard and gamepad state, mouse state, touch state, gestures and logical cursor coordinates.
-
-Do not compare raw mouse coordinates against logical game coordinates without applying the established transformation.
+Use the existing `InputState`/input routing architecture for shared input semantics. Do not compare raw physical mouse coordinates with logical game coordinates without applying the established presentation transformation.
 
 ## 6. Preserve state ownership
 
-Game/domain state belongs to the relevant game subsystem, not to a screen merely because the screen displays it.
+Authoritative game/domain state belongs to the relevant game subsystem, not to a screen merely because the screen displays it.
 
 ## 7. Preserve settings notifications
 
-`RailDispatchMonoSettings` uses `INotifyPropertyChanged`. A setting setter should not silently bypass this notification contract.
+`RailDispatchMonoSettings` uses `INotifyPropertyChanged`. A setting setter must not silently bypass the existing notification contract.
 
 ## 8. Do not duplicate content infrastructure
 
-Reuse existing Content loading and asset paths. Search for current load sites before adding or renaming assets.
+Reuse existing Content loading and asset paths. Search current load sites before adding or renaming assets.
 
 ## 9. Search before changing APIs
 
-Before changing a constructor, method, property or type used outside its file, search the repository for all references.
+Before changing a constructor, method, property, event or type used outside its file, search the repository for all references. Existing public/internal APIs are presumed intentional.
+
+**Do not change existing APIs unless the task explicitly requires it and all usages have been reviewed.**
 
 ## 10. Platform changes require cross-platform review
 
-A change to Core can affect Android and desktop targets. A change to a platform host should not leak assumptions into shared Core code.
+A change to Core can affect desktop and Android hosts. A platform-host change must not leak platform assumptions into shared Core code.
 
 ## 11. Do not delete existing files for cleanup
 
-Documentation work in `docs/` is additive. Existing repository files must not be deleted merely to simplify documentation.
+Documentation and implementation cleanup must not delete unrelated repository files. Preserve historical changelog files.
 
 ## 12. Prefer small changes
 
-Do not combine an unrelated refactor with a feature implementation. Preserve working behavior unless the task explicitly requests a behavior change.
+Do not combine unrelated refactors with a feature implementation. At `0.1.0`, the feature scope is frozen; prefer targeted bug fixes over new architecture.
 
 ## 13. Validate assumptions against code
 
-If documentation says that class A owns behavior B, there should be an implementation or call-site basis for that statement. If not verified, document the uncertainty instead of inventing details.
+If documentation says class A owns behavior B, verify the implementation and call sites. If behavior is not verified, do not present it as fact.
 
 ## 14. Update documentation with architecture changes
 
-If a code change modifies lifecycle, ownership, dependencies, input, settings, content, platform behavior or screen orchestration, update the corresponding document under `docs/`.
+If a code change modifies lifecycle, ownership, dependencies, input, settings, content, platform behavior, persistence or screen orchestration, update the corresponding document under `docs/`.
 
-## 15. Current game-loop contract
+## 15. Save-system contract
 
-The current `RailDispatchMonoGame` configures fixed 60 FPS timing, creates `ScreenManager`, creates the initial `GameplayScreen`, and delegates Update/Draw to the manager.
+The current save system uses **separate JSON files inside each save directory**. Do not collapse it into a single JSON document unless a future task explicitly changes the format.
 
-Do not add a second top-level game loop.
+The save system is versioned. `metadata.json` identifies the save. Runtime state is distributed among the established save files, including map/infrastructure, trains/vehicles, schedules/routes, passengers and simulation time where supported by the current implementation.
 
-## 16. Current screen-manager contract
+Auto-save is intentionally disabled at `0.1.0`.
 
-`ScreenManager` owns the screen collection, input state, shared sprite resources, presentation scaling and touch gesture configuration. Its update traversal starts at the topmost screen and routes input only to the first eligible screen.
+Invalid or incomplete saves must be surfaced to the user as a notification. Do not silently load partial state.
 
-## 17. Comments are not necessarily current
+## 16. Startup contract
+
+The application enters through the Main Menu. The current menu flow includes New Game, Load Game, Settings, About and Quit.
+
+New Game intentionally creates a new empty game state immediately without an additional confirmation step.
+
+## 17. Current gameplay contract
+
+- `GameDay` and `GameTime` represent simulation time.
+- x1/x2/x5 are simulation-speed controls.
+- Pause stops simulation progression and is toggled with `ESC`.
+- Depots are world objects and the entry point for train creation.
+- A depot can be used to create multiple trains through the existing depot workflow.
+- Wagon routes describe passenger-service destinations; they do not directly control locomotive movement.
+- Passenger exchange is wagon-specific and may emit floating `+X` / `-X` notifications.
+
+## 18. Current release contract
+
+`0.1.0` is a stabilization release. Do not introduce a new feature milestone under the `0.1.0` label. New features should be planned for the next version and implemented separately unless the task explicitly states otherwise.
+
+## 19. Comments are not necessarily current
 
 The source contains migration notes and comments written during implementation changes. Always trust the actual signature and executable code over a stale comment.
+
+## 20. Documentation version discipline
+
+Current-state documents must describe `0.1.0`. Historical documents and changelog entries retain their original version identifiers. Do not rewrite historical release notes to pretend that older versions contained features added later.
