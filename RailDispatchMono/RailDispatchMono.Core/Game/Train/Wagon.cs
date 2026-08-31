@@ -14,6 +14,7 @@ public sealed class Wagon : Vehicle
     public int PassengerCapacity { get; }
     public IReadOnlyList<Passenger> Passengers => _passengers;
     public IReadOnlyList<Guid> ServiceRoute => _serviceRoute;
+    public int PassengerCount => _passengers.Count;
     public int AvailablePassengerCapacity => Math.Max(0, PassengerCapacity - _passengers.Count);
 
     public Wagon(
@@ -45,12 +46,13 @@ public sealed class Wagon : Vehicle
         _passengers.Add(passenger);
         passenger.State = PassengerState.OnBoard;
         passenger.CurrentTrainId = trainId;
+        passenger.CurrentStationId = null;
         return true;
     }
 
-    internal bool TryAlightAt(Station station, Guid trainId)
+    internal int TryAlightAt(Station station, Guid trainId)
     {
-        bool removedAny = false;
+        int alighted = 0;
         for (int i = _passengers.Count - 1; i >= 0; i--)
         {
             var passenger = _passengers[i];
@@ -60,8 +62,10 @@ public sealed class Wagon : Vehicle
             _passengers.RemoveAt(i);
             passenger.State = PassengerState.Arrived;
             passenger.CurrentTrainId = null;
-            removedAny = true;
+            passenger.CurrentStationId = station.Id;
+            alighted++;
         }
-        return removedAny;
+
+        return alighted;
     }
 }
