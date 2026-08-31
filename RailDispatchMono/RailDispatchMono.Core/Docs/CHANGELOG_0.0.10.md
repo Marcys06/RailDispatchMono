@@ -1,4 +1,4 @@
-# [0.0.10] — Stacje i pasażerowie
+# [0.0.10] — Stacje, pasażerowie i poprawka resetu semaforów
 
 **Data:** 2026-08-31
 
@@ -39,6 +39,15 @@ Model wagonu został przygotowany pod składy, których wagony mogą obsługiwa�
 
 Nie dodano jeszcze mechaniki sprzęgania ani rozprzęgania. `ServiceRoute` jest przygotowaniem modelu danych pod tę funkcjonalność.
 
+## Signal Reset Fix
+
+- Naprawiono błąd, przez który 3-sekundowy cooldown bloku nie był odliczany w głównej pętli aktualizacji.
+- `TrainManager` wywołuje teraz `BlockController.Update(deltaTime)`, dzięki czemu cooldown faktycznie upływa.
+- Po pełnych 3 sekundach od zwolnienia bloku jego semafor wejściowy jest automatycznie ustawiany na `Stop`, jeżeli aktualnie nie jest już aspektem zatrzymania.
+- Automatyczny reset działa dla wszystkich aspektów innych niż `Stop` i `StopStation`.
+- `Stop`/`StopStation` pozostają bez zmian.
+- Przejście `Stop -> aspekt zezwalający` nadal pozostaje ręczne.
+
 ## Transfers
 
 - Automatyczne przesiadki nie są jeszcze implementowane.
@@ -60,3 +69,4 @@ Nie dodano jeszcze mechaniki sprzęgania ani rozprzęgania. `ServiceRoute` jest 
 - Brak coupling/decoupling.
 - `ServiceRoute` nie jest jeszcze generowana automatycznie z planowanej trasy pociągu.
 - Look-ahead stacji jest obecnie przybliżeniem gridowym, a nie pełnym pomiarem długości trasy.
+- Nie uruchomiono lokalnego builda w tym środowisku; zmiany zostały ograniczone do plików źródłowych i dokumentacji repozytorium.
