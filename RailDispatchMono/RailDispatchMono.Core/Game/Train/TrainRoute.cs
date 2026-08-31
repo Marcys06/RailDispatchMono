@@ -63,6 +63,13 @@ public sealed class TrainRoute
 
     public bool ServesStation(Guid stationId) => StationIds.Contains(stationId);
 
+    /// <summary>Returns true only for the current or a future stop.</summary>
+    public bool CanServeStation(Guid stationId)
+    {
+        int index = StationIds.IndexOf(stationId);
+        return index >= 0 && index >= CurrentStopIndex;
+    }
+
     public string ToJson(bool indented = true) =>
         JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = indented });
 

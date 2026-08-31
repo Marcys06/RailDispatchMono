@@ -40,9 +40,9 @@ public sealed class Wagon : Vehicle
             return false;
 
         // An empty route is intentionally treated as "not yet configured" for
-        // compatibility with test consists. Once a route exists, only passengers
-        // whose destination is one of its stops may board.
-        return Route.IsEmpty || Route.ServesStation(passenger.DestinationStation.Id);
+        // compatibility with test consists. Once a route exists, passengers
+        // whose destination has already been passed are not allowed to board.
+        return Route.IsEmpty || Route.CanServeStation(passenger.DestinationStation.Id);
     }
 
     internal bool TryBoard(Passenger passenger, Guid trainId)
