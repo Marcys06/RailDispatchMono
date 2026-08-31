@@ -18,26 +18,29 @@ This is the single canonical documentation tree for the project. Code is authori
 - `12-known-issues-and-cautions.md` — current limitations.
 - `13-code-index.md` — source-file index.
 - `14-documentation-maintenance.md` — synchronization rules.
-- `19-current-state-0.0.12.md` — previous implementation snapshot.
+- `19-current-state-0.0.12.md` — historical implementation snapshot.
 - `20-debug-logging.md` — debug categories and output throttling.
 - `23-simulation-time-and-0.0.13pre.md` — debug and simulation-time changes.
 - `24-passengers-0.0.10.md` — passenger model.
 - `25-stations-0.0.10.md` — station model.
 - `26-wagon-routes-0.0.13.md` — wagon route model and UI.
 - `27-collision-system-0.0.14.md` — train collision protection.
+- `28-current-state-0.0.14c.md` — current implementation snapshot.
 - `changelog/` — one changelog directory containing versioned release notes.
 
 ## Current baseline
 
-- Current line: `0.0.14`.
+- Current line: `0.0.14c`.
 - `0.0.13` adds per-wagon station routes and JSON-ready route data.
 - `0.0.14` adds minimal collision protection and the `RadioStop` command.
+- `0.0.14c` stabilizes wagon-route menu input handling and adds the visible `S` mode indicator.
 - Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
 - Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
 - Pause stops both simulation and game clock.
 - The 5× clock scale does not multiply train velocity, acceleration, braking or travelled distance.
 - Stations support rectangular areas and passenger exchange.
 - Wagons manage passenger capacity and routes independently.
+- Wagon route changes are persisted through the existing schedule storage path.
 - Depots are world buildings and are the planned origin for future train creation/route workflows.
 - Locomotives remain controlled by signals and switches; wagon routes do not directly control locomotive movement.
 - Signal protection has priority over the simple collision rule; collision protection uses a 2-cell safety distance when no protecting signal exists.
