@@ -166,6 +166,27 @@ public static class RuntimeSaveService
         }
 
         trainManager.Update(0f);
+
+        // Restore onboard passengers after stations and trains exist again.
+        foreach (TrainSaveData savedTrain in data.Trains)
+        {
+            Train? train = trainManager.Trains.FirstOrDefault(x => x.Position == new Vector2(savedTrain.X, savedTrain.Y));
+            if (train == null) continue;
+            for (int i = 0; i < savedTrain.Vehicles.Count && i < train.Composition.Vehicles.Count; i++)
+            {
+                if (train.Composition.Vehicles[i] is not Wagon wagon) continue;
+                foreach (PassengerSaveData savedPassenger in savedTrain.Vehicles[i].Passengers)
+                {
+                    if (savedPassenger.State != PassengerState.OnBoard) continue;
+                    Station? origin = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.OriginStationId);
+                    Station? destination = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.DestinationStationId);
+                    if (origin == null || destination == null) continue;
+                    var passenger = new Passenger(origin, destination);
+                    wagon.TryBoard(passenger, train.Id);
+                }
+            }
+        }
+
         clock.SetTime(data.GameDay, data.GameTimeSeconds);
     }
 }
