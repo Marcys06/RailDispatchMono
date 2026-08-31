@@ -93,8 +93,10 @@ public sealed class TrainManager
             StationController.AfterTrainUpdate(train, deltaTime);
         }
 
-        _blockController?.UpdateOccupancy();
-        _blockController?.UpdateSignals();
+        // Important: BlockController.Update() must be used here, not only
+        // UpdateOccupancy()/UpdateSignals(), because the 3-second cooldown is
+        // advanced by Update(deltaTime).
+        _blockController?.Update(deltaTime);
     }
 
     public bool IsCellOccupied(MapPosition cell)
