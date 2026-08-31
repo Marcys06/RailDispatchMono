@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using RailDispatchMono.Core;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Passengers;
 using RailDispatchMono.Core.Game.Train;
@@ -23,11 +24,7 @@ public sealed class StationController
         public Station Station { get; }
         public float RemainingSeconds { get; set; }
 
-        public DwellState(Station station)
-        {
-            Station = station;
-            RemainingSeconds = station.DwellTimeSeconds;
-        }
+        public DwellState(Station station) { Station = station; RemainingSeconds = station.DwellTimeSeconds; }
     }
 
     private readonly List<Station> _stations = new();
@@ -37,49 +34,30 @@ public sealed class StationController
     public IReadOnlyList<Station> Stations => _stations;
     public PassengerManager Passengers => _passengers;
 
-    public StationController(PassengerManager? passengers = null)
-    {
-        _passengers = passengers ?? new PassengerManager();
-    }
+    public StationController(PassengerManager? passengers = null) => _passengers = passengers ?? new PassengerManager();
 
     public void AddStation(Station station)
     {
         if (station == null) throw new ArgumentNullException(nameof(station));
-        if (_stations.All(s => s.Id != station.Id))
-            _stations.Add(station);
+        if (_stations.All(s => s.Id != station.Id)) _stations.Add(station);
     }
 
-    public bool RemoveStation(Station station)
-    {
-        if (station == null) return false;
-        return _stations.Remove(station);
-    }
+    public bool RemoveStation(Station station) => station != null && _stations.Remove(station);
 
-    public Station? GetStationAt(MapPosition position) =>
-        _stations.FirstOrDefault(s => s.Position == position);
+    public Station? GetStationAt(MapPosition position) => _stations.FirstOrDefault(s => s.Position == position);
 
-    /// <summary>
-    /// Returns true when the train should be held instead of running Train.Update.
-    /// </summary>
     public bool BeforeTrainUpdate(Train train, float deltaTime)
     {
-        if (!_dwellingTrains.TryGetValue(train.Id, out var dwell))
-            return false;
+        if (!_dwellingTrains.TryGetValue(train.Id, out var dwell)) return false;
 
         dwell.RemainingSeconds -= MathF.Max(0f, deltaTime);
         train.Speed = 0f;
-
-        if (dwell.RemainingSeconds > 0f)
-            return true;
+        if (dwell.RemainingSeconds > 0f) return true;
 
         _dwellingTrains.Remove(train.Id);
         return false;
     }
 
-    /// <summary>
-    /// Called after normal movement. It applies station braking as a speed cap,
-    /// then enters dwell once the train is physically close enough to the stop.
-    /// </summary>
     public void AfterTrainUpdate(Train train, float deltaTime)
     {
         var currentStation = FindStationAtTrain(train);
@@ -96,16 +74,12 @@ public sealed class StationController
         }
 
         var nextStation = FindNextStation(train);
-        if (nextStation == null)
-            return;
+        if (nextStation == null) return;
 
         float distance = EstimateDistanceToStation(train, nextStation);
         float braking = GetTrainBraking(train);
-        if (braking <= 0f || distance <= 0f)
-            return;
+        if (braking <= 0f || distance <= 0f) return;
 
-        // Leave a small operational margin so the station controller does not
-        // depend on an exact cell-center collision.
         float available = MathF.Max(0f, distance - nextStation.StopRadius);
         float safeSpeed = MathF.Sqrt(MathF.Max(0f, 2f * braking * available));
         if (safeSpeed < train.Speed)
@@ -140,8 +114,7 @@ public sealed class StationController
 
         foreach (var station in _stations)
         {
-            if (!station.PassengerServiceEnabled || station.Position == current)
-                continue;
+            if (!station.PassengerServiceEnabled || station.Position == current) continue;
 
             int dx = station.Position.X - current.X;
             int dy = station.Position.Y - current.Y;
@@ -153,9 +126,7 @@ public sealed class StationController
                 TrackConnections.North => dy < 0 && Math.Abs(dx) <= 1,
                 _ => false
             };
-
-            if (!ahead)
-                continue;
+            if (!ahead) continue;
 
             float distance = EstimateDistanceToStation(train, station);
             if (distance < bestDistance)
@@ -164,13 +135,11 @@ public sealed class StationController
                 best = station;
             }
         }
-
         return best;
     }
 
     private static float EstimateDistanceToStation(Train train, Station station)
     {
-        var current = train.GetCurrentCell();
         float dx = station.Position.X - train.Position.X;
         float dy = station.Position.Y - train.Position.Y;
         return MathF.Sqrt(dx * dx + dy * dy);
