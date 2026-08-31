@@ -3,6 +3,7 @@ using RailDispatchMono.Core.Game.Passengers;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
+using TrainModel = RailDispatchMono.Core.Game.Train.Train;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -76,7 +77,7 @@ public static class RuntimeSaveService
         var data = new RuntimeSaveData { GameDay = clock.GameDay, GameTimeSeconds = clock.Seconds };
         var passengers = new List<PassengerSaveData>();
 
-        foreach (Train train in trainManager.Trains)
+        foreach (TrainModel train in trainManager.Trains)
         {
             var savedTrain = new TrainSaveData
             {
@@ -157,7 +158,7 @@ public static class RuntimeSaveService
                 vehicles.Add(vehicle);
             }
 
-            var train = new Train(new Vector2(savedTrain.X, savedTrain.Y), savedTrain.Direction, savedTrain.Speed, vehicles);
+            var train = new TrainModel(new Vector2(savedTrain.X, savedTrain.Y), savedTrain.Direction, savedTrain.Speed, vehicles);
             train.SetMap(trainManager.Map);
             train.SetSignalController(signals);
             train.SetBlockController(blocks);
@@ -167,10 +168,10 @@ public static class RuntimeSaveService
 
         trainManager.Update(0f);
 
-        // Restore onboard passengers after stations and trains exist again.
         foreach (TrainSaveData savedTrain in data.Trains)
         {
-            Train? train = trainManager.Trains.FirstOrDefault(x => x.Position == new Vector2(savedTrain.X, savedTrain.Y));
+            TrainModel? train = trainManager.Trains.FirstOrDefault(x =>
+                x.Position == new Vector2(savedTrain.X, savedTrain.Y));
             if (train == null) continue;
             for (int i = 0; i < savedTrain.Vehicles.Count && i < train.Composition.Vehicles.Count; i++)
             {
