@@ -6,25 +6,31 @@ namespace RailDispatchMono.Core.Game.Railway;
 
 /// <summary>
 /// Passenger station represented by an area of map cells.
-/// The Position property is retained as the anchor/top-left cell for compatibility.
-/// Semaphores remain responsible for defining where a train stops; station geometry
-/// only defines which cells belong to the station and therefore where passenger
-/// service is available.
+/// Semaphores remain responsible for the physical stopping point.
 /// </summary>
 public sealed class Station
 {
     public Guid Id { get; }
     public string Name { get; set; }
-
-    /// <summary>Anchor (top-left) cell of the station area.</summary>
     public MapPosition Position { get; }
-
     public int Width { get; }
     public int Height { get; }
 
     public float StopRadius { get; set; } = 0.35f;
     public float DwellTimeSeconds { get; set; } = 5f;
     public bool PassengerServiceEnabled { get; set; } = true;
+
+    /// <summary>Enables automatic generation of waiting passengers.</summary>
+    public bool PassengerGenerationEnabled { get; set; } = true;
+
+    /// <summary>Time between automatic passenger-generation batches.</summary>
+    public float PassengerGenerationIntervalSeconds { get; set; } = 10f;
+
+    /// <summary>Maximum number of passengers generated in one interval.</summary>
+    public int PassengerGenerationBatchSize { get; set; } = 2;
+
+    /// <summary>Hard cap for passengers waiting at this station.</summary>
+    public int PassengerWaitingCapacity { get; set; } = 100;
 
     public int AreaSize => Width * Height;
 
