@@ -30,7 +30,7 @@ This is the single canonical documentation tree for the project. Code is authori
 
 ## Current baseline
 
-- Current line: `0.0.15f`.
+- Current line: `0.0.16`.
 - `0.0.13` adds per-wagon station routes and JSON-ready route data.
 - `0.0.14` adds minimal collision protection and the `RadioStop` command.
 - `0.0.14c` stabilizes wagon-route menu input handling and adds the visible `S` mode indicator.
@@ -38,15 +38,15 @@ This is the single canonical documentation tree for the project. Code is authori
 - `0.0.15b` adds save/load for map infrastructure through `map.json`.
 - `0.0.15c` moves Save/Load into the pause menu.
 - `0.0.15d` and `0.0.15f` stabilize pause state handling and screen management.
-- Save data is currently focused on map infrastructure; full train, wagon, schedule, world-state and economy persistence is not yet implemented as one complete save system.
+- `0.0.16` introduces versioned save slots, a Main Menu, runtime train/vehicle/passenger/time persistence and save-slot-aware schedules.
+- Save slots are directories containing `metadata.json`, `map.json`, `trains.json`, `schedules.json`, `passengers.json` and `economy.json`.
+- Auto-save is intentionally disabled for now.
 - Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
-- Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
+- Game time starts at `00:00` and tracks `GameDay`; x1/x2/x5 remain simulation speed multipliers.
 - Pause stops both simulation and game clock.
-- The 5× clock scale does not multiply train velocity, acceleration, braking or travelled distance.
 - Stations support rectangular areas and passenger exchange.
 - Wagons manage passenger capacity and routes independently.
-- Wagon route changes are persisted through the existing schedule storage path.
-- Depots are world buildings and are the planned origin for future train creation/route workflows.
+- Depots are world buildings and the existing `DepotTrainMenu` supports creation of multiple trains from a depot.
 - Locomotives remain controlled by signals and switches; wagon routes do not directly control locomotive movement.
 - Signal protection has priority over the simple collision rule; collision protection uses a 2-cell safety distance when no protecting signal exists.
 
