@@ -24,42 +24,35 @@ public sealed class GameplayScreen : GameScreen
     private readonly SpriteBatch _spriteBatch;
     private SpriteFont? _tooltipFont;
     private Texture2D? _pixel;
-
     private readonly GameMap _map;
     private readonly TrackBuilder _builder;
     private readonly Camera _camera;
     private readonly TrackRenderer _renderer;
-
     private bool _isPaused;
     private PauseScreen? _pauseScreen;
-
     private readonly TrainManager _trainManager;
     private readonly TrainRenderer _trainRenderer;
     private readonly TrainDebugger _trainDebugger;
-
     private readonly JunctionRadialMenu _junctionRadialMenu;
-    private SignalController _signalController;
-    private SignalRadialMenu _signalRadialMenu;
-    private SignalDirectionMenu _signalDirectionMenu;
-    private BlockController _blockController;
-    private SignalSelectionMenu _signalSelectionMenu;
-    private InputManager _inputManager;
-    private SignalRenderer _signalRenderer;
+    private readonly SignalController _signalController;
+    private readonly SignalRadialMenu _signalRadialMenu;
+    private readonly SignalDirectionMenu _signalDirectionMenu;
+    private readonly BlockController _blockController;
+    private readonly SignalSelectionMenu _signalSelectionMenu;
+    private readonly InputManager _inputManager;
+    private readonly SignalRenderer _signalRenderer;
     private readonly DepotController _depotController;
-
+    private readonly MapSaveService _mapSaveService = new();
     private readonly GameClock _clock = new();
     private readonly FloatingTextManager _floatingText = new();
     private MouseState _previousMouse;
     private KeyboardState _previousKeyboard;
     private Inputs.InputState? _inputState;
-
     private bool _objectPanelOpen;
     private bool _showTrains = true;
     private bool _depotOpen;
     private bool _spawnArmed;
-
     private readonly Dictionary<(Guid TrainId, int WagonIndex), int> _wagonPassengerSnapshot = new();
-    private readonly MapSaveService _mapSaveService = new();
 
     private const int PanelWidth = 285;
     private const float PanelTextScale = 0.75f;
@@ -74,37 +67,26 @@ public sealed class GameplayScreen : GameScreen
     {
         _graphicsDevice = graphicsDevice;
         _spriteBatch = new SpriteBatch(graphicsDevice);
-
         _map = new GameMap(100, 100);
         _builder = new TrackBuilder(_map);
-        _camera = new Camera
-        {
-            Position = new Vector2(20f, 20f),
-            Zoom = 32f
-        };
-
+        _camera = new Camera { Position = new Vector2(20f, 20f), Zoom = 32f };
         _renderer = new TrackRenderer(_map);
         _trainManager = new TrainManager(_map);
         _trainRenderer = new TrainRenderer();
         _trainDebugger = new TrainDebugger(1.0f);
         _depotController = new DepotController();
-
         _junctionRadialMenu = new JunctionRadialMenu(_graphicsDevice, _builder);
         _inputState = screenManager.InputState;
-
         _signalController = new SignalController(_map);
         _blockController = new BlockController();
         _blockController.Initialize(_map, _trainManager, _signalController);
         _trainManager.Initialize(_blockController);
-
         _signalRadialMenu = new SignalRadialMenu(_graphicsDevice);
         _signalDirectionMenu = new SignalDirectionMenu(_graphicsDevice);
         _signalSelectionMenu = new SignalSelectionMenu(_graphicsDevice);
-
         _signalRenderer = new SignalRenderer(_map, _signalController);
         _signalRenderer.LoadContent(_graphicsDevice);
         _renderer.SetSignalRenderer(_signalRenderer);
-
         _inputManager = new InputManager(
             _graphicsDevice,
             _spriteBatch,
@@ -119,10 +101,9 @@ public sealed class GameplayScreen : GameScreen
             screenManager,
             _signalDirectionMenu,
             _signalSelectionMenu,
-            _map);
-
+            _map,
+            _depotController);
         _inputManager.DepotSelected += OnDepotSelected;
-
         CreateTestTrack();
         CreateTestTrain();
     }
@@ -139,19 +120,14 @@ public sealed class GameplayScreen : GameScreen
         _renderer.LoadContent(_graphicsDevice);
         _trainRenderer.LoadContent(_graphicsDevice);
         _trainRenderer.SetTrainManager(_trainManager);
-
         _tooltipFont = content.Load<SpriteFont>("Arial24");
-        SpriteFont font = _tooltipFont;
-
-        _junctionRadialMenu.SetFont(font);
-        _signalRadialMenu.SetFont(font);
-        _signalDirectionMenu.SetFont(font);
-        _signalSelectionMenu.SetFont(font);
+        _junctionRadialMenu.SetFont(_tooltipFont);
+        _signalRadialMenu.SetFont(_tooltipFont);
+        _signalDirectionMenu.SetFont(_tooltipFont);
+        _signalSelectionMenu.SetFont(_tooltipFont);
         _floatingText.LoadContent(content);
-
         _pixel = new Texture2D(_graphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
-
         SnapshotWagonPassengers();
     }
 
@@ -162,12 +138,6 @@ public sealed class GameplayScreen : GameScreen
 
         if (_inputState != null && _inputState.IsPauseKeyJustPressed())
             TogglePause();
-
-        if (IsKeyPressed(keyboard, Keys.F6))
-            SaveMap();
-
-        if (IsKeyPressed(keyboard, Keys.F7))
-            LoadMap();
 
         if (_isPaused)
         {
@@ -257,7 +227,6 @@ public sealed class GameplayScreen : GameScreen
                 return true;
 
             MapPosition cell = _camera.ScreenToMap(new Vector2(mouse.X, mouse.Y));
-
             if (_map.TryGetTrack(cell, out TrackCell? track) && track != null)
             {
                 SpawnDefaultTrain(cell, track.GetAvailableDirections().FirstOrDefault());
@@ -286,7 +255,6 @@ public sealed class GameplayScreen : GameScreen
             if (_showTrains)
             {
                 y += 50;
-
                 foreach (Train train in _trainManager.Trains)
                 {
                     if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
@@ -294,14 +262,12 @@ public sealed class GameplayScreen : GameScreen
                         _camera.Position = train.Position;
                         return true;
                     }
-
                     y += 38;
                 }
             }
             else
             {
                 y += 50;
-
                 foreach (Station station in _trainManager.StationController.Stations)
                 {
                     if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
@@ -311,7 +277,6 @@ public sealed class GameplayScreen : GameScreen
                             station.Position.Y + station.Height / 2f);
                         return true;
                     }
-
                     y += 38;
                 }
             }
@@ -324,49 +289,6 @@ public sealed class GameplayScreen : GameScreen
 
     private bool IsKeyPressed(KeyboardState keyboard, Keys key)
         => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
-
-    private void SaveMap()
-    {
-        try
-        {
-            _mapSaveService.Save(
-                _map,
-                _signalController,
-                _trainManager.StationController,
-                _depotController);
-
-            _floatingText.Add("ZAPISANO", _camera.Position);
-        }
-        catch (Exception ex)
-        {
-            DebugManager.Log("[SAVE] " + ex);
-        }
-    }
-
-    private void LoadMap()
-    {
-        try
-        {
-            _mapSaveService.Load(
-                _map,
-                _signalController,
-                _trainManager.StationController,
-                _depotController);
-
-            _blockController.Initialize(_map, _trainManager, _signalController);
-            _trainManager.Initialize(_blockController);
-            _builder.Mode = TrackBuildMode.None;
-            _depotOpen = false;
-            _spawnArmed = false;
-
-            _floatingText.Add("WCZYTANO", _camera.Position);
-            SnapshotWagonPassengers();
-        }
-        catch (Exception ex)
-        {
-            DebugManager.Log("[LOAD] " + ex);
-        }
-    }
 
     private void CreateTestTrack()
     {
@@ -386,7 +308,6 @@ public sealed class GameplayScreen : GameScreen
 
         var locomotiveParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
         var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
-
         var vehicles = new List<Vehicle>
         {
             new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
@@ -468,8 +389,47 @@ public sealed class GameplayScreen : GameScreen
         _pauseScreen.OnSave += (s, e) => SaveMap();
         _pauseScreen.OnLoad += (s, e) => LoadMap();
         _pauseScreen.OnQuit += (s, e) => QuitToMainMenu();
-
         ScreenManager?.AddScreen(_pauseScreen, null);
+    }
+
+    private void SaveMap()
+    {
+        try
+        {
+            _mapSaveService.Save(
+                _map,
+                _signalController,
+                _trainManager.StationController,
+                _depotController);
+            _floatingText.Add("ZAPISANO", _camera.Position);
+        }
+        catch (Exception ex)
+        {
+            DebugManager.Log("[SAVE] " + ex);
+        }
+    }
+
+    private void LoadMap()
+    {
+        try
+        {
+            _mapSaveService.Load(
+                _map,
+                _signalController,
+                _trainManager.StationController,
+                _depotController);
+            _blockController.Initialize(_map, _trainManager, _signalController);
+            _trainManager.Initialize(_blockController);
+            _builder.Mode = TrackBuildMode.None;
+            _depotOpen = false;
+            _spawnArmed = false;
+            _floatingText.Add("WCZYTANO", _camera.Position);
+            SnapshotWagonPassengers();
+        }
+        catch (Exception ex)
+        {
+            DebugManager.Log("[LOAD] " + ex);
+        }
     }
 
     private void ResumeGame()
@@ -505,15 +465,12 @@ public sealed class GameplayScreen : GameScreen
             return;
 
         _spriteBatch.Begin();
-
         DrawRect(new Rectangle(0, 0, 210, 65), new Color(20, 20, 20, 220));
         _spriteBatch.DrawString(_tooltipFont, _clock.DisplayTime, new Vector2(16, 5), Color.White);
         _spriteBatch.DrawString(_tooltipFont, $"x{_clock.SimulationSpeed:0}", new Vector2(130, 5), Color.Yellow);
-
         DrawButton(new Rectangle(16, 36, 50, 22), "x1", _clock.SimulationSpeed == 1f);
         DrawButton(new Rectangle(70, 36, 50, 22), "x2", _clock.SimulationSpeed == 2f);
         DrawButton(new Rectangle(124, 36, 50, 22), "x5", _clock.SimulationSpeed == 5f);
-
         DrawRect(PanelBounds, new Color(18, 18, 18, 235));
         _spriteBatch.DrawString(
             _tooltipFont,
@@ -525,21 +482,10 @@ public sealed class GameplayScreen : GameScreen
             PanelTextScale,
             SpriteEffects.None,
             0f);
-
-        DrawButton(
-            new Rectangle(PanelBounds.X + 10, 86, 120, 36),
-            "POCIAGI",
-            _showTrains,
-            PanelTextScale);
-
-        DrawButton(
-            new Rectangle(PanelBounds.X + 135, 86, 120, 36),
-            "STACJE",
-            !_showTrains,
-            PanelTextScale);
+        DrawButton(new Rectangle(PanelBounds.X + 10, 86, 120, 36), "POCIAGI", _showTrains, PanelTextScale);
+        DrawButton(new Rectangle(PanelBounds.X + 135, 86, 120, 36), "STACJE", !_showTrains, PanelTextScale);
 
         int y = 136;
-
         if (_showTrains)
         {
             foreach (Train train in _trainManager.Trains)
@@ -650,17 +596,12 @@ public sealed class GameplayScreen : GameScreen
 
             var destinationGroups = wagon.Passengers
                 .GroupBy(p => p.DestinationStation.Id)
-                .Select(g => new
-                {
-                    Destination = g.First().DestinationStation,
-                    Count = g.Count()
-                })
+                .Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() })
                 .OrderByDescending(x => x.Count)
                 .Take(5)
                 .ToList();
 
             linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasazerow:");
-
             foreach (var group in destinationGroups)
                 linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
@@ -668,7 +609,6 @@ public sealed class GameplayScreen : GameScreen
         float padding = 8f;
         float lineHeight = _tooltipFont.MeasureString("A").Y + 2f;
         float maxWidth = 0f;
-
         foreach (string line in linesList)
             maxWidth = MathF.Max(maxWidth, _tooltipFont.MeasureString(line).X);
 
@@ -679,33 +619,19 @@ public sealed class GameplayScreen : GameScreen
 
         if (tooltipPos.X + tooltipWidth > viewport.Width)
             tooltipPos.X = mouseScreenPos.X - tooltipWidth - 15;
-
         if (tooltipPos.Y + tooltipHeight > viewport.Height)
             tooltipPos.Y = mouseScreenPos.Y - tooltipHeight - 15;
 
         _spriteBatch.Begin();
-
-        Rectangle rect = new(
-            (int)tooltipPos.X,
-            (int)tooltipPos.Y,
-            (int)tooltipWidth,
-            (int)tooltipHeight);
-
+        Rectangle rect = new((int)tooltipPos.X, (int)tooltipPos.Y, (int)tooltipWidth, (int)tooltipHeight);
         _spriteBatch.Draw(_pixel, rect, bgColor);
 
         Vector2 textPos = tooltipPos + new Vector2(padding);
-
         for (int i = 0; i < linesList.Count; i++)
         {
-            _spriteBatch.DrawString(
-                _tooltipFont,
-                linesList[i],
-                textPos,
-                i == 0 ? Color.Yellow : Color.White);
-
+            _spriteBatch.DrawString(_tooltipFont, linesList[i], textPos, i == 0 ? Color.Yellow : Color.White);
             textPos.Y += lineHeight;
         }
-
         _spriteBatch.End();
     }
 
@@ -714,14 +640,8 @@ public sealed class GameplayScreen : GameScreen
 
     private void DrawButton(Rectangle rect, string text, bool active, float scale = 1f)
     {
-        DrawRect(
-            rect,
-            active
-                ? new Color(70, 90, 130, 255)
-                : new Color(45, 45, 45, 255));
-
+        DrawRect(rect, active ? new Color(70, 90, 130, 255) : new Color(45, 45, 45, 255));
         Vector2 size = _tooltipFont!.MeasureString(text) * scale;
-
         _spriteBatch.DrawString(
             _tooltipFont,
             text,
@@ -737,7 +657,6 @@ public sealed class GameplayScreen : GameScreen
     private void DrawListItem(Rectangle rect, string text, float scale = 1f)
     {
         DrawRect(rect, new Color(38, 38, 38, 255));
-
         _spriteBatch.DrawString(
             _tooltipFont!,
             text,
