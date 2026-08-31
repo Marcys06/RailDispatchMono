@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
@@ -19,10 +20,7 @@ public sealed class FloatingTextManager
     private readonly List<Item> _items = new();
     private SpriteFont? _font;
 
-    public void LoadContent(Content.ContentManager content)
-    {
-        _font = content.Load<SpriteFont>("Arial24");
-    }
+    public void LoadContent(ContentManager content) => _font = content.Load<SpriteFont>("Arial24");
 
     public void Add(string text, Vector2 worldPosition, float lifetime = 1.75f)
     {
