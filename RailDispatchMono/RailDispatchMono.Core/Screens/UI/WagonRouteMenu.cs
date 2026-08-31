@@ -18,6 +18,7 @@ public sealed class WagonRouteMenu
     private StationController? _stations;
     private Vector2 _position;
     private MouseState _previousMouse;
+    private bool _consumeOpeningUpdate;
 
     public bool IsOpen => _wagon != null && _stations != null;
     public event Action<Wagon>? RouteChanged;
@@ -42,7 +43,12 @@ public sealed class WagonRouteMenu
         _wagon = wagon;
         _stations = stations;
         _position = screenPosition + new Vector2(12f, 12f);
+
+        // The menu is opened by the same input update that may still contain
+        // the opening click. Consume that first update explicitly so it can
+        // never be interpreted as a menu click/outside click.
         _previousMouse = Mouse.GetState();
+        _consumeOpeningUpdate = true;
         ClampToViewport();
     }
 
@@ -50,6 +56,7 @@ public sealed class WagonRouteMenu
     {
         _wagon = null;
         _stations = null;
+        _consumeOpeningUpdate = false;
     }
 
     private void Changed() => RouteChanged?.Invoke(_wagon!);
@@ -58,22 +65,48 @@ public sealed class WagonRouteMenu
     {
         if (!IsOpen || _wagon == null || _stations == null) return;
 
-        if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
+        if (_consumeOpeningUpdate)
+        {
+            _previousMouse = mouse;
+            _consumeOpeningUpdate = false;
+            return;
+        }
+
+        bool leftPressed = mouse.LeftButton == ButtonState.Pressed &&
+                           _previousMouse.LeftButton == ButtonState.Released;
+        bool rightPressed = mouse.RightButton == ButtonState.Pressed &&
+                            _previousMouse.RightButton == ButtonState.Released;
+
+        // PPM always closes the menu, independently of the cursor position.
+        if (rightPressed)
+        {
+            Close();
+            return;
+        }
+
+        // Only a NEW LPM click is considered. Holding LPM cannot repeatedly
+        // trigger actions or close the menu.
+        if (leftPressed)
         {
             if (ButtonRect(0, 0, 240, 34).Contains(mouse.Position))
             {
                 Close();
-                _previousMouse = mouse;
                 return;
             }
 
             int y = 44;
+
+            // Each station button is handled independently. Once one button
+            // matches, finish this update instead of falling through to the
+            // remaining station/button ranges.
             foreach (var stationId in _wagon.Route.StationIds.ToList())
             {
                 if (ButtonRect(0, y, 240, 30).Contains(mouse.Position))
                 {
-                    if (_wagon.Route.RemoveStation(stationId)) Changed();
-                    break;
+                    if (_wagon.Route.RemoveStation(stationId))
+                        Changed();
+                    _previousMouse = mouse;
+                    return;
                 }
                 y += 34;
             }
@@ -82,35 +115,34 @@ public sealed class WagonRouteMenu
             foreach (var station in _stations.Stations)
             {
                 if (_wagon.Route.ServesStation(station.Id)) continue;
+
                 if (ButtonRect(0, y, 240, 30).Contains(mouse.Position))
                 {
                     _wagon.Route.AddStation(station.Id);
                     Changed();
-                    break;
+                    _previousMouse = mouse;
+                    return;
                 }
                 y += 34;
             }
 
             if (ButtonRect(0, y + 6, 240, 30).Contains(mouse.Position))
             {
-                if (!_wagon.Route.IsEmpty) Changed();
                 _wagon.Route.Clear();
+                Changed();
+                _previousMouse = mouse;
+                return;
+            }
+
+            // A new LPM outside the menu closes it. The opening click was
+            // already consumed above, so this can only happen on a later click.
+            var menuRect = new Rectangle((int)_position.X, (int)_position.Y, 250, (int)GetHeight());
+            if (!menuRect.Contains(mouse.Position))
+            {
+                Close();
+                return;
             }
         }
-
-        if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
-        {
-            Close();
-            _previousMouse = mouse;
-            return;
-        }
-
-        // The menu is opened at the wagon's click position. Do not use a
-        // negative margin here: the old boundary closed the menu on the next
-        // frame because the cursor was still on the original wagon cell.
-        var menuRect = new Rectangle((int)_position.X, (int)_position.Y, 250, (int)GetHeight());
-        if (mouse.LeftButton == ButtonState.Pressed && !menuRect.Contains(mouse.Position))
-            Close();
 
         _previousMouse = mouse;
     }
@@ -126,6 +158,22 @@ public sealed class WagonRouteMenu
         spriteBatch.Draw(_pixel, new Rectangle((int)_position.X, (int)_position.Y, (int)width, 3), Color.Yellow);
         DrawString(spriteBatch, "TRASA WAGONU", 8, 8, Color.Yellow, 0.75f);
         DrawString(spriteBatch, $"Przystanki: {_wagon.Route.StationIds.Count}", 8, 28, Color.White, 0.6f);
+
+        // Active S marker: visual indication that the wagon-route edit mode
+        // is currently active. It is intentionally not used as a menu action.
+        var sButton = new Rectangle((int)_position.X + 218, (int)_position.Y + 7, 25, 25);
+        spriteBatch.Draw(_pixel, sButton, Color.Yellow);
+        Vector2 sSize = _font.MeasureString("S") * 0.65f;
+        spriteBatch.DrawString(
+            _font,
+            "S",
+            new Vector2(sButton.Center.X, sButton.Center.Y) - sSize / 2f,
+            Color.Black,
+            0f,
+            Vector2.Zero,
+            0.65f,
+            SpriteEffects.None,
+            0f);
 
         int y = 44, number = 1;
         foreach (var stationId in _wagon.Route.StationIds)
