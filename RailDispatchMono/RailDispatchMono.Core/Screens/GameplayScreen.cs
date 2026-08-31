@@ -84,9 +84,17 @@ public sealed class GameplayScreen : GameScreen
             _trainManager, _trainRenderer, _junctionRadialMenu, _signalController,
             _signalRadialMenu, screenManager, _signalDirectionMenu,
             _signalSelectionMenu, _map);
+        _inputManager.DepotSelected += OnDepotSelected;
 
         CreateTestTrack();
         CreateTestTrain();
+    }
+
+    private void OnDepotSelected(Depot depot)
+    {
+        _depotOpen = true;
+        _spawnArmed = false;
+        _builder.Mode = TrackBuildMode.None;
     }
 
     public void LoadContent(ContentManager content)
@@ -126,20 +134,25 @@ public sealed class GameplayScreen : GameScreen
             _spawnArmed = false;
         }
 
-        if (HandleHudInput())
+        // Advance simulation time every active frame. HUD clicks must not short-circuit the clock.
+        float deltaTime = _clock.Update(realDelta);
+
+        bool hudHandled = HandleHudInput();
+        if (!hudHandled)
         {
-            _previousKeyboard = keyboard;
-            _previousMouse = Mouse.GetState();
-            return;
+            _trainManager.Update(deltaTime);
+            CapturePassengerChanges();
+            _floatingText.Update(deltaTime);
+            _trainDebugger.Update(deltaTime, _trainManager);
+            _blockController?.Update(deltaTime);
+            _inputManager.Update(gameTime);
+        }
+        else
+        {
+            // Keep world input state synchronized even when a HUD click was consumed.
+            _inputManager.Update(gameTime);
         }
 
-        float deltaTime = _clock.Update(realDelta);
-        _trainManager.Update(deltaTime);
-        CapturePassengerChanges();
-        _floatingText.Update(deltaTime);
-        _trainDebugger.Update(deltaTime, _trainManager);
-        _blockController?.Update(deltaTime);
-        _inputManager.Update(gameTime);
         _previousMouse = Mouse.GetState();
         _previousKeyboard = keyboard;
     }
@@ -150,37 +163,16 @@ public sealed class GameplayScreen : GameScreen
         if (mouse.LeftButton != ButtonState.Pressed || _previousMouse.LeftButton == ButtonState.Pressed)
             return false;
 
-        if (new Rectangle(16, 36, 50, 22).Contains(mouse.Position))
-        {
-            _clock.SetSpeed(1f);
-            return true;
-        }
-        if (new Rectangle(70, 36, 50, 22).Contains(mouse.Position))
-        {
-            _clock.SetSpeed(2f);
-            return true;
-        }
-        if (new Rectangle(124, 36, 50, 22).Contains(mouse.Position))
-        {
-            _clock.SetSpeed(5f);
-            return true;
-        }
+        if (new Rectangle(16, 36, 50, 22).Contains(mouse.Position)) { _clock.SetSpeed(1f); return true; }
+        if (new Rectangle(70, 36, 50, 22).Contains(mouse.Position)) { _clock.SetSpeed(2f); return true; }
+        if (new Rectangle(124, 36, 50, 22).Contains(mouse.Position)) { _clock.SetSpeed(5f); return true; }
 
         if (_depotOpen)
         {
             Rectangle spawnButton = new(80, 150, 250, 50);
             Rectangle closeButton = new(80, 215, 250, 42);
-            if (spawnButton.Contains(mouse.Position))
-            {
-                _spawnArmed = true;
-                _depotOpen = false;
-                return true;
-            }
-            if (closeButton.Contains(mouse.Position))
-            {
-                _depotOpen = false;
-                return true;
-            }
+            if (spawnButton.Contains(mouse.Position)) { _spawnArmed = true; _depotOpen = false; return true; }
+            if (closeButton.Contains(mouse.Position)) { _depotOpen = false; return true; }
             return true;
         }
 
@@ -206,11 +198,7 @@ public sealed class GameplayScreen : GameScreen
                 y += 50;
                 foreach (var train in _trainManager.Trains)
                 {
-                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
-                    {
-                        _camera.Position = train.Position;
-                        return true;
-                    }
+                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position)) { _camera.Position = train.Position; return true; }
                     y += 38;
                 }
             }
@@ -239,12 +227,7 @@ public sealed class GameplayScreen : GameScreen
         if (direction == TrackConnections.None) direction = TrackConnections.East;
         var locomotiveParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
         var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
-        var vehicles = new List<Vehicle>
-        {
-            new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
-            new Wagon(wagonParameters),
-            new Wagon(wagonParameters)
-        };
+        var vehicles = new List<Vehicle> { new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters), new Wagon(wagonParameters), new Wagon(wagonParameters) };
         var train = new Train(new Vector2(cell.X + 0.5f, cell.Y + 0.5f), direction, 0f, vehicles);
         train.SetMap(_map);
         train.SetSignalController(_signalController);
@@ -257,36 +240,29 @@ public sealed class GameplayScreen : GameScreen
         _wagonPassengerSnapshot.Clear();
         foreach (var train in _trainManager.Trains)
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-                if (train.Composition.Vehicles[i] is Wagon wagon)
-                    _wagonPassengerSnapshot[(train.Id, i)] = wagon.PassengerCount;
+                if (train.Composition.Vehicles[i] is Wagon wagon) _wagonPassengerSnapshot[(train.Id, i)] = wagon.PassengerCount;
     }
 
     private void CapturePassengerChanges()
     {
         foreach (var train in _trainManager.Trains)
+        foreach (var vehicle in train.Composition.Vehicles.Select((v, i) => (v, i)))
         {
-            for (int i = 0; i < train.Composition.Vehicles.Count; i++)
+            if (vehicle.v is not Wagon wagon) continue;
+            var key = (train.Id, vehicle.i);
+            int previous = _wagonPassengerSnapshot.TryGetValue(key, out var value) ? value : wagon.PassengerCount;
+            int current = wagon.PassengerCount;
+            if (current != previous)
             {
-                if (train.Composition.Vehicles[i] is not Wagon wagon) continue;
-                var key = (train.Id, i);
-                int previous = _wagonPassengerSnapshot.TryGetValue(key, out var value) ? value : wagon.PassengerCount;
-                int current = wagon.PassengerCount;
-                if (current != previous)
-                {
-                    int delta = current - previous;
-                    var transform = train.GetVehicleTransform(i);
-                    _floatingText.Add(delta > 0 ? $"+{delta}" : delta.ToString(), transform.Position + new Vector2(0f, -0.5f));
-                }
-                _wagonPassengerSnapshot[key] = current;
+                int delta = current - previous;
+                var transform = train.GetVehicleTransform(vehicle.i);
+                _floatingText.Add(delta > 0 ? $"+{delta}" : delta.ToString(), transform.Position + new Vector2(0f, -0.5f));
             }
+            _wagonPassengerSnapshot[key] = current;
         }
     }
 
-    private void TogglePause()
-    {
-        if (_isPaused) ResumeGame(); else PauseGame();
-    }
-
+    private void TogglePause() { if (_isPaused) ResumeGame(); else PauseGame(); }
     private void PauseGame()
     {
         if (_isPaused) return;
@@ -296,23 +272,13 @@ public sealed class GameplayScreen : GameScreen
         _pauseScreen.OnQuit += (s, e) => QuitToMainMenu();
         ScreenManager?.AddScreen(_pauseScreen, null);
     }
-
     private void ResumeGame()
     {
         if (!_isPaused) return;
         _isPaused = false;
-        if (_pauseScreen != null && ScreenManager != null)
-        {
-            ScreenManager.RemoveScreen(_pauseScreen);
-            _pauseScreen = null;
-        }
+        if (_pauseScreen != null && ScreenManager != null) { ScreenManager.RemoveScreen(_pauseScreen); _pauseScreen = null; }
     }
-
-    private void QuitToMainMenu()
-    {
-        ResumeGame();
-        ScreenManager?.Game.Exit();
-    }
+    private void QuitToMainMenu() { ResumeGame(); ScreenManager?.Game.Exit(); }
 
     public override void Draw(GameTime gameTime)
     {
@@ -346,15 +312,13 @@ public sealed class GameplayScreen : GameScreen
         _spriteBatch.DrawString(_tooltipFont, "OBIEKTY", new Vector2(PanelBounds.X + 10, 10), Color.White, 0f, Vector2.Zero, PanelTextScale, SpriteEffects.None, 0f);
         DrawButton(new Rectangle(PanelBounds.X + 10, 86, 120, 36), "POCIAGI", _showTrains, PanelTextScale);
         DrawButton(new Rectangle(PanelBounds.X + 135, 86, 120, 36), "STACJE", !_showTrains, PanelTextScale);
-
         int y = 136;
         if (_showTrains)
         {
             foreach (var train in _trainManager.Trains)
             {
                 string text = $"{train.Id.ToString()[..8]}  {train.Speed * 3.6f:0} km/h";
-                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text, PanelTextScale);
-                y += 38;
+                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text, PanelTextScale); y += 38;
             }
         }
         else
@@ -362,8 +326,7 @@ public sealed class GameplayScreen : GameScreen
             foreach (var station in _trainManager.StationController.Stations)
             {
                 string text = $"{station.Name}  {_trainManager.StationController.Passengers.GetWaitingCount(station)} oczek.";
-                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text, PanelTextScale);
-                y += 38;
+                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text, PanelTextScale); y += 38;
             }
         }
         _spriteBatch.End();
@@ -402,7 +365,6 @@ public sealed class GameplayScreen : GameScreen
         var mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
         var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
         if (!vehicleInfo.HasValue) return;
-
         var (train, vehicleIndex, _) = vehicleInfo.Value;
         var vehicle = train.Composition.Vehicles[vehicleIndex];
         bool isLoco = vehicle is Locomotive;
@@ -428,7 +390,6 @@ public sealed class GameplayScreen : GameScreen
             linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasazerow:");
             foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
-
         float padding = 8f, lineHeight = _tooltipFont.MeasureString("A").Y + 2f, maxWidth = 0f;
         foreach (var line in linesList) maxWidth = MathF.Max(maxWidth, _tooltipFont.MeasureString(line).X);
         float tooltipWidth = maxWidth + padding * 2f, tooltipHeight = linesList.Count * lineHeight + padding * 2f;
@@ -445,14 +406,12 @@ public sealed class GameplayScreen : GameScreen
     }
 
     private void DrawRect(Rectangle rect, Color color) => _spriteBatch.Draw(_pixel!, rect, color);
-
     private void DrawButton(Rectangle rect, string text, bool active, float scale = 1f)
     {
         DrawRect(rect, active ? new Color(70, 90, 130, 255) : new Color(45, 45, 45, 255));
         var size = _tooltipFont!.MeasureString(text) * scale;
         _spriteBatch.DrawString(_tooltipFont, text, new Vector2(rect.Center.X - size.X / 2f, rect.Center.Y - size.Y / 2f), Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
-
     private void DrawListItem(Rectangle rect, string text, float scale = 1f)
     {
         DrawRect(rect, new Color(38, 38, 38, 255));
@@ -461,8 +420,7 @@ public sealed class GameplayScreen : GameScreen
 
     private void CreateTestTrack()
     {
-        DebugManager.SetLogToFile(true, "debug_log.txt");
-        DebugManager.EnableAll();
+        DebugManager.SetLogToFile(true, "debug_log.txt"); DebugManager.EnableAll();
         const int left = 10, right = 90, top = 10, bottom = 89;
         _builder.BuildCurve(new MapPosition(left, top), CurveDirection.EastSouth);
         for (var x = left + 1; x < right; x++) _builder.BuildStraight(new MapPosition(x, top), true);
@@ -482,8 +440,7 @@ public sealed class GameplayScreen : GameScreen
         _signalController.GetSignalAt(new MapPosition(left, 50), TrackConnections.North)?.SetAspect(SignalAspect.Clear);
         _signalController.AddSignal(new MapPosition(left, top + 1), TrackConnections.North, new List<SignalAspect> { SignalAspect.Stop });
         _blockController.CreateBlocksFromSignals();
-        _builder.BuildStraight(new MapPosition(88, bottom), true);
-        _builder.BuildStraight(new MapPosition(87, bottom), true);
+        _builder.BuildStraight(new MapPosition(88, bottom), true); _builder.BuildStraight(new MapPosition(87, bottom), true);
     }
 
     private void CreateTestTrain()
@@ -492,9 +449,6 @@ public sealed class GameplayScreen : GameScreen
         var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
         var vehicles = new List<Vehicle> { new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters), new Wagon(wagonParameters), new Wagon(wagonParameters) };
         var train = new Train(new Vector2(25.5f, 10.5f), TrackConnections.East, 25.4f, vehicles);
-        train.SetMap(_map);
-        train.SetSignalController(_signalController);
-        train.SetBlockController(_blockController);
-        _trainManager.Add(train);
+        train.SetMap(_map); train.SetSignalController(_signalController); train.SetBlockController(_blockController); _trainManager.Add(train);
     }
 }

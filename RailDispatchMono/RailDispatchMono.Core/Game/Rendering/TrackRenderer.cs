@@ -1,5 +1,4 @@
 using System;
-using Debug = System.Diagnostics.Debug;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Building;
@@ -20,7 +19,7 @@ public sealed class TrackRenderer
     {
         _pixel = new Texture2D(graphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
-        Debug.WriteLine("TrackRenderer content loaded.");
+        DebugManager.Log("[TRACK_RENDERER] LoadContent - pixel texture created");
     }
 
     public void SetSignalRenderer(SignalRenderer signalRenderer) => _signalRenderer = signalRenderer;
@@ -35,13 +34,11 @@ public sealed class TrackRenderer
     public void DrawPreview(SpriteBatch spriteBatch, MapPosition position, TrackBuildMode mode, bool straightHorizontal, CurveDirection curveDirection, JunctionType junctionType = JunctionType.South_NorthEast)
     {
         if (_pixel is null || !IsInsideMap(position)) return;
-
         var cellPosition = new Vector2(position.X, position.Y);
         spriteBatch.Draw(_pixel, cellPosition, null, Color.Yellow * 0.18f, 0f, Vector2.Zero, Vector2.One, SpriteEffects.None, 0f);
 
         TrackGeometry geometry;
         TrackConnections connections;
-
         if (mode == TrackBuildMode.Straight)
         {
             geometry = TrackGeometry.Straight;
@@ -76,10 +73,18 @@ public sealed class TrackRenderer
 
     private static TrackConnections GetJunctionConnections(JunctionType type) => type switch
     {
-        JunctionType.South_NorthEast or JunctionType.South_NorthWest or JunctionType.South_EastWest => TrackConnections.South | TrackConnections.North | TrackConnections.East | TrackConnections.West,
-        JunctionType.North_SouthEast or JunctionType.North_SouthWest or JunctionType.North_EastWest => TrackConnections.North | TrackConnections.South | TrackConnections.East | TrackConnections.West,
-        JunctionType.East_WestNorth or JunctionType.East_WestSouth or JunctionType.East_NorthSouth => TrackConnections.East | TrackConnections.West | TrackConnections.North | TrackConnections.South,
-        JunctionType.West_EastNorth or JunctionType.West_EastSouth or JunctionType.West_NorthSouth => TrackConnections.West | TrackConnections.East | TrackConnections.North | TrackConnections.South,
+        JunctionType.South_NorthEast => TrackConnections.South | TrackConnections.North | TrackConnections.East,
+        JunctionType.South_NorthWest => TrackConnections.South | TrackConnections.North | TrackConnections.West,
+        JunctionType.South_EastWest => TrackConnections.South | TrackConnections.East | TrackConnections.West,
+        JunctionType.North_SouthEast => TrackConnections.North | TrackConnections.South | TrackConnections.East,
+        JunctionType.North_SouthWest => TrackConnections.North | TrackConnections.South | TrackConnections.West,
+        JunctionType.North_EastWest => TrackConnections.North | TrackConnections.East | TrackConnections.West,
+        JunctionType.East_WestNorth => TrackConnections.East | TrackConnections.West | TrackConnections.North,
+        JunctionType.East_WestSouth => TrackConnections.East | TrackConnections.West | TrackConnections.South,
+        JunctionType.East_NorthSouth => TrackConnections.East | TrackConnections.North | TrackConnections.South,
+        JunctionType.West_EastNorth => TrackConnections.West | TrackConnections.East | TrackConnections.North,
+        JunctionType.West_EastSouth => TrackConnections.West | TrackConnections.East | TrackConnections.South,
+        JunctionType.West_NorthSouth => TrackConnections.West | TrackConnections.North | TrackConnections.South,
         _ => TrackConnections.None
     };
 
@@ -109,10 +114,8 @@ public sealed class TrackRenderer
     private void DrawTracks(SpriteBatch spriteBatch)
     {
         foreach (var track in _map.Tracks.Values)
-        {
             if (track.IsJunction) DrawJunctionTrack(spriteBatch, track);
             else DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false);
-        }
     }
 
     private void DrawTrackLines(SpriteBatch spriteBatch, MapPosition position, TrackGeometry geometry, TrackConnections connections, bool preview)
