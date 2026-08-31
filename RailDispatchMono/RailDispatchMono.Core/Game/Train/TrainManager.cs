@@ -15,7 +15,7 @@ public sealed class TrainManager
     private readonly List<Train> _trainsToRemove = new();
 
     public IReadOnlyList<Train> Trains => _trains;
-    public StationController StationController { get; }
+    public StationController StationController { get; private set; }
 
     public TrainManager(GameMap map)
     {
@@ -62,7 +62,7 @@ public sealed class TrainManager
 
     public void Initialize(BlockController blockController) => _blockController = blockController;
 
-    [Obsolete("StationController is initialized automatically. Configure TrainManager.StationController directly.")]
+    [Obsolete("StationController is initialized automatically. Configure TrainManager.StationController instead.")]
     public void InitializeStations(StationController stationController)
     {
         if (stationController == null) throw new ArgumentNullException(nameof(stationController));
