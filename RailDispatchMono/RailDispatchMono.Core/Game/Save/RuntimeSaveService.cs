@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using RailDispatchMono.Core.Game.Passengers;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
@@ -55,7 +56,7 @@ public sealed class PassengerSaveData
     public PassengerState State { get; set; }
 }
 
-/// <summary>Persists the runtime part of a save slot independently of map infrastructure.</summary>
+/// <summary>Persists train consists, wagon routes, onboard passengers and simulation time.</summary>
 public static class RuntimeSaveService
 {
     private static readonly JsonSerializerOptions Options = new()
@@ -64,23 +65,16 @@ public static class RuntimeSaveService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private const string FileName = "trains.json";
-
     public static string FilePath => Path.Combine(
         SaveSlotContext.ActiveSlotDirectory ?? throw new InvalidOperationException("No active save slot."),
-        FileName);
+        "trains.json");
 
     public static void Save(TrainManager trainManager, GameClock clock)
     {
         if (trainManager == null) throw new ArgumentNullException(nameof(trainManager));
         if (clock == null) throw new ArgumentNullException(nameof(clock));
 
-        var data = new RuntimeSaveData
-        {
-            GameDay = clock.GameDay,
-            GameTimeSeconds = clock.Seconds
-        };
-
+        var data = new RuntimeSaveData { GameDay = clock.GameDay, GameTimeSeconds = clock.Seconds };
         foreach (Train train in trainManager.Trains)
         {
             var savedTrain = new TrainSaveData
@@ -95,20 +89,18 @@ public static class RuntimeSaveService
 
             foreach (Vehicle vehicle in train.Composition.Vehicles)
             {
-                var parameters = vehicle.Parameters;
+                var p = vehicle.Parameters;
                 var savedVehicle = new VehicleSaveData
                 {
                     Kind = vehicle is Locomotive ? "Locomotive" : "Wagon",
-                    Type = vehicle is Locomotive locomotive
-                        ? locomotive.Type.ToString()
-                        : ((Wagon)vehicle).WagonType.ToString(),
-                    MaxSpeed = parameters.MaxSpeed,
-                    Mass = parameters.Mass,
-                    Length = parameters.Length,
-                    MassCoefficient = parameters.MassCoefficient,
-                    TechnicalCondition = parameters.TechnicalCondition,
-                    AccelerationCoefficient = parameters.AccelerationCoefficient,
-                    BrakingCoefficient = parameters.BrakingCoefficient,
+                    Type = vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
+                    MaxSpeed = p.MaxSpeed,
+                    Mass = p.Mass,
+                    Length = p.Length,
+                    MassCoefficient = p.MassCoefficient,
+                    TechnicalCondition = p.TechnicalCondition,
+                    AccelerationCoefficient = p.AccelerationCoefficient,
+                    BrakingCoefficient = p.BrakingCoefficient,
                     Orientation = vehicle.Orientation
                 };
 
@@ -126,25 +118,21 @@ public static class RuntimeSaveService
                         });
                     }
                 }
-
                 savedTrain.Vehicles.Add(savedVehicle);
             }
-
             data.Trains.Add(savedTrain);
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        Directory.CreateDirectory(SaveSlotContext.ActiveSlotDirectory!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
     }
 
     public static void Load(TrainManager trainManager, SignalController signals, BlockController blocks, StationController stations, GameClock clock)
     {
         if (!File.Exists(FilePath)) throw new FileNotFoundException("trains.json is missing.", FilePath);
-
         var data = JsonSerializer.Deserialize<RuntimeSaveData>(File.ReadAllText(FilePath), Options)
             ?? throw new InvalidDataException("trains.json is empty or invalid.");
-        if (data.SchemaVersion != 1)
-            throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
+        if (data.SchemaVersion != 1) throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
 
         trainManager.ClearAll();
         trainManager.Update(0f);
@@ -154,32 +142,21 @@ public static class RuntimeSaveService
             var vehicles = new List<Vehicle>();
             foreach (VehicleSaveData savedVehicle in savedTrain.Vehicles)
             {
-                var parameters = new VehicleParameters(
-                    savedVehicle.MaxSpeed,
-                    savedVehicle.AccelerationCoefficient,
-                    savedVehicle.BrakingCoefficient,
-                    savedVehicle.Mass,
-                    savedVehicle.Length,
-                    savedVehicle.MassCoefficient,
-                    savedVehicle.TechnicalCondition);
+                var p = new VehicleParameters(savedVehicle.MaxSpeed, savedVehicle.AccelerationCoefficient,
+                    savedVehicle.BrakingCoefficient, savedVehicle.Mass, savedVehicle.Length,
+                    savedVehicle.MassCoefficient, savedVehicle.TechnicalCondition);
 
                 Vehicle vehicle;
                 if (string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase))
-                {
-                    var type = Enum.Parse<LocomotiveType>(savedVehicle.Type, true);
-                    vehicle = new Locomotive(type, parameters);
-                }
+                    vehicle = new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p);
                 else
-                {
-                    var type = Enum.Parse<WagonType>(savedVehicle.Type, true);
-                    vehicle = new Wagon(parameters, type, savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
-                }
+                    vehicle = new Wagon(p, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
                 vehicle.Orientation = savedVehicle.Orientation;
                 vehicles.Add(vehicle);
             }
 
             var train = new Train(new Vector2(savedTrain.X, savedTrain.Y), savedTrain.Direction, savedTrain.Speed, vehicles);
-            train.SetMap(GetMap(trainManager));
+            train.SetMap(trainManager.Map);
             train.SetSignalController(signals);
             train.SetBlockController(blocks);
             train.DistanceAlongTrack = savedTrain.DistanceAlongTrack;
@@ -188,13 +165,5 @@ public static class RuntimeSaveService
 
         trainManager.Update(0f);
         clock.SetTime(data.GameDay, data.GameTimeSeconds);
-    }
-
-    private static RailDispatchMono.Core.Game.Map.GameMap GetMap(TrainManager manager)
-    {
-        var field = typeof(TrainManager).GetField("_map", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("TrainManager map field is unavailable.");
-        return (RailDispatchMono.Core.Game.Map.GameMap)(field.GetValue(manager)
-            ?? throw new InvalidOperationException("TrainManager map is unavailable."));
     }
 }
