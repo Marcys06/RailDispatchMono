@@ -42,8 +42,11 @@ namespace RailDispatchMono.Core.Screens
         {
             base.LoadContent();
 
-            _overlayTexture = new Texture2D(ScreenManager.GraphicsDevice, 1, 1);
-            _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
+            if (ScreenManager != null && ScreenManager.GraphicsDevice != null)
+            {
+                _overlayTexture = new Texture2D(ScreenManager.GraphicsDevice, 1, 1);
+                _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
+            }
         }
 
         public override void UnloadContent()
@@ -55,8 +58,6 @@ namespace RailDispatchMono.Core.Screens
 
         public override void HandleInput(GameTime gameTime, InputState inputState)
         {
-            // The ESC that opened this screen belongs to GameplayScreen.
-            // Do not let it immediately close the newly created menu.
             if (_ignoreFirstCancel)
             {
                 _ignoreFirstCancel = false;
@@ -108,6 +109,20 @@ namespace RailDispatchMono.Core.Screens
 
         public override void Draw(GameTime gameTime)
         {
+            // ===== ZABEZPIECZENIA PRZED NULL =====
+            if (ScreenManager == null)
+                return;
+
+            if (ScreenManager.GraphicsDevice == null)
+                return;
+
+            if (ScreenManager.SpriteBatch == null)
+                return;
+
+            if (ScreenManager.Font == null)
+                return;
+            // ====================================
+
             GraphicsDevice graphicsDevice = ScreenManager.GraphicsDevice;
             SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
 
@@ -117,8 +132,6 @@ namespace RailDispatchMono.Core.Screens
                 _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
             }
 
-            // Draw the pause dimmer first, then let MenuScreen draw the actual
-            // title and entries above it using the same UI coordinate system.
             spriteBatch.Begin(
                 SpriteSortMode.Deferred,
                 BlendState.AlphaBlend,

@@ -63,7 +63,10 @@ namespace RailDispatchMono.Core.ScreenManagers
         {
             ContentManager content = Game.Content;
             spriteBatch = new SpriteBatch(GraphicsDevice);
-            font = content.Load<SpriteFont>("Fonts/Hud");
+
+            // ZMIANA: uzyj Arial24 zamiast Fonts/Hud
+            font = content.Load<SpriteFont>("Arial24");
+
             blankTexture = content.Load<Texture2D>("Sprites/blank");
 
             foreach (GameScreen screen in screens)

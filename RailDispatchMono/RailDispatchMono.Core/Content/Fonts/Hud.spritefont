@@ -1,96 +1,65 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
-	<Asset Type="Graphics:FontDescription">
-		<FontName>Roboto-Bold</FontName>
-		<Size>14</Size>
-		<Spacing>0</Spacing>
-		<UseKerning>true</UseKerning>
-		<Style>Regular</Style>
+  <Asset Type="Graphics:FontDescription">
+    <FontName>Roboto-Bold</FontName>
+    <Size>14</Size>
+    <Spacing>0</Spacing>
+    <UseKerning>true</UseKerning>
+    <Style>Regular</Style>
 
-		<!-- ✅ ODSTAW KOMENTARZ i dodaj domyślny znak -->
-		<DefaultCharacter>?</DefaultCharacter>
+    <!-- Domyślny znak dla brakujących glifów -->
+    <DefaultCharacter>?</DefaultCharacter>
 
-		<CharacterRegions>
-			<!-- Latin Character and Extended Set -->
-			<CharacterRegion>
-				<Start>&#32;</Start>
-				<End>&#255;</End>
-				<!-- Zmień z 254 na 255, żeby objąć polskie znaki -->
-			</CharacterRegion>
+    <CharacterRegions>
+      <!-- Podstawowy zestaw znaków (spacja do ~) -->
+      <CharacterRegion>
+        <Start>&#32;</Start>
+        <End>&#126;</End>
+      </CharacterRegion>
 
-			<!-- ✅ DODAJ OSOBNE REGIONY DLA POLSKICH ZNAKÓW -->
-			<CharacterRegion>
-				<Start>&#260;</Start>
-				<!-- Ą -->
-				<End>&#260;</End>
-				<!-- Ą -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#262;</Start>
-				<!-- Ć -->
-				<End>&#263;</End>
-				<!-- ć -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#280;</Start>
-				<!-- Ę -->
-				<End>&#281;</End>
-				<!-- ę -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#321;</Start>
-				<!-- Ł -->
-				<End>&#322;</End>
-				<!-- ł -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#323;</Start>
-				<!-- Ń -->
-				<End>&#324;</End>
-				<!-- ń -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#211;</Start>
-				<!-- Ó -->
-				<End>&#243;</End>
-				<!-- ó -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#346;</Start>
-				<!-- Ś -->
-				<End>&#347;</End>
-				<!-- ś -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#377;</Start>
-				<!-- Ź -->
-				<End>&#378;</End>
-				<!-- ź -->
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#379;</Start>
-				<!-- Ż -->
-				<End>&#380;</End>
-				<!-- ż -->
-			</CharacterRegion>
+      <!-- Alfabet łaciński z polskimi znakami -->
+      <CharacterRegion>
+        <Start>&#192;</Start>
+        <End>&#255;</End>
+      </CharacterRegion>
 
-			<!-- Reszta twoich regionów -->
-			<CharacterRegion>
-				<Start>&#12352;</Start>
-				<End>&#12447;</End>
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#12448;</Start>
-				<End>&#12543;</End>
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#19968;</Start>
-				<End>&#40879;</End>
-			</CharacterRegion>
-			<CharacterRegion>
-				<Start>&#1040;</Start>
-				<End>&#1103;</End>
-			</CharacterRegion>
-		</CharacterRegions>
-	</Asset>
+      <!-- Polskie znaki specjalne -->
+      <CharacterRegion>
+        <Start>&#260;</Start>  <!-- Ą -->
+        <End>&#261;</End>     <!-- ą -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#262;</Start>  <!-- Ć -->
+        <End>&#263;</End>     <!-- ć -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#280;</Start>  <!-- Ę -->
+        <End>&#281;</End>     <!-- ę -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#321;</Start>  <!-- Ł -->
+        <End>&#322;</End>     <!-- ł -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#323;</Start>  <!-- Ń -->
+        <End>&#324;</End>     <!-- ń -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#211;</Start>  <!-- Ó -->
+        <End>&#243;</End>     <!-- ó -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#346;</Start>  <!-- Ś -->
+        <End>&#347;</End>     <!-- ś -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#377;</Start>  <!-- Ź -->
+        <End>&#378;</End>     <!-- ź -->
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#379;</Start>  <!-- Ż -->
+        <End>&#380;</End>     <!-- ż -->
+      </CharacterRegion>
+    </CharacterRegions>
+  </Asset>
 </XnaContent>

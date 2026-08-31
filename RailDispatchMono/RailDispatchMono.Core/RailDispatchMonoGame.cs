@@ -41,6 +41,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     {
         _screenManager = new ScreenManager(this);
         _screenManager.TraceEnabled = true;
+        Components.Add(_screenManager);
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager);
         _screenManager.AddScreen(_gameplay, null);
         base.Initialize();
