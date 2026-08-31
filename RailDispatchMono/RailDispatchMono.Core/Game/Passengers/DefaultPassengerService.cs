@@ -1,5 +1,5 @@
 using RailDispatchMono.Core.Game.Railway;
-using RailDispatchMono.Core.Game.Train;
+using TrainNS = RailDispatchMono.Core.Game.Train;
 using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Passengers;
@@ -17,7 +17,7 @@ public sealed class DefaultPassengerService : IPassengerService
         _passengerManager = passengerManager;
     }
 
-    public PassengerServiceResult ServiceTrainAtStation(Train train, Station station)
+    public PassengerServiceResult ServiceTrainAtStation(TrainNS.Train train, Station station)
     {
         int before = _passengerManager.Passengers.Count(p =>
             p.State == PassengerState.OnBoard && p.CurrentTrainId == train.Id &&
@@ -28,3 +28,4 @@ public sealed class DefaultPassengerService : IPassengerService
         return new PassengerServiceResult(boarded, before);
     }
 }
+

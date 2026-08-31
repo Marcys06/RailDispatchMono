@@ -1,5 +1,5 @@
 using RailDispatchMono.Core.Game.Railway;
-using RailDispatchMono.Core.Game.Train;
+using TrainNS = RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Passengers;
 
@@ -10,7 +10,8 @@ namespace RailDispatchMono.Core.Game.Passengers;
 /// </summary>
 public interface IPassengerService
 {
-    PassengerServiceResult ServiceTrainAtStation(Train train, Station station);
+    PassengerServiceResult ServiceTrainAtStation(TrainNS.Train train, Station station);
 }
 
 public readonly record struct PassengerServiceResult(int Boarded, int Alighted);
+

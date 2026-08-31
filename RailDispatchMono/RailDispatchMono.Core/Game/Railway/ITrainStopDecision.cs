@@ -1,4 +1,4 @@
-using RailDispatchMono.Core.Game.Train;
+using TrainNS = RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
@@ -9,5 +9,6 @@ namespace RailDispatchMono.Core.Game.Railway;
 /// </summary>
 public interface ITrainStopDecision
 {
-    bool ShouldStopAt(Train train, Station station);
+    bool ShouldStopAt(TrainNS.Train train, Station station);
 }
+

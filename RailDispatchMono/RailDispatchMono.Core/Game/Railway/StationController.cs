@@ -127,6 +127,14 @@ public sealed class StationController
 
         dwell.RemainingSeconds -= MathF.Max(0f, deltaTime);
         train.Speed = 0f;
+
+        if (dwell.RemainingSeconds <= 0)
+        {
+            _dwellingTrains.Remove(train.Id);
+            train.Speed = 0.1f; // <-- MA£Y IMPULS DO RUSZENIA
+            DebugManager.Train($"[STATION] Train {train.Id} released with impulse");
+            return false;
+        }
         if (dwell.RemainingSeconds > 0f) return true;
 
         _dwellingTrains.Remove(train.Id);
@@ -178,10 +186,21 @@ public sealed class StationController
             station.Position.X + station.Width / 2f,
             station.Position.Y + station.Height / 2f);
 
-        return Vector2.Distance(train.Position, stationCenter) <=
-               MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f
-            ? station
-            : null;
+        float distance = Vector2.Distance(train.Position, stationCenter);
+
+        // Jeœli poci¹g jest bardzo blisko centrum i ma nisk¹ prêdkoœæ, to zatrzymaj
+        // Jeœli poci¹g oddala siê od centrum, nie zatrzymuj
+        if (distance <= MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f)
+        {
+            // SprawdŸ, czy poci¹g siê oddala
+            if (_dwellingTrains.ContainsKey(train.Id) && train.Speed > 0.1f)
+            {
+                // W³aœnie opuœci³ postój - daj mu szansê odjechaæ
+                return null;
+            }
+            return station;
+        }
+        return null;
     }
 
     private Station? FindNextStation(TrainClass train)

@@ -1,4 +1,4 @@
-using RailDispatchMono.Core.Game.Train;
+using TrainNS = RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
@@ -9,8 +9,9 @@ namespace RailDispatchMono.Core.Game.Railway;
 /// </summary>
 public sealed class DefaultTrainStopDecision : ITrainStopDecision
 {
-    public bool ShouldStopAt(Train train, Station station)
+    public bool ShouldStopAt(TrainNS.Train train, Station station)
     {
         return station.PassengerServiceEnabled && train.CanMove;
     }
 }
+
