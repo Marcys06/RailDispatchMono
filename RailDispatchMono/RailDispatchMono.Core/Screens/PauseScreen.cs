@@ -1,4 +1,6 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.Localization;
 using System;
 
@@ -11,11 +13,13 @@ namespace RailDispatchMono.Core.Screens
         public event EventHandler? OnSave;
         public event EventHandler? OnLoad;
 
+        private bool _ignoreFirstCancel = true;
+
         public PauseScreen(bool canLoad = true) : base(Resources.Paused)
         {
             IsPopup = true;
-            TransitionOnTime = TimeSpan.FromSeconds(0.2);
-            TransitionOffTime = TimeSpan.FromSeconds(0.2);
+            TransitionOnTime = TimeSpan.Zero;
+            TransitionOffTime = TimeSpan.Zero;
 
             MenuEntry resumeGameMenuEntry = new MenuEntry("WZNÓW GRĘ");
             MenuEntry saveGameMenuEntry = new MenuEntry("ZAPISZ GRĘ");
@@ -34,6 +38,27 @@ namespace RailDispatchMono.Core.Screens
             MenuEntries.Add(saveGameMenuEntry);
             MenuEntries.Add(loadGameMenuEntry);
             MenuEntries.Add(quitGameMenuEntry);
+        }
+
+        public override void HandleInput(GameTime gameTime, InputState inputState)
+        {
+            // The ESC that opened the pause menu is still the newest keyboard
+            // transition when ScreenManager first gives this screen input.
+            // Consume that transition here so opening pause does not instantly
+            // close it again. A later, genuinely new ESC closes the menu.
+            if (_ignoreFirstCancel)
+            {
+                PlayerIndex ignoredPlayer;
+                if (inputState.IsMenuCancel(ControllingPlayer, out ignoredPlayer))
+                {
+                    _ignoreFirstCancel = false;
+                    return;
+                }
+
+                _ignoreFirstCancel = false;
+            }
+
+            base.HandleInput(gameTime, inputState);
         }
 
         private void ResumeGameEntrySelected(object? sender, PlayerIndexEventArgs e)
@@ -79,6 +104,21 @@ namespace RailDispatchMono.Core.Screens
         public void Cancel(PlayerIndex playerIndex)
         {
             OnCancel(playerIndex);
+        }
+
+        public override void Draw(GameTime gameTime)
+        {
+            GraphicsDevice graphicsDevice = ScreenManager.GraphicsDevice;
+            SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
+
+            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, ScreenManager.GlobalTransformation);
+            Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
+            overlay.SetData(new[] { new Color(0, 0, 0, 170) });
+            spriteBatch.Draw(overlay, new Rectangle(0, 0, ScreenManager.BaseScreenSize.X, ScreenManager.BaseScreenSize.Y), Color.White);
+            overlay.Dispose();
+            spriteBatch.End();
+
+            base.Draw(gameTime);
         }
     }
 }
