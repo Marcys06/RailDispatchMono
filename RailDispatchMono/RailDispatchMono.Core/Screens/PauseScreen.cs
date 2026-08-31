@@ -14,6 +14,7 @@ namespace RailDispatchMono.Core.Screens
         public event EventHandler? OnLoad;
 
         private bool _ignoreFirstCancel = true;
+        private Texture2D? _overlayTexture;
 
         public PauseScreen(bool canLoad = true) : base(Resources.Paused)
         {
@@ -40,12 +41,26 @@ namespace RailDispatchMono.Core.Screens
             MenuEntries.Add(quitGameMenuEntry);
         }
 
+        public override void LoadContent()
+        {
+            base.LoadContent();
+
+            if (ScreenManager != null && ScreenManager.GraphicsDevice != null)
+            {
+                _overlayTexture = new Texture2D(ScreenManager.GraphicsDevice, 1, 1);
+                _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
+            }
+        }
+
+        public override void UnloadContent()
+        {
+            base.UnloadContent();
+            _overlayTexture?.Dispose();
+            _overlayTexture = null;
+        }
+
         public override void HandleInput(GameTime gameTime, InputState inputState)
         {
-            // The ESC that opened the pause menu is still the newest keyboard
-            // transition when ScreenManager first gives this screen input.
-            // Consume that transition here so opening pause does not instantly
-            // close it again. A later, genuinely new ESC closes the menu.
             if (_ignoreFirstCancel)
             {
                 PlayerIndex ignoredPlayer;
@@ -54,7 +69,6 @@ namespace RailDispatchMono.Core.Screens
                     _ignoreFirstCancel = false;
                     return;
                 }
-
                 _ignoreFirstCancel = false;
             }
 
@@ -108,14 +122,39 @@ namespace RailDispatchMono.Core.Screens
 
         public override void Draw(GameTime gameTime)
         {
+            if (ScreenManager == null)
+                return;
+
             GraphicsDevice graphicsDevice = ScreenManager.GraphicsDevice;
             SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
 
-            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, ScreenManager.GlobalTransformation);
-            Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
-            overlay.SetData(new[] { new Color(0, 0, 0, 170) });
-            spriteBatch.Draw(overlay, new Rectangle(0, 0, ScreenManager.BaseScreenSize.X, ScreenManager.BaseScreenSize.Y), Color.White);
-            overlay.Dispose();
+            if (graphicsDevice == null || spriteBatch == null)
+                return;
+
+            if (_overlayTexture == null)
+            {
+                _overlayTexture = new Texture2D(graphicsDevice, 1, 1);
+                _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
+            }
+
+            spriteBatch.Begin(
+                SpriteSortMode.Deferred,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ScreenManager.GlobalTransformation);
+
+            spriteBatch.Draw(
+                _overlayTexture,
+                new Rectangle(
+                    0,
+                    0,
+                    (int)ScreenManager.BaseScreenSize.X,
+                    (int)ScreenManager.BaseScreenSize.Y),
+                Color.White);
+
             spriteBatch.End();
 
             base.Draw(gameTime);

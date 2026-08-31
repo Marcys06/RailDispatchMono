@@ -7,26 +7,17 @@ using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.Screens;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace RailDispatchMono.Core.ScreenManagers
 {
-    /// <summary>
-    /// The ScreenManager is a component responsible for managing multiple <see cref="GameScreen"/> instances.
-    /// It maintains a stack of screens, invokes their Update and Draw methods, and automatically routes input
-    /// to the topmost active screen.
-    /// </summary>
     public class ScreenManager : DrawableGameComponent
     {
-        // List of active screens and screens pending update.
         private readonly List<GameScreen> screens = new List<GameScreen>();
         private readonly List<GameScreen> screensToUpdate = new List<GameScreen>();
 
-        // Manages player input.
         private readonly InputState inputState = new InputState();
 
-        // Shared resources for drawing and content management.
         private SpriteBatch spriteBatch;
         private SpriteFont font;
         private Texture2D blankTexture;
@@ -38,75 +29,36 @@ namespace RailDispatchMono.Core.ScreenManagers
         internal const int BASE_BUFFER_HEIGHT = 480;
 
         private int backbufferWidth;
-        /// <summary>Gets or sets the current backbuffer width.</summary>
         public int BackbufferWidth { get => backbufferWidth; set => backbufferWidth = value; }
 
         private int backbufferHeight;
-        /// <summary>Gets or sets the current backbuffer height.</summary>
         public int BackbufferHeight { get => backbufferHeight; set => backbufferHeight = value; }
 
         private Vector2 baseScreenSize = new Vector2(BASE_BUFFER_WIDTH, BASE_BUFFER_HEIGHT);
-        /// <summary>Gets or sets the base screen size used for scaling calculations.</summary>
         public Vector2 BaseScreenSize { get => baseScreenSize; set => baseScreenSize = value; }
 
         private Matrix globalTransformation;
-        /// <summary>Gets or sets the global transformation matrix for scaling and positioning.</summary>
         public Matrix GlobalTransformation { get => globalTransformation; set => globalTransformation = value; }
 
-        /// <summary>
-        /// Provides access to a shared SpriteBatch instance for drawing operations.
-        /// </summary>
         public SpriteBatch SpriteBatch => spriteBatch;
-
-        /// <summary>
-        /// Provides access to a shared SpriteFont instance for text rendering.
-        /// </summary>
         public SpriteFont Font => font;
-
-        /// <summary>
-        /// Provides access to the shared InputState for input handling.
-        /// </summary>
         public InputState InputState => inputState;
-
-        /// <summary>
-        /// Enables or disables screen tracing for debugging purposes.
-        /// When enabled, the manager prints a list of active screens during updates.
-        /// </summary>
         public bool TraceEnabled { get => traceEnabled; set => traceEnabled = value; }
 
         Rectangle safeArea = new Rectangle(0, 0, BASE_BUFFER_WIDTH, BASE_BUFFER_HEIGHT);
-        /// <summary>
-        /// Returns the portion of the screen where drawing is safely allowed.
-        /// </summary>
-        public Rectangle SafeArea
-        {
-            get
-            {
-                return safeArea;
-            }
-        }
+        public Rectangle SafeArea => safeArea;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ScreenManager"/> class.
-        /// </summary>
-        /// <param name="game">The associated Game instance.</param>
         public ScreenManager(FrameworkGame game) : base(game)
         {
             TouchPanel.EnabledGestures = GestureType.None;
         }
 
-        /// <summary>
-        /// Initializes the ScreenManager and any required services.
-        /// </summary>
         public override void Initialize()
         {
             base.Initialize();
             isInitialized = true;
         }
 
-        /// <summary>
-        /// Loads graphical content for the ScreenManager and all active screens.
-        /// </summary>
         protected override void LoadContent()
         {
             ContentManager content = Game.Content;
@@ -120,9 +72,6 @@ namespace RailDispatchMono.Core.ScreenManagers
             }
         }
 
-        /// <summary>
-        /// Unloads graphical content for all screens.
-        /// </summary>
         protected override void UnloadContent()
         {
             foreach (GameScreen screen in screens)
@@ -131,10 +80,6 @@ namespace RailDispatchMono.Core.ScreenManagers
             }
         }
 
-        /// <summary>
-        /// Updates the active screens and processes input.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of the game's timing state.</param>
         public override void Update(GameTime gameTime)
         {
             inputState.Update(gameTime, BaseScreenSize);
@@ -146,8 +91,9 @@ namespace RailDispatchMono.Core.ScreenManagers
 
             while (screensToUpdate.Count > 0)
             {
-                GameScreen screen = screensToUpdate[^1];
-                screensToUpdate.RemoveAt(screensToUpdate.Count - 1);
+                int lastIndex = screensToUpdate.Count - 1;
+                GameScreen screen = screensToUpdate[lastIndex];
+                screensToUpdate.RemoveAt(lastIndex);
 
                 screen.Update(gameTime, otherScreenHasFocus, coveredByOtherScreen);
 
@@ -168,19 +114,12 @@ namespace RailDispatchMono.Core.ScreenManagers
                 TraceScreens();
         }
 
-        /// <summary>
-        /// Prints active screen names to the debug console for diagnostic purposes.
-        /// </summary>
         private void TraceScreens()
         {
             var screenNames = screens.Select(screen => screen.GetType().Name).ToList();
             DebugManager.Log(string.Join(", ", screenNames));
         }
 
-        /// <summary>
-        /// Draws the active screens.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of the game's timing state.</param>
         public override void Draw(GameTime gameTime)
         {
             foreach (var screen in screens)
@@ -192,34 +131,21 @@ namespace RailDispatchMono.Core.ScreenManagers
             }
         }
 
-        /// <summary>
-        /// Releases resources used by the <see cref="ScreenManager"/> object.
-        /// </summary>
-        /// <param name="disposing">
-        /// True to release both managed and unmanaged resources; false to release only unmanaged resources.
-        /// </param>
         protected override void Dispose(bool disposing)
         {
             try
             {
                 if (disposing)
                 {
-                    // Dispose of managed resources.
                     spriteBatch?.Dispose();
                 }
             }
             finally
             {
-                // Call the base class's Dispose method to ensure proper cleanup.
                 base.Dispose(disposing);
             }
         }
 
-        /// <summary>
-        /// Adds a new screen to the ScreenManager.
-        /// </summary>
-        /// <param name="screen">The screen to add.</param>
-        /// <param name="controllingPlayer">The controlling player, if applicable.</param>
         public void AddScreen(GameScreen screen, PlayerIndex? controllingPlayer)
         {
             screen.ControllingPlayer = controllingPlayer;
@@ -235,10 +161,6 @@ namespace RailDispatchMono.Core.ScreenManagers
             TouchPanel.EnabledGestures = screen.EnabledGestures;
         }
 
-        /// <summary>
-        /// Removes a screen from the ScreenManager.
-        /// </summary>
-        /// <param name="screen">The screen to remove.</param>
         public void RemoveScreen(GameScreen screen)
         {
             if (isInitialized)
@@ -251,25 +173,16 @@ namespace RailDispatchMono.Core.ScreenManagers
 
             if (screens.Count > 0)
             {
-                TouchPanel.EnabledGestures = screens[^1].EnabledGestures;
+                int lastIndex = screens.Count - 1;
+                TouchPanel.EnabledGestures = screens[lastIndex].EnabledGestures;
             }
         }
 
-        /// <summary>
-        /// Returns an array of all active screens managed by the ScreenManager.
-        /// </summary>
-        /// <returns>
-        /// An array containing all current GameScreen instances.
-        /// </returns>
         public GameScreen[] GetScreens()
         {
             return screens.ToArray();
         }
 
-        /// <summary>
-        /// Draws a translucent black fullscreen sprite.
-        /// </summary>
-        /// <param name="alpha">The opacity level of the fade (0 = fully transparent, 1 = fully opaque).</param>
         public void FadeBackBufferToBlack(float alpha)
         {
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, null);
@@ -281,9 +194,6 @@ namespace RailDispatchMono.Core.ScreenManagers
             spriteBatch.End();
         }
 
-        /// <summary>
-        /// Scales the game presentation area to match the screen's aspect ratio.
-        /// </summary>
         public void ScalePresentationArea()
         {
             if (GraphicsDevice == null || baseScreenSize.X <= 0 || baseScreenSize.Y <= 0)
