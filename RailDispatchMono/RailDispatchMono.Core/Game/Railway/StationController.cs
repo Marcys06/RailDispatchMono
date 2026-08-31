@@ -32,6 +32,12 @@ public sealed class StationController
     private readonly List<Station> _stations = new();
     private readonly Dictionary<Guid, DwellState> _dwellingTrains = new();
     private readonly Dictionary<Guid, float> _generationTimers = new();
+
+    // A train must physically leave the station's detection area before the
+    // same station can trigger another stop. This prevents the post-dwell
+    // 0.1 m/s release impulse from immediately starting another dwell cycle.
+    private readonly Dictionary<Guid, Guid> _completedStationVisits = new();
+
     private readonly PassengerManager _passengers;
     private readonly ITrainStopDecision _stopDecision;
     private readonly IPassengerService _passengerService;
@@ -70,6 +76,15 @@ public sealed class StationController
     {
         if (station == null || !_stations.Remove(station)) return false;
         _generationTimers.Remove(station.Id);
+
+        foreach (var trainId in _completedStationVisits
+                     .Where(x => x.Value == station.Id)
+                     .Select(x => x.Key)
+                     .ToList())
+        {
+            _completedStationVisits.Remove(trainId);
+        }
+
         return true;
     }
 
@@ -130,20 +145,33 @@ public sealed class StationController
         if (dwell.RemainingSeconds > 0f) return true;
 
         _dwellingTrains.Remove(train.Id);
+        DebugManager.Log($"[STATION] Train {train.Id} released from {dwell.Station.Name}");
         return false;
     }
 
     public void AfterTrainUpdate(TrainClass train, float deltaTime)
     {
+        ClearCompletedVisitIfTrainLeftStation(train);
+
         var currentStation = FindStationAtTrain(train);
-        if (currentStation != null && _stopDecision.ShouldStopAt(train, currentStation) &&
-            train.Speed <= 0.75f)
+        if (currentStation != null &&
+            _stopDecision.ShouldStopAt(train, currentStation) &&
+            train.Speed <= 0.75f &&
+            (!_completedStationVisits.TryGetValue(train.Id, out var completedStationId) ||
+             completedStationId != currentStation.Id))
         {
             train.Speed = 0f;
             if (!_dwellingTrains.ContainsKey(train.Id))
             {
                 var result = _passengerService.ServiceTrainAtStation(train, currentStation);
                 _dwellingTrains[train.Id] = new DwellState(currentStation);
+
+                // Mark the visit immediately. The train remains inside the
+                // station detection radius during the dwell and for the first
+                // few frames after release, so without this latch it would
+                // repeatedly re-enter the same station.
+                _completedStationVisits[train.Id] = currentStation.Id;
+
                 DebugManager.Log($"[STATION] Train {train.Id} arrived at {currentStation.Name}; " +
                                  $"alighted={result.Alighted}, boarded={result.Boarded}, dwell started.");
             }
@@ -168,20 +196,39 @@ public sealed class StationController
 
     public bool IsDwelling(TrainClass train) => _dwellingTrains.ContainsKey(train.Id);
 
-    private Station? FindStationAtTrain(TrainClass train)
+    private void ClearCompletedVisitIfTrainLeftStation(TrainClass train)
+    {
+        if (!_completedStationVisits.TryGetValue(train.Id, out var stationId))
+            return;
+
+        var station = _stations.FirstOrDefault(s => s.Id == stationId);
+        if (station == null || !IsTrainWithinStationArea(train, station))
+        {
+            _completedStationVisits.Remove(train.Id);
+            DebugManager.Log($"[STATION] Train {train.Id} left {station?.Name ?? stationId.ToString()}; visit re-armed");
+        }
+    }
+
+    private static bool IsTrainWithinStationArea(TrainClass train, Station station)
     {
         var cell = train.GetCurrentCell();
-        var station = _stations.FirstOrDefault(s => s.PassengerServiceEnabled && s.Contains(cell));
-        if (station == null) return null;
+        if (!station.Contains(cell)) return false;
 
         Vector2 stationCenter = new(
             station.Position.X + station.Width / 2f,
             station.Position.Y + station.Height / 2f);
 
         return Vector2.Distance(train.Position, stationCenter) <=
-               MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f
-            ? station
-            : null;
+               MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f;
+    }
+
+    private Station? FindStationAtTrain(TrainClass train)
+    {
+        var cell = train.GetCurrentCell();
+        var station = _stations.FirstOrDefault(s => s.PassengerServiceEnabled && s.Contains(cell));
+        if (station == null) return null;
+
+        return IsTrainWithinStationArea(train, station) ? station : null;
     }
 
     private Station? FindNextStation(TrainClass train)
