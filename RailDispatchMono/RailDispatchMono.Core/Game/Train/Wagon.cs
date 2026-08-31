@@ -8,12 +8,12 @@ namespace RailDispatchMono.Core.Game.Train;
 public sealed class Wagon : Vehicle
 {
     private readonly List<Passenger> _passengers = new();
-    private readonly List<Guid> _serviceRoute = new();
 
     public WagonType WagonType { get; set; }
     public int PassengerCapacity { get; }
     public IReadOnlyList<Passenger> Passengers => _passengers;
-    public IReadOnlyList<Guid> ServiceRoute => _serviceRoute;
+    public TrainRoute Route { get; }
+    public IReadOnlyList<Guid> ServiceRoute => Route.StationIds;
     public int PassengerCount => _passengers.Count;
     public int AvailablePassengerCapacity => Math.Max(0, PassengerCapacity - _passengers.Count);
 
@@ -26,8 +26,12 @@ public sealed class Wagon : Vehicle
     {
         WagonType = wagonType;
         PassengerCapacity = Math.Max(0, passengerCapacity);
+        Route = new TrainRoute();
         if (serviceRoute != null)
-            _serviceRoute.AddRange(serviceRoute);
+        {
+            foreach (var stationId in serviceRoute)
+                Route.AddStation(stationId);
+        }
     }
 
     public bool CanAcceptPassenger(Passenger passenger)
@@ -35,7 +39,10 @@ public sealed class Wagon : Vehicle
         if (passenger == null || WagonType != WagonType.Passenger || AvailablePassengerCapacity <= 0)
             return false;
 
-        return _serviceRoute.Count == 0 || _serviceRoute.Contains(passenger.DestinationStation.Id);
+        // An empty route is intentionally treated as "not yet configured" for
+        // compatibility with test consists. Once a route exists, only passengers
+        // whose destination is one of its stops may board.
+        return Route.IsEmpty || Route.ServesStation(passenger.DestinationStation.Id);
     }
 
     internal bool TryBoard(Passenger passenger, Guid trainId)
@@ -66,6 +73,7 @@ public sealed class Wagon : Vehicle
             alighted++;
         }
 
+        Route.AdvanceToStation(station.Id);
         return alighted;
     }
 }

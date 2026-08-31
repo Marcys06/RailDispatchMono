@@ -20,22 +20,24 @@ This is the single canonical documentation tree for the project. Code is authori
 - `14-documentation-maintenance.md` — synchronization rules.
 - `19-current-state-0.0.12.md` — previous implementation snapshot.
 - `20-debug-logging.md` — debug categories and output throttling.
-- `23-simulation-time-and-0.0.13pre.md` — current mini-update changes.
+- `23-simulation-time-and-0.0.13pre.md` — debug and simulation-time changes.
 - `24-passengers-0.0.10.md` — passenger model.
 - `25-stations-0.0.10.md` — station model.
+- `26-wagon-routes-0.0.13.md` — wagon route model and UI.
 - `changelog/` — one changelog directory containing versioned release notes.
 
 ## Current baseline
 
-- Current line: `0.0.13pre`.
-- `0.0.13` is planned for route creation.
+- Current line: `0.0.13`.
+- `0.0.13` adds per-wagon station routes and JSON-ready route data.
 - Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
 - Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
 - Pause stops both simulation and game clock.
 - The 5× clock scale does not multiply train velocity, acceleration, braking or travelled distance.
 - Stations support rectangular areas and passenger exchange.
-- Wagons manage passenger capacity independently.
-- Depots are world buildings and are the planned origin for future route creation.
+- Wagons manage passenger capacity and routes independently.
+- Depots are world buildings and are the planned origin for future train creation/route workflows.
+- Locomotives remain controlled by signals and switches; wagon routes do not directly control locomotive movement.
 
 ## Documentation structure rule
 
