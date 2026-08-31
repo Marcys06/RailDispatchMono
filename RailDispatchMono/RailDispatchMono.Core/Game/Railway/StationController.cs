@@ -11,6 +11,7 @@ using TrainClass = RailDispatchMono.Core.Game.Train.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
+/// <summary>Coordinates station detection and train dwell.</summary>
 public sealed class StationController
 {
     private sealed class DwellState
@@ -103,7 +104,9 @@ public sealed class StationController
         if (!_dwellingTrains.TryGetValue(train.Id, out var dwell)) return false;
         dwell.RemainingSeconds -= MathF.Max(0f, deltaTime); train.Speed = 0f;
         if (dwell.RemainingSeconds > 0f) return true;
-        _dwellingTrains.Remove(train.Id); return false;
+        _dwellingTrains.Remove(train.Id);
+        DebugManager.Log($"[STATION] Train {train.Id} released from {dwell.Station.Name}");
+        return false;
     }
 
     public void AfterTrainUpdate(TrainClass train, float deltaTime)
@@ -115,19 +118,25 @@ public sealed class StationController
             train.Speed = 0f;
             if (!_dwellingTrains.ContainsKey(train.Id))
             {
-                _passengerService.ServiceTrainAtStation(train, currentStation);
+                var result = _passengerService.ServiceTrainAtStation(train, currentStation);
                 _dwellingTrains[train.Id] = new DwellState(currentStation);
                 _completedStationVisits[train.Id] = currentStation.Id;
+                DebugManager.Log($"[STATION] Train {train.Id} arrived at {currentStation.Name}; alighted={result.Alighted}, boarded={result.Boarded}, dwell started.");
             }
             return;
         }
         var nextStation = FindNextStation(train);
         if (nextStation == null || !_stopDecision.ShouldStopAt(train, nextStation)) return;
-        float distance = EstimateDistanceToStation(train, nextStation), braking = GetTrainBraking(train);
+        float distance = EstimateDistanceToStation(train, nextStation);
+        float braking = GetTrainBraking(train);
         if (braking <= 0f || distance <= 0f) return;
         float available = MathF.Max(0f, distance - nextStation.StopRadius);
         float safeSpeed = MathF.Sqrt(MathF.Max(0f, 2f * braking * available));
-        if (safeSpeed < train.Speed) train.Speed = safeSpeed;
+        if (safeSpeed < train.Speed)
+        {
+            train.Speed = safeSpeed;
+            DebugManager.Log($"[STATION] Braking for {nextStation.Name}: distance={distance:F2}, safe={safeSpeed:F2} m/s");
+        }
     }
 
     public bool IsDwelling(TrainClass train) => _dwellingTrains.ContainsKey(train.Id);
@@ -136,7 +145,11 @@ public sealed class StationController
     {
         if (!_completedStationVisits.TryGetValue(train.Id, out var stationId)) return;
         var station = _stations.FirstOrDefault(s => s.Id == stationId);
-        if (station == null || !IsTrainWithinStationArea(train, station)) _completedStationVisits.Remove(train.Id);
+        if (station == null || !IsTrainWithinStationArea(train, station))
+        {
+            _completedStationVisits.Remove(train.Id);
+            DebugManager.Log($"[STATION] Train {train.Id} left {station?.Name ?? stationId.ToString()}; visit re-armed");
+        }
     }
 
     private static bool IsTrainWithinStationArea(TrainClass train, Station station)
@@ -144,11 +157,65 @@ public sealed class StationController
         var cell = train.GetCurrentCell();
         if (!station.Contains(cell)) return false;
         Vector2 stationCenter = new(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f);
-        return Vector2.DistanceSquared(train.Position, stationCenter) <= MathF.Max(1f, station.StopRadius * station.StopRadius);
+        return Vector2.Distance(train.Position, stationCenter) <= MathF.Max(station.Width, station.Height) / 2f + station.StopRadius + 0.5f;
     }
 
-    private Station? FindStationAtTrain(TrainClass train) => _stations.FirstOrDefault(s => s.Contains(train.GetCurrentCell()));
-    private Station? FindNextStation(TrainClass train) => _stations.FirstOrDefault(s => s.Id != FindStationAtTrain(train)?.Id);
-    private static float EstimateDistanceToStation(TrainClass train, Station station) => Vector2.Distance(train.Position, new Vector2(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f));
-    private static float GetTrainBraking(TrainClass train) => MathF.Max(0.1f, train.MaxSpeed * 0.5f);
+    private Station? FindStationAtTrain(TrainClass train)
+    {
+        var cell = train.GetCurrentCell();
+        var station = _stations.FirstOrDefault(s => s.PassengerServiceEnabled && s.Contains(cell));
+        if (station == null) return null;
+        return IsTrainWithinStationArea(train, station) ? station : null;
+    }
+
+    private Station? FindNextStation(TrainClass train)
+    {
+        Station? best = null;
+        float bestDistance = float.MaxValue;
+        var current = train.GetCurrentCell();
+        foreach (var station in _stations)
+        {
+            if (!station.PassengerServiceEnabled || station.Contains(current)) continue;
+            if (!_stopDecision.ShouldStopAt(train, station) || !IsStationAhead(train, station, current)) continue;
+            float distance = EstimateDistanceToStation(train, station);
+            if (distance < bestDistance) { bestDistance = distance; best = station; }
+        }
+        return best;
+    }
+
+    private static bool IsStationAhead(TrainClass train, Station station, MapPosition current)
+    {
+        foreach (var cell in station.GetCells())
+        {
+            int dx = cell.X - current.X, dy = cell.Y - current.Y;
+            bool ahead = train.Direction switch
+            {
+                TrackConnections.East => dx > 0 && Math.Abs(dy) <= 1,
+                TrackConnections.West => dx < 0 && Math.Abs(dy) <= 1,
+                TrackConnections.South => dy > 0 && Math.Abs(dx) <= 1,
+                TrackConnections.North => dy < 0 && Math.Abs(dx) <= 1,
+                _ => false
+            };
+            if (ahead) return true;
+        }
+        return false;
+    }
+
+    private static float EstimateDistanceToStation(TrainClass train, Station station)
+    {
+        float best = float.MaxValue;
+        foreach (var cell in station.GetCells())
+        {
+            float dx = cell.X + 0.5f - train.Position.X, dy = cell.Y + 0.5f - train.Position.Y;
+            best = MathF.Min(best, MathF.Sqrt(dx * dx + dy * dy));
+        }
+        return best;
+    }
+
+    private static float GetTrainBraking(TrainClass train)
+    {
+        float braking = 0f;
+        foreach (var vehicle in train.Composition.Vehicles) braking = MathF.Max(braking, vehicle.Parameters.Braking);
+        return braking;
+    }
 }
