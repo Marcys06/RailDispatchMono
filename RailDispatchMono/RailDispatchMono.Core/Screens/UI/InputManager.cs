@@ -366,19 +366,16 @@ namespace RailDispatchMono.Core.Screens.UI
             _spriteBatch.Begin(transformMatrix: _camera.Transform, samplerState: SamplerState.PointClamp);
             _renderer.Draw(_spriteBatch, _camera);
             _signalRenderer.Draw(_spriteBatch, _camera);
-
-            // ✅ POPRAWIONE: Draw() nie przyjmuje pozycji - rysuje wszystkie stacje
             _stationRenderer.Draw(_spriteBatch);
-
             _trainRenderer.Draw(_spriteBatch, _trainManager);
-
             _renderer.DrawPreview(_spriteBatch, previewMapPosition, _builder.Mode, _builder.StraightHorizontal, _builder.Curve, _builder.Junction);
 
             if (_builder.Mode == TrackBuildMode.Station)
-                // ✅ POPRAWIONE: DrawPreview oczekuje MapPosition
                 _stationRenderer.DrawPreview(_spriteBatch, previewMapPosition);
 
             _spriteBatch.End();
+
+            DrawStationTooltip(screenPosition, previewMapPosition);
 
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
             if (_junctionRadialMenu.IsOpen) _junctionRadialMenu.Draw(_spriteBatch);
@@ -386,6 +383,80 @@ namespace RailDispatchMono.Core.Screens.UI
             if (_signalDirectionMenu.IsOpen) _signalDirectionMenu.Draw(_spriteBatch);
             if (_signalSelectionMenu.IsOpen) _signalSelectionMenu.Draw(_spriteBatch);
             _spriteBatch.End();
+        }
+
+        private void DrawStationTooltip(Vector2 mouseScreenPosition, MapPosition mouseMapPosition)
+        {
+            var station = _stationController.GetStationAt(mouseMapPosition);
+            if (station == null) return;
+
+            var waiting = _stationController.Passengers.GetWaitingAt(station).ToList();
+            int waitingCount = waiting.Count;
+            int onboardForStation = _stationController.Passengers.Passengers.Count(p =>
+                p.State == Passengers.PassengerState.OnBoard &&
+                p.OriginStation.Id == station.Id);
+
+            string[] lines =
+            {
+                "STACJA",
+                station.Name,
+                "ID: " + station.Id.ToString()[..8],
+                "Oczekujacy: " + waitingCount,
+                "W drodze: " + onboardForStation,
+                "Obsluga: " + (station.PassengerServiceEnabled ? "TAK" : "NIE"),
+                "Postoj: " + station.DwellTimeSeconds.ToString("F1") + " s"
+            };
+
+            float padding = 8f;
+            float lineHeight = 20f;
+            float maxWidth = 0f;
+            foreach (var line in lines)
+                maxWidth = MathF.Max(maxWidth, 8f * line.Length);
+
+            float tooltipWidth = maxWidth + padding * 2f;
+            float tooltipHeight = lines.Length * lineHeight + padding * 2f;
+            Vector2 tooltipPos = mouseScreenPosition + new Vector2(15f, 15f);
+
+            var viewport = _graphicsDevice.Viewport;
+            if (tooltipPos.X + tooltipWidth > viewport.Width)
+                tooltipPos.X = mouseScreenPosition.X - tooltipWidth - 15f;
+            if (tooltipPos.Y + tooltipHeight > viewport.Height)
+                tooltipPos.Y = mouseScreenPosition.Y - tooltipHeight - 15f;
+
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+
+            Rectangle bgRect = new((int)tooltipPos.X, (int)tooltipPos.Y, (int)tooltipWidth, (int)tooltipHeight);
+            _spriteBatch.Draw(CreateTooltipPixel(), bgRect, new Color(30, 90, 150, 230));
+
+            const int border = 2;
+            var borderColor = new Color(100, 190, 255, 230);
+            var pixel = CreateTooltipPixel();
+            _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y - border, bgRect.Width + border * 2, border), borderColor);
+            _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y + bgRect.Height, bgRect.Width + border * 2, border), borderColor);
+            _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y - border, border, bgRect.Height + border * 2), borderColor);
+            _spriteBatch.Draw(pixel, new Rectangle(bgRect.X + bgRect.Width, bgRect.Y - border, border, bgRect.Height + border * 2), borderColor);
+
+            SpriteFont font = GetTooltipFont();
+            Vector2 textPos = tooltipPos + new Vector2(padding, padding);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                _spriteBatch.DrawString(font, lines[i], textPos, i == 0 ? Color.Yellow : Color.White);
+                textPos.Y += lineHeight;
+            }
+
+            _spriteBatch.End();
+        }
+
+        private Texture2D CreateTooltipPixel()
+        {
+            var pixel = new Texture2D(_graphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+            return pixel;
+        }
+
+        private SpriteFont GetTooltipFont()
+        {
+            throw new InvalidOperationException("Station tooltip font must be provided by GameplayScreen.");
         }
     }
 }
