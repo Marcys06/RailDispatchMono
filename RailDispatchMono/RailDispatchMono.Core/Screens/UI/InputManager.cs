@@ -341,8 +341,8 @@ namespace RailDispatchMono.Core.Screens.UI
 
         private MapPosition ToMapPosition(Vector2 screenPosition)
         {
-            Vector2 world = _camera.ScreenToMap(screenPosition);
-            return new MapPosition((int)world.X, (int)world.Y);
+            MapPosition world = _camera.ScreenToMap(screenPosition);
+            return world;
         }
 
         private bool IsKeyPressed(KeyboardState keyboard, Keys key) =>
@@ -361,18 +361,23 @@ namespace RailDispatchMono.Core.Screens.UI
 
             var mouse = Mouse.GetState();
             Vector2 screenPosition = new(mouse.X, mouse.Y);
-            Vector2 previewPosition = _camera.ScreenToMap(screenPosition);
-            MapPosition previewMapPosition = new((int)previewPosition.X, (int)previewPosition.Y);
+            MapPosition previewMapPosition = _camera.ScreenToMap(screenPosition);
 
             _spriteBatch.Begin(transformMatrix: _camera.Transform, samplerState: SamplerState.PointClamp);
             _renderer.Draw(_spriteBatch, _camera);
             _signalRenderer.Draw(_spriteBatch, _camera);
+
+            // ✅ POPRAWIONE: Draw() nie przyjmuje pozycji - rysuje wszystkie stacje
             _stationRenderer.Draw(_spriteBatch);
+
             _trainRenderer.Draw(_spriteBatch, _trainManager);
 
-            _renderer.DrawPreview(_spriteBatch, previewPosition, _builder.Mode, _builder.StraightHorizontal, _builder.Curve, _builder.Junction);
+            _renderer.DrawPreview(_spriteBatch, previewMapPosition, _builder.Mode, _builder.StraightHorizontal, _builder.Curve, _builder.Junction);
+
             if (_builder.Mode == TrackBuildMode.Station)
+                // ✅ POPRAWIONE: DrawPreview oczekuje MapPosition
                 _stationRenderer.DrawPreview(_spriteBatch, previewMapPosition);
+
             _spriteBatch.End();
 
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
