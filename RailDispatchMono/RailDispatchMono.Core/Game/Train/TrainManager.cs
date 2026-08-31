@@ -15,9 +15,13 @@ public sealed class TrainManager
     private readonly List<Train> _trainsToRemove = new();
 
     public IReadOnlyList<Train> Trains => _trains;
-    public StationController? StationController { get; private set; }
+    public StationController StationController { get; }
 
-    public TrainManager(GameMap map) => _map = map ?? throw new ArgumentNullException(nameof(map));
+    public TrainManager(GameMap map)
+    {
+        _map = map ?? throw new ArgumentNullException(nameof(map));
+        StationController = new StationController();
+    }
 
     public void Add(Train train)
     {
@@ -58,9 +62,11 @@ public sealed class TrainManager
 
     public void Initialize(BlockController blockController) => _blockController = blockController;
 
+    [Obsolete("StationController is initialized automatically. Configure TrainManager.StationController directly.")]
     public void InitializeStations(StationController stationController)
     {
-        StationController = stationController ?? throw new ArgumentNullException(nameof(stationController));
+        if (stationController == null) throw new ArgumentNullException(nameof(stationController));
+        StationController = stationController;
     }
 
     public void Update(float deltaTime)
@@ -81,10 +87,10 @@ public sealed class TrainManager
 
         foreach (var train in _trains)
         {
-            bool holdAtStation = StationController?.BeforeTrainUpdate(train, deltaTime) ?? false;
+            bool holdAtStation = StationController.BeforeTrainUpdate(train, deltaTime);
             if (!holdAtStation)
                 train.Update(deltaTime);
-            StationController?.AfterTrainUpdate(train, deltaTime);
+            StationController.AfterTrainUpdate(train, deltaTime);
         }
 
         _blockController?.UpdateOccupancy();
