@@ -7,6 +7,7 @@ using RailDispatchMono.Core.Game.Debug;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Rendering;
+using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.Screens.UI;
@@ -39,10 +40,20 @@ public sealed class GameplayScreen : GameScreen
     private SignalSelectionMenu _signalSelectionMenu;
     private InputManager _inputManager;
     private SignalRenderer _signalRenderer;
+    private readonly GameClock _clock = new();
+    private readonly FloatingTextManager _floatingText = new();
     private MouseState _previousMouse;
     private KeyboardState _previousKeyboard;
-    private int _previousScrollWheelValue;
     private Inputs.InputState? _inputState;
+    private bool _objectPanelOpen;
+    private bool _showTrains = true;
+    private bool _depotOpen;
+    private bool _spawnArmed;
+    private readonly Dictionary<(Guid TrainId, int WagonIndex), int> _wagonPassengerSnapshot = new();
+
+    private const int PanelWidth = 285;
+    private Rectangle PanelBounds => new(_graphicsDevice.Viewport.Width - PanelWidth, 0, PanelWidth, _graphicsDevice.Viewport.Height);
+    private Rectangle DepotButton => new(12, 12, 130, 42);
 
     public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager)
     {
@@ -89,28 +100,168 @@ public sealed class GameplayScreen : GameScreen
         _signalRadialMenu.SetFont(font);
         _signalDirectionMenu.SetFont(font);
         _signalSelectionMenu.SetFont(font);
+        _floatingText.LoadContent(content);
         _pixel = new Texture2D(_graphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
+        SnapshotWagonPassengers();
     }
 
     public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
     {
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        float realDelta = (float)gameTime.ElapsedGameTime.TotalSeconds;
         if (_inputState != null && _inputState.IsPauseKeyJustPressed()) TogglePause();
         if (_isPaused)
         {
             _inputManager.Update(gameTime);
             return;
         }
+
+        if (HandleHudInput()) return;
+
+        float deltaTime = _clock.Update(realDelta);
         _trainManager.Update(deltaTime);
+        CapturePassengerChanges();
+        _floatingText.Update(deltaTime);
         _trainDebugger.Update(deltaTime, _trainManager);
         _blockController?.Update(deltaTime);
         _inputManager.Update(gameTime);
+
+        _previousMouse = Mouse.GetState();
+        _previousKeyboard = Keyboard.GetState();
+    }
+
+    private bool HandleHudInput()
+    {
         var mouse = Mouse.GetState();
-        var keyboard = Keyboard.GetState();
-        _previousScrollWheelValue = mouse.ScrollWheelValue;
-        _previousMouse = mouse;
-        _previousKeyboard = keyboard;
+        if (mouse.LeftButton != ButtonState.Pressed || _previousMouse.LeftButton == ButtonState.Pressed)
+            return false;
+
+        if (DepotButton.Contains(mouse.Position))
+        {
+            _depotOpen = !_depotOpen;
+            _spawnArmed = false;
+            return true;
+        }
+
+        if (_depotOpen)
+        {
+            Rectangle spawnButton = new(80, 150, 250, 50);
+            Rectangle closeButton = new(80, 215, 250, 42);
+            if (spawnButton.Contains(mouse.Position))
+            {
+                _spawnArmed = true;
+                _depotOpen = false;
+                return true;
+            }
+            if (closeButton.Contains(mouse.Position))
+            {
+                _depotOpen = false;
+                return true;
+            }
+            return true;
+        }
+
+        if (_spawnArmed)
+        {
+            if (PanelBounds.Contains(mouse.Position)) return true;
+            var cell = _camera.ScreenToMap(new Vector2(mouse.X, mouse.Y));
+            if (_map.TryGetTrack(cell, out var track) && track != null)
+            {
+                SpawnDefaultTrain(cell, track.GetAvailableDirections().FirstOrDefault());
+                _spawnArmed = false;
+            }
+            return true;
+        }
+
+        if (PanelBounds.Contains(mouse.Position))
+        {
+            int y = 86;
+            if (new Rectangle(PanelBounds.X + 10, y, 120, 36).Contains(mouse.Position)) { _showTrains = true; return true; }
+            if (new Rectangle(PanelBounds.X + 135, y, 120, 36).Contains(mouse.Position)) { _showTrains = false; return true; }
+
+            if (_showTrains)
+            {
+                y += 50;
+                foreach (var train in _trainManager.Trains)
+                {
+                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
+                    {
+                        _camera.Position = train.Position;
+                        return true;
+                    }
+                    y += 38;
+                }
+            }
+            else
+            {
+                y += 50;
+                foreach (var station in _trainManager.StationController.Stations)
+                {
+                    if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
+                    {
+                        _camera.Position = new Vector2(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f);
+                        return true;
+                    }
+                    y += 38;
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private void SpawnDefaultTrain(MapPosition cell, TrackConnections direction)
+    {
+        if (direction == TrackConnections.None) direction = TrackConnections.East;
+        var locomotiveParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
+        var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
+        var vehicles = new List<Vehicle>
+        {
+            new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
+            new Wagon(wagonParameters),
+            new Wagon(wagonParameters)
+        };
+        var train = new Train(new Vector2(cell.X + 0.5f, cell.Y + 0.5f), direction, 0f, vehicles);
+        train.SetMap(_map);
+        train.SetSignalController(_signalController);
+        train.SetBlockController(_blockController);
+        _trainManager.Add(train);
+    }
+
+    private void SnapshotWagonPassengers()
+    {
+        _wagonPassengerSnapshot.Clear();
+        foreach (var train in _trainManager.Trains)
+            for (int i = 0; i < train.Composition.Vehicles.Count; i++)
+                if (train.Composition.Vehicles[i] is Wagon wagon)
+                    _wagonPassengerSnapshot[(train.Id, i)] = wagon.PassengerCount;
+    }
+
+    private void CapturePassengerChanges()
+    {
+        foreach (var train in _trainManager.Trains)
+        {
+            for (int i = 0; i < train.Composition.Vehicles.Count; i++)
+            {
+                if (train.Composition.Vehicles[i] is not Wagon wagon) continue;
+                var key = (train.Id, i);
+                int previous = _wagonPassengerSnapshot.TryGetValue(key, out var value) ? value : wagon.PassengerCount;
+                int current = wagon.PassengerCount;
+                if (current != previous)
+                {
+                    int delta = current - previous;
+                    var transform = train.GetVehicleTransform(i);
+                    _floatingText.Add(delta > 0 ? $"+{delta}" : delta.ToString(), transform.Position + new Vector2(0f, -0.5f));
+                }
+                else if (current == 0 && previous == 0)
+                {
+                    // The zero notification is generated when a wagon is processed by a station
+                    // but has no net passenger change; this is intentionally kept lightweight here.
+                }
+                _wagonPassengerSnapshot[key] = current;
+            }
+        }
     }
 
     private void TogglePause()
@@ -148,106 +299,138 @@ public sealed class GameplayScreen : GameScreen
     public override void Draw(GameTime gameTime)
     {
         _inputManager.Draw(gameTime);
+        DrawHud();
         DrawTooltip();
         if (_isPaused && _tooltipFont != null)
         {
             var viewport = _graphicsDevice.Viewport;
             string pauseText = "PAUZA";
             var textSize = _tooltipFont.MeasureString(pauseText);
-            Vector2 position = new((viewport.Width - textSize.X) / 2,
-                (viewport.Height - textSize.Y) / 2 - 50);
+            Vector2 position = new((viewport.Width - textSize.X) / 2, (viewport.Height - textSize.Y) / 2 - 50);
             _spriteBatch.Begin();
             _spriteBatch.DrawString(_tooltipFont, pauseText, position, Color.White);
             _spriteBatch.End();
         }
     }
 
+    private void DrawHud()
+    {
+        if (_tooltipFont == null || _pixel == null) return;
+        _spriteBatch.Begin();
+        DrawRect(new Rectangle(0, 0, 210, 65), new Color(20, 20, 20, 220));
+        _spriteBatch.DrawString(_tooltipFont, _clock.DisplayTime, new Vector2(16, 5), Color.White);
+        _spriteBatch.DrawString(_tooltipFont, $"x{_clock.SimulationSpeed:0}", new Vector2(130, 5), Color.Yellow);
+        DrawButton(new Rectangle(16, 36, 50, 22), "x1", _clock.SimulationSpeed == 1f);
+        DrawButton(new Rectangle(70, 36, 50, 22), "x2", _clock.SimulationSpeed == 2f);
+        DrawButton(new Rectangle(124, 36, 50, 22), "x5", _clock.SimulationSpeed == 5f);
+        DrawButton(DepotButton, "DEPOT", _depotOpen);
+
+        DrawRect(PanelBounds, new Color(18, 18, 18, 235));
+        _spriteBatch.DrawString(_tooltipFont, "OBIEKTY", new Vector2(PanelBounds.X + 10, 10), Color.White);
+        DrawButton(new Rectangle(PanelBounds.X + 10, 86, 120, 36), "POCIAGI", _showTrains);
+        DrawButton(new Rectangle(PanelBounds.X + 135, 86, 120, 36), "STACJE", !_showTrains);
+
+        int y = 136;
+        if (_showTrains)
+        {
+            foreach (var train in _trainManager.Trains)
+            {
+                string text = $"{train.Id.ToString()[..8]}  {train.Speed * 3.6f:0} km/h";
+                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text);
+                y += 38;
+            }
+        }
+        else
+        {
+            foreach (var station in _trainManager.StationController.Stations)
+            {
+                string text = $"{station.Name}  {_trainManager.StationController.Passengers.GetWaitingCount(station)} oczek.";
+                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text);
+                y += 38;
+            }
+        }
+        _spriteBatch.End();
+
+        if (_depotOpen)
+        {
+            _spriteBatch.Begin();
+            DrawRect(new Rectangle(50, 95, 310, 185), new Color(20, 20, 20, 245));
+            _spriteBatch.DrawString(_tooltipFont, "DEPOT", new Vector2(80, 110), Color.Yellow);
+            _spriteBatch.DrawString(_tooltipFont, "Lokomotywa + 2 wagony", new Vector2(80, 130), Color.White);
+            DrawButton(new Rectangle(80, 150, 250, 50), "WYBIERZ I USTAW", false);
+            DrawButton(new Rectangle(80, 215, 250, 42), "ZAMKNIJ", false);
+            _spriteBatch.End();
+        }
+        else if (_spawnArmed)
+        {
+            _spriteBatch.Begin();
+            DrawRect(new Rectangle(10, 75, 370, 50), new Color(20, 20, 20, 230));
+            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejący tor, aby ustawić pociąg", new Vector2(20, 85), Color.Yellow);
+            _spriteBatch.End();
+        }
+    }
+
     private void DrawTooltip()
     {
-        if (_tooltipFont == null || _pixel == null || _trainManager == null) return;
+        if (_tooltipFont == null || _pixel == null) return;
         var mouseState = Mouse.GetState();
         var mouseScreenPos = new Vector2(mouseState.X, mouseState.Y);
         var mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
         var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
         if (!vehicleInfo.HasValue) return;
 
-        var (train, vehicleIndex, vehicleWorldPos) = vehicleInfo.Value;
+        var (train, vehicleIndex, _) = vehicleInfo.Value;
         var vehicle = train.Composition.Vehicles[vehicleIndex];
         bool isLoco = vehicle is Locomotive;
         Color bgColor = isLoco ? new Color(180, 30, 30, 230) : new Color(30, 30, 180, 230);
-        string trainId = train.Id.ToString()[..8];
-        float speedMs = train.Speed;
-        float speedKmh = speedMs * 3.6f;
-        float mass = vehicle.Parameters.Mass;
-        float length = vehicle.Parameters.Length;
-        int vehicleCount = train.Composition.Vehicles.Count;
-
         var linesList = new List<string>
         {
             isLoco ? "LOKOMOTYWA" : "WAGON",
-            "ID pociagu: " + trainId,
-            "Pojazd: " + (vehicleIndex + 1) + "/" + vehicleCount,
-            "Predkosc: " + speedMs.ToString("F1") + " m/s",
-            "          " + speedKmh.ToString("F1") + " km/h",
-            "Masa: " + mass.ToString("F0") + " kg",
-            "Dlugosc: " + length.ToString("F1") + " m",
+            "ID pociagu: " + train.Id.ToString()[..8],
+            "Pojazd: " + (vehicleIndex + 1) + "/" + train.Composition.Vehicles.Count,
+            "Predkosc: " + (train.Speed * 3.6f).ToString("F1") + " km/h",
+            "Docelowa: " + (train.EffectiveTargetSpeed * 3.6f).ToString("F1") + " km/h",
+            "Vmax skladu: " + (train.MaxSpeed * 3.6f).ToString("F1") + " km/h",
+            "Masa: " + vehicle.Parameters.Mass.ToString("F0") + " kg",
+            "Dlugosc: " + vehicle.Parameters.Length.ToString("F1") + " m",
             "Kierunek: " + train.Direction
         };
-
         if (vehicle is Wagon wagon)
         {
             linesList.Add("Typ wagonu: " + wagon.WagonType);
             linesList.Add("Pasazerowie: " + wagon.PassengerCount + "/" + wagon.PassengerCapacity);
             linesList.Add("Wolne miejsca: " + wagon.AvailablePassengerCapacity);
-
-            var destinationGroups = wagon.Passengers
-                .GroupBy(p => p.DestinationStation.Id)
-                .Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() })
-                .OrderByDescending(x => x.Count)
-                .Take(5)
-                .ToList();
-
-            if (destinationGroups.Count == 0)
-                linesList.Add("Cele: brak");
-            else
-            {
-                linesList.Add("Cele pasazerow:");
-                foreach (var group in destinationGroups)
-                    linesList.Add("  " + group.Destination.Name + ": " + group.Count);
-            }
-
-            if (wagon.ServiceRoute.Count > 0)
-                linesList.Add("Trasa wagonu: " + wagon.ServiceRoute.Count + " st.");
+            var destinationGroups = wagon.Passengers.GroupBy(p => p.DestinationStation.Id).Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() }).OrderByDescending(x => x.Count).Take(5).ToList();
+            linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasazerow:");
+            foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
 
-        string[] lines = linesList.ToArray();
-        float padding = 8f;
-        float lineHeight = _tooltipFont.MeasureString("A").Y + 2f;
-        float maxWidth = 0f;
-        foreach (var line in lines) maxWidth = MathF.Max(maxWidth, _tooltipFont.MeasureString(line).X);
-        float tooltipWidth = maxWidth + padding * 2f;
-        float tooltipHeight = lines.Length * lineHeight + padding * 2f;
+        float padding = 8f, lineHeight = _tooltipFont.MeasureString("A").Y + 2f, maxWidth = 0f;
+        foreach (var line in linesList) maxWidth = MathF.Max(maxWidth, _tooltipFont.MeasureString(line).X);
+        float tooltipWidth = maxWidth + padding * 2f, tooltipHeight = linesList.Count * lineHeight + padding * 2f;
         Vector2 tooltipPos = mouseScreenPos + new Vector2(15, 15);
         var viewport = _graphicsDevice.Viewport;
         if (tooltipPos.X + tooltipWidth > viewport.Width) tooltipPos.X = mouseScreenPos.X - tooltipWidth - 15;
         if (tooltipPos.Y + tooltipHeight > viewport.Height) tooltipPos.Y = mouseScreenPos.Y - tooltipHeight - 15;
-
         _spriteBatch.Begin();
-        Rectangle bgRect = new((int)tooltipPos.X, (int)tooltipPos.Y, (int)tooltipWidth, (int)tooltipHeight);
-        _spriteBatch.Draw(_pixel, bgRect, bgColor);
-        Color borderColor = isLoco ? new Color(255, 100, 100, 200) : new Color(100, 100, 255, 200);
-        int borderThickness = 2;
-        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, bgRect.Width + borderThickness * 2, borderThickness), borderColor);
-        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y + bgRect.Height, bgRect.Width + borderThickness * 2, borderThickness), borderColor);
-        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X - borderThickness, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
-        _spriteBatch.Draw(_pixel, new Rectangle(bgRect.X + bgRect.Width, bgRect.Y - borderThickness, borderThickness, bgRect.Height + borderThickness * 2), borderColor);
-        Vector2 textPos = tooltipPos + new Vector2(padding, padding);
-        for (int i = 0; i < lines.Length; i++)
-        {
-            _spriteBatch.DrawString(_tooltipFont, lines[i], textPos, i == 0 ? Color.Yellow : Color.White);
-            textPos.Y += lineHeight;
-        }
+        Rectangle rect = new((int)tooltipPos.X, (int)tooltipPos.Y, (int)tooltipWidth, (int)tooltipHeight);
+        _spriteBatch.Draw(_pixel, rect, bgColor);
+        Vector2 textPos = tooltipPos + new Vector2(padding);
+        for (int i = 0; i < linesList.Count; i++) { _spriteBatch.DrawString(_tooltipFont, linesList[i], textPos, i == 0 ? Color.Yellow : Color.White); textPos.Y += lineHeight; }
         _spriteBatch.End();
+    }
+
+    private void DrawRect(Rectangle rect, Color color) => _spriteBatch.Draw(_pixel!, rect, color);
+    private void DrawButton(Rectangle rect, string text, bool active)
+    {
+        DrawRect(rect, active ? new Color(70, 90, 130, 255) : new Color(45, 45, 45, 255));
+        var size = _tooltipFont!.MeasureString(text);
+        _spriteBatch.DrawString(_tooltipFont, text, new Vector2(rect.Center.X - size.X / 2f, rect.Center.Y - size.Y / 2f), Color.White);
+    }
+    private void DrawListItem(Rectangle rect, string text)
+    {
+        DrawRect(rect, new Color(38, 38, 38, 255));
+        _spriteBatch.DrawString(_tooltipFont!, text, new Vector2(rect.X + 7, rect.Y + 7), Color.White);
     }
 
     private void CreateTestTrack()
@@ -281,12 +464,7 @@ public sealed class GameplayScreen : GameScreen
     {
         var locomotiveParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
         var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
-        var vehicles = new List<Vehicle>
-        {
-            new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
-            new Wagon(wagonParameters),
-            new Wagon(wagonParameters)
-        };
+        var vehicles = new List<Vehicle> { new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters), new Wagon(wagonParameters), new Wagon(wagonParameters) };
         var train = new Train(new Vector2(25.5f, 10.5f), TrackConnections.East, 25.4f, vehicles);
         train.SetMap(_map);
         train.SetSignalController(_signalController);
