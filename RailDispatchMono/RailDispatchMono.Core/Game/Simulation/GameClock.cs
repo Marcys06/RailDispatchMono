@@ -3,12 +3,16 @@ using System;
 namespace RailDispatchMono.Core.Game.Simulation;
 
 /// <summary>
-/// Lightweight 24-hour simulation clock. The multiplier affects simulation time,
-/// while Pause is controlled by the existing screen pause system.
+/// 24-hour simulation clock. Game time is intentionally faster than wall-clock time:
+/// 5 seconds of game time pass during 1 second of real time at x1.
+/// SimulationSpeed (x1/x2/x5) multiplies both game-clock progression and the normal
+/// simulation delta used by systems such as trains. The fixed 5x base scale belongs
+/// only to the clock representation and never changes physical speed or distance.
 /// </summary>
 public sealed class GameClock
 {
     public const double SecondsPerDay = 24d * 60d * 60d;
+    public const double BaseTimeScale = 5d;
 
     private double _seconds;
 
@@ -32,11 +36,15 @@ public sealed class GameClock
 
     public float Update(float realDeltaSeconds)
     {
-        if (realDeltaSeconds <= 0f)
-            return 0f;
+        if (realDeltaSeconds <= 0f) return 0f;
 
-        double scaled = realDeltaSeconds * SimulationSpeed;
-        _seconds = (_seconds + scaled) % SecondsPerDay;
-        return (float)scaled;
+        // Game clock: 5 seconds of game time per real second at x1.
+        double clockDelta = realDeltaSeconds * BaseTimeScale * SimulationSpeed;
+        _seconds = (_seconds + clockDelta) % SecondsPerDay;
+
+        // Simulation delta deliberately excludes BaseTimeScale.
+        // Train speed and travelled distance therefore remain unchanged at x1;
+        // x2/x5 still accelerate the normal simulation as intended.
+        return realDeltaSeconds * SimulationSpeed;
     }
 }
