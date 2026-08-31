@@ -72,6 +72,8 @@ namespace RailDispatchMono.Core.ScreenManagers
             foreach (GameScreen screen in screens)
             {
                 screen.LoadContent();
+                if (screen is GameplayScreen gameplayScreen)
+                    gameplayScreen.LoadContent(content);
             }
         }
 
@@ -158,6 +160,8 @@ namespace RailDispatchMono.Core.ScreenManagers
             if (isInitialized)
             {
                 screen.LoadContent();
+                if (screen is GameplayScreen gameplayScreen)
+                    gameplayScreen.LoadContent(Game.Content);
             }
 
             screens.Add(screen);
