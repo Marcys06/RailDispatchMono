@@ -14,6 +14,7 @@ public sealed class TrainManager
     private readonly List<Train> _trainsToRemove = new();
 
     public IReadOnlyList<Train> Trains => _trains;
+    public StationController? StationController { get; private set; }
 
     public TrainManager(GameMap map)
     {
@@ -70,14 +71,19 @@ public sealed class TrainManager
                 _trainsToRemove.Add(train);
         }
     }
+
     public void Initialize(BlockController blockController)
     {
         _blockController = blockController;
     }
 
+    public void InitializeStations(StationController stationController)
+    {
+        StationController = stationController ?? throw new ArgumentNullException(nameof(stationController));
+    }
+
     public void Update(float deltaTime)
     {
-        // Dodaj nowe pociągi
         if (_trainsToAdd.Count > 0)
         {
             foreach (var train in _trainsToAdd)
@@ -91,7 +97,6 @@ public sealed class TrainManager
             _trainsToAdd.Clear();
         }
 
-        // Usuń pociągi oznaczone do usunięcia
         if (_trainsToRemove.Count > 0)
         {
             foreach (var train in _trainsToRemove)
@@ -101,11 +106,15 @@ public sealed class TrainManager
             _trainsToRemove.Clear();
         }
 
-        // Aktualizuj każdy pociąg
         foreach (var train in _trains)
         {
-            train.Update(deltaTime);
+            bool holdAtStation = StationController?.BeforeTrainUpdate(train, deltaTime) ?? false;
+            if (!holdAtStation)
+                train.Update(deltaTime);
+
+            StationController?.AfterTrainUpdate(train, deltaTime);
         }
+
         _blockController?.UpdateOccupancy();
         _blockController?.UpdateSignals();
     }
@@ -152,51 +161,39 @@ public sealed class TrainManager
     {
         var positions = new List<Vector2>(_trains.Count);
         foreach (var train in _trains)
-        {
             positions.Add(train.Position);
-        }
         return positions;
     }
 
     public Dictionary<Train, Vector2[]> GetAllVehiclePositions(float vehicleSpacing = 1.0f)
     {
         var result = new Dictionary<Train, Vector2[]>();
-
         foreach (var train in _trains)
         {
             var positions = train.GetVehiclePositions(vehicleSpacing);
             result[train] = positions.ToArray();
         }
-
         return result;
     }
 
     public Dictionary<Train, float> GetAllRotations()
     {
         var result = new Dictionary<Train, float>();
-
         foreach (var train in _trains)
-        {
             result[train] = train.GetRotation();
-        }
-
         return result;
     }
 
     public Dictionary<Train, (Vector2 Position, float Rotation)[]> GetAllVehicleTransforms()
     {
         var result = new Dictionary<Train, (Vector2 Position, float Rotation)[]>();
-
         foreach (var train in _trains)
         {
             var transforms = new (Vector2, float)[train.Composition.Vehicles.Count];
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-            {
                 transforms[i] = train.GetVehicleTransform(i);
-            }
             result[train] = transforms;
         }
-
         return result;
     }
 }
