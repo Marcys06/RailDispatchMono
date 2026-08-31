@@ -14,53 +14,35 @@ public sealed class TrackCell
     public MapPosition Position { get; }
     public TrackGeometry Geometry { get; private set; }
     public TrackConnections Connections { get; private set; }
-
-    // --- STAN ZWROTNICY ---
     public SwitchPosition CurrentSwitchPosition { get; private set; } = SwitchPosition.Straight;
-
-    // Po³¹czenia zwrotnicy
     public TrackConnections StraightConnection { get; private set; } = TrackConnections.None;
     public TrackConnections DivergingConnection { get; private set; } = TrackConnections.None;
     public TrackConnections CommonStem { get; private set; } = TrackConnections.None;
-
-    // --- W£AŒCIWOŒCI POMOCNICZE ---
     public bool IsJunction => Geometry == TrackGeometry.Junction;
     public bool IsSwitchedToDiverging => CurrentSwitchPosition == SwitchPosition.Diverging;
     public TrackConnections StraightSide => StraightConnection;
     public TrackConnections DivergingSide => DivergingConnection;
     public TrackConnections StemSide => CommonStem;
 
-    public TrackCell(
-        MapPosition position,
-        TrackGeometry geometry,
-        TrackConnections connections)
+    public TrackCell(MapPosition position, TrackGeometry geometry, TrackConnections connections)
     {
         Position = position;
         Geometry = geometry;
         Connections = connections;
     }
 
-    public void SetGeometry(TrackGeometry geometry)
+    public void SetGeometry(TrackGeometry geometry) => Geometry = geometry;
+    public void SetConnections(TrackConnections connections) => Connections = connections;
+
+    public void SetSwitchPosition(SwitchPosition position)
     {
-        Geometry = geometry;
+        if (Geometry == TrackGeometry.Junction)
+            CurrentSwitchPosition = position;
     }
 
-    public void SetConnections(TrackConnections connections)
-    {
-        Connections = connections;
-    }
+    public bool HasConnection(TrackConnections connection) => Connections.HasFlag(connection);
 
-    public bool HasConnection(TrackConnections connection)
-    {
-        return Connections.HasFlag(connection);
-    }
-
-    // --- METODY INTERAKCJI Z ROZJAZDEM ---
-
-    public void ConfigureJunction(
-        TrackConnections commonStem,
-        TrackConnections straightExit,
-        TrackConnections divergingExit)
+    public void ConfigureJunction(TrackConnections commonStem, TrackConnections straightExit, TrackConnections divergingExit)
     {
         Geometry = TrackGeometry.Junction;
         CommonStem = commonStem;
@@ -71,52 +53,30 @@ public sealed class TrackCell
 
     public void ToggleSwitch()
     {
-        if (Geometry != TrackGeometry.Junction)
-            return;
-
+        if (Geometry != TrackGeometry.Junction) return;
         CurrentSwitchPosition = CurrentSwitchPosition == SwitchPosition.Straight
             ? SwitchPosition.Diverging
             : SwitchPosition.Straight;
     }
 
-    /// <summary>
-    /// Zwraca kierunek wyjœcia z komórki na podstawie kierunku wjazdu poci¹gu (entryDir).
-    /// </summary>
     public TrackConnections GetExitDirection(TrackConnections entrySide)
     {
         if (Geometry != TrackGeometry.Junction)
-        {
-            // ? DLA PROSTEGO TORU - zwróæ przeciwne po³¹czenie
-            // Np. jeœli wje¿d¿amy od East, wyje¿d¿amy West
             return Connections & ~entrySide;
-        }
 
-        // Rozjazd - logika dla CommonStem
         if (entrySide == CommonStem)
-        {
-            return CurrentSwitchPosition == SwitchPosition.Straight
-                ? StraightConnection
-                : DivergingConnection;
-        }
-        else
-        {
-            return CommonStem;
-        }
+            return CurrentSwitchPosition == SwitchPosition.Straight ? StraightConnection : DivergingConnection;
+
+        return CommonStem;
     }
 
     public List<TrackConnections> GetAvailableDirections()
     {
         var result = new List<TrackConnections>();
-
-        if (Connections.HasFlag(TrackConnections.North))
-            result.Add(TrackConnections.North);
-        if (Connections.HasFlag(TrackConnections.East))
-            result.Add(TrackConnections.East);
-        if (Connections.HasFlag(TrackConnections.South))
-            result.Add(TrackConnections.South);
-        if (Connections.HasFlag(TrackConnections.West))
-            result.Add(TrackConnections.West);
-
+        if (Connections.HasFlag(TrackConnections.North)) result.Add(TrackConnections.North);
+        if (Connections.HasFlag(TrackConnections.East)) result.Add(TrackConnections.East);
+        if (Connections.HasFlag(TrackConnections.South)) result.Add(TrackConnections.South);
+        if (Connections.HasFlag(TrackConnections.West)) result.Add(TrackConnections.West);
         return result;
     }
 }
