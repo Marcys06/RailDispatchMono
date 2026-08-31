@@ -9,7 +9,6 @@ namespace RailDispatchMono.Core.Game.Railway;
 public sealed class DepotController
 {
     private readonly List<Depot> _depots = new();
-
     public IReadOnlyList<Depot> Depots => _depots;
 
     public bool AddDepot(Depot depot)
@@ -22,7 +21,6 @@ public sealed class DepotController
     }
 
     public bool RemoveDepot(Depot depot) => depot != null && _depots.Remove(depot);
-
-    public Depot? GetDepotAt(MapPosition position) =>
-        _depots.FirstOrDefault(d => d.Position == position);
+    public void Clear() => _depots.Clear();
+    public Depot? GetDepotAt(MapPosition position) => _depots.FirstOrDefault(d => d.Position == position);
 }
