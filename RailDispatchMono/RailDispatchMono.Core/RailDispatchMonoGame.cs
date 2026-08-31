@@ -4,7 +4,6 @@ using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
-using System.IO;
 
 namespace RailDispatchMono.Core;
 
@@ -46,13 +45,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         base.Initialize();
     }
 
-    private void StartGameplay(string slotDirectory)
+    private void StartGameplay(string request)
     {
-        bool loadExisting = false;
-        if (slotDirectory.StartsWith("NEW:", StringComparison.Ordinal))
-            slotDirectory = slotDirectory[4..];
-        else
-            loadExisting = true;
+        // CreateSlot() activates a new slot immediately, so active-slot state
+        // cannot distinguish a new game from loading an existing game.
+        bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
+        string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal)
+            ? request[4..]
+            : request;
 
         SaveSlotService.Activate(slotDirectory);
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
@@ -70,19 +70,18 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void LoadContent()
     {
-        // ScreenManager is a DrawableGameComponent and owns screen content loading.
+        // ScreenManager owns screen content loading.
     }
 
     protected override void Update(GameTime gameTime)
     {
-        // ScreenManager is registered in Components. Game invokes it automatically.
-        // Do not call _screenManager.Update here: doing so updates every screen twice per frame.
+        // ScreenManager is registered in Components and is updated by Game.
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        // ScreenManager is a DrawableGameComponent and is drawn by Game automatically.
+        // ScreenManager is registered in Components and is drawn by Game.
         base.Draw(gameTime);
     }
 }
