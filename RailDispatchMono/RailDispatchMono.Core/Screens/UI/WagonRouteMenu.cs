@@ -179,7 +179,7 @@ public sealed class WagonRouteMenu
         if (_font == null || _graphicsDevice.Viewport.Width <= 0) return;
         float width = 250f;
         float height = GetHeight();
-        _position.X = MathHelper.Clamp(_position.X, 4f, Math.Max(4f, _graphicsDevice.Viewport.Width - width - 4f));
-        _position.Y = MathHelper.Clamp(_position.Y, 4f, Math.Max(4f, _graphicsDevice.Viewport.Height - height - 4f));
+        _position.X = Microsoft.Xna.Framework.MathHelper.Clamp(_position.X, 4f, Math.Max(4f, _graphicsDevice.Viewport.Width - width - 4f));
+        _position.Y = Microsoft.Xna.Framework.MathHelper.Clamp(_position.Y, 4f, Math.Max(4f, _graphicsDevice.Viewport.Height - height - 4f));
     }
 }
