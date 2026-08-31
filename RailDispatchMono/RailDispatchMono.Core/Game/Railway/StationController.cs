@@ -2,20 +2,18 @@ using Microsoft.Xna.Framework;
 using RailDispatchMono.Core;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Passengers;
-using RailDispatchMono.Core.Game.Train;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
+// Alias zapobiegający konfliktowi CS0118 (Namespace vs Typ)
+using TrainClass = RailDispatchMono.Core.Game.Train.Train;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
 /// <summary>
 /// Station stop controller. It is deliberately outside Train so the train
 /// physics remains reusable and station policy can evolve independently.
-///
-/// The controller currently uses grid-distance look-ahead. It is sufficient for
-/// station stopping on the existing cell-based network and is designed to be
-/// replaced by TrackRoute distance when route planning becomes authoritative.
 /// </summary>
 public sealed class StationController
 {
@@ -24,7 +22,11 @@ public sealed class StationController
         public Station Station { get; }
         public float RemainingSeconds { get; set; }
 
-        public DwellState(Station station) { Station = station; RemainingSeconds = station.DwellTimeSeconds; }
+        public DwellState(Station station)
+        {
+            Station = station;
+            RemainingSeconds = station.DwellTimeSeconds;
+        }
     }
 
     private readonly List<Station> _stations = new();
@@ -46,7 +48,7 @@ public sealed class StationController
 
     public Station? GetStationAt(MapPosition position) => _stations.FirstOrDefault(s => s.Position == position);
 
-    public bool BeforeTrainUpdate(Train train, float deltaTime)
+    public bool BeforeTrainUpdate(TrainClass train, float deltaTime)
     {
         if (!_dwellingTrains.TryGetValue(train.Id, out var dwell)) return false;
 
@@ -58,7 +60,7 @@ public sealed class StationController
         return false;
     }
 
-    public void AfterTrainUpdate(Train train, float deltaTime)
+    public void AfterTrainUpdate(TrainClass train, float deltaTime)
     {
         var currentStation = FindStationAtTrain(train);
         if (currentStation != null && currentStation.PassengerServiceEnabled && train.Speed <= 0.75f)
@@ -89,15 +91,15 @@ public sealed class StationController
         }
     }
 
-    public bool IsDwelling(Train train) => _dwellingTrains.ContainsKey(train.Id);
+    public bool IsDwelling(TrainClass train) => _dwellingTrains.ContainsKey(train.Id);
 
-    private void ServiceStation(Train train, Station station)
+    private void ServiceStation(TrainClass train, Station station)
     {
         _passengers.AlightPassengers(train, station);
         _passengers.BoardPassengers(train, station);
     }
 
-    private Station? FindStationAtTrain(Train train)
+    private Station? FindStationAtTrain(TrainClass train)
     {
         var cell = train.GetCurrentCell();
         return _stations.FirstOrDefault(s =>
@@ -106,7 +108,7 @@ public sealed class StationController
             Vector2.Distance(train.Position, new Vector2(s.Position.X + 0.5f, s.Position.Y + 0.5f)) <= s.StopRadius + 0.5f);
     }
 
-    private Station? FindNextStation(Train train)
+    private Station? FindNextStation(TrainClass train)
     {
         Station? best = null;
         float bestDistance = float.MaxValue;
@@ -138,14 +140,14 @@ public sealed class StationController
         return best;
     }
 
-    private static float EstimateDistanceToStation(Train train, Station station)
+    private static float EstimateDistanceToStation(TrainClass train, Station station)
     {
         float dx = station.Position.X - train.Position.X;
         float dy = station.Position.Y - train.Position.Y;
         return MathF.Sqrt(dx * dx + dy * dy);
     }
 
-    private static float GetTrainBraking(Train train)
+    private static float GetTrainBraking(TrainClass train)
     {
         float braking = 0f;
         foreach (var vehicle in train.Composition.Vehicles)

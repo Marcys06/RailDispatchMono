@@ -289,7 +289,9 @@ public sealed partial class Train
     /// </summary>
     public Signal? GetNextSignal()
     {
-        return TryFindNextSignal(out _, out _);
+        if (TryFindNextSignal(out var signal, out _))
+            return signal;
+        return null;
     }
 
     private bool TryFindNextSignal(out Signal? signal, out float distance)
@@ -311,7 +313,13 @@ public sealed partial class Train
                 return false;
 
             var signals = _signalController.GetSignalsAt(current);
-            var candidate = signals?.FirstOrDefault(s => s.Direction == direction);
+         
+            Signal? candidate = null;
+            if (signals != null)
+            {
+                candidate = signals.FirstOrDefault(s => s.Direction == direction);
+            }
+
             if (candidate != null)
             {
                 signal = candidate;
@@ -385,7 +393,7 @@ public sealed partial class Train
 
         if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
         {
-            const float safetyDistance = 0.05f;
+            const float safetyDistance = 1.4f;
             const float reactionTime = 0.15f;
             float availableDistance = MathF.Max(0f, distance - safetyDistance - Speed * reactionTime);
             return MathF.Min(_maxSpeed, MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
