@@ -25,15 +25,20 @@ This is the single canonical documentation tree for the project. Code is authori
 - `25-stations-0.0.10.md` — station model.
 - `26-wagon-routes-0.0.13.md` — wagon route model and UI.
 - `27-collision-system-0.0.14.md` — train collision protection.
-- `28-current-state-0.0.14c.md` — current implementation snapshot.
-- `changelog/` — one changelog directory containing versioned release notes.
+- `28-current-state-0.0.14c.md` — historical implementation snapshot.
+- `changelog/` — versioned release notes.
 
 ## Current baseline
 
-- Current line: `0.0.14c`.
+- Current line: `0.0.15f`.
 - `0.0.13` adds per-wagon station routes and JSON-ready route data.
 - `0.0.14` adds minimal collision protection and the `RadioStop` command.
 - `0.0.14c` stabilizes wagon-route menu input handling and adds the visible `S` mode indicator.
+- `0.0.15` begins the JSON persistence work.
+- `0.0.15b` adds save/load for map infrastructure through `map.json`.
+- `0.0.15c` moves Save/Load into the pause menu.
+- `0.0.15d` and `0.0.15f` stabilize pause state handling and screen management.
+- Save data is currently focused on map infrastructure; full train, wagon, schedule, world-state and economy persistence is not yet implemented as one complete save system.
 - Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
 - Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
 - Pause stops both simulation and game clock.
