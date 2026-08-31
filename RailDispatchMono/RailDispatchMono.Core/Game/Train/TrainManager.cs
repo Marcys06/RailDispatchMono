@@ -16,6 +16,7 @@ public sealed class TrainManager
     private readonly List<Train> _trainsToRemove = new();
 
     public static TrainManager? Current { get; private set; }
+    public GameMap Map => _map;
     public IReadOnlyList<Train> Trains => _trains;
     public StationController StationController { get; private set; }
     public TrainCollisionController CollisionController { get; }
