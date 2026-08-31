@@ -1,110 +1,260 @@
-
 # Changelog
 
-## [Unreleased] — 0.0.4 (w trakcie)
+This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
-### Railway / Track Building
+## [0.0.15f] — Stabilizacja systemu pauzy i zarządzania ekranami
+**Data:** 2026-08-31
 
-- Dodano model geometrii torów: `TrackGeometry` (`Straight`, `Curve`).
-- Dodano obsługę kierunków zakrętów: `CurveDirection` (`NorthEast`, `EastSouth`, `SouthWest`, `WestNorth`).
-- Dodano flagowy model połączeń toru: `TrackConnections` (`North`, `East`, `South`, `West`).
-- Dodano tryby budowania torów: `TrackBuildMode` (`Straight`, `Curve`).
-- Dodano `TrackCell` jako reprezentację pojedynczego elementu toru na mapie.
-- Dodano `TrackBuilder` odpowiedzialny za budowanie i usuwanie pojedynczych elementów toru.
-- Dodano tory proste w orientacji poziomej i pionowej.
-- Dodano cztery orientacje zakrętów: `NorthEast`, `EastSouth`, `SouthWest`, `WestNorth`.
-- Dodano automatyczne logiczne łączenie nowo postawionego toru z istniejącymi sąsiadami (`ConnectNeighbours`).
-- Dodano możliwość usuwania pojedynczego elementu toru prawym przyciskiem myszy.
-- Budowanie torów odbywa się przez stawianie pojedynczych elementów kliknięciem.
-- Dodano wybór typu toru z poziomu sterowania: `1` = tor prosty, `2` = zakręt.
-- Dodano zmianę orientacji toru prostego: `H` = poziomy, `V` = pionowy.
-- Dodano obracanie zakrętu klawiszem `R`.
-- Dodano panel narzędzia na mapie pokazujący aktualnie wybrany typ i orientację toru.
-- Dodano renderowanie torów prostych.
-- Dodano renderowanie zakrętów krzywymi Béziera, z końcami zgodnymi z punktami połączeń sąsiednich pól.
-- Dodano podgląd pola i planowanego toru przed jego postawieniem.
+- Naprawiono logikę przełączania pauzy w `GameplayScreen`.
+- Dodano uporządkowane `TogglePause()` i ochronę przed wielokrotnym tworzeniem `PauseScreen`.
+- Poprawiono obsługę `IsPopup` oraz zarządzanie ekranami przez `ScreenManager`.
+- Naprawiono błędy `NullReferenceException` podczas rysowania menu pauzy.
+- Poprawiono ładowanie czcionek używanych przez ekran pauzy.
+- Dodano diagnostykę przejść stanu pauzy.
+- `ESC` poprawnie rozpoczyna i kończy pauzę.
+- Menu pauzy jest wyświetlane jako overlay nad rozgrywką.
 
-### Map
+## [0.0.15d] — Naprawy systemu pauzy
+**Data:** 2026-08-31
 
-- Dodano `GameMap` z siatką terenu i limitem rozmiaru 16384 × 16384 (`MapSize`).
-- Dodano `MapPosition`, `MapCell`, `TerrainType` (`Grass`, `Forest`, `Hill`, `Mountain`).
-- Dodano `MapRenderer` renderujący widoczny fragment mapy zależnie od kamery i zoomu.
-- Dodano sterowanie kamerą: przesuwanie środkowym przyciskiem myszy oraz zoom kółkiem myszy.
+- Poprawiono logikę pauzy i zarządzanie `PauseScreen`.
+- Usunięto możliwość niekontrolowanego dokładania kolejnych ekranów pauzy.
+- Poprawiono obsługę overlay oraz przejść ekranu.
+- Dodano zabezpieczenia związane z teksturą overlay.
 
-### Train System
+## [0.0.15c] — Save/Load w menu pauzy
+**Data:** 2026-08-31
 
-- Dodano model pojazdu bazowego `Vehicle`.
-- Dodano model parametrów technicznych pojazdu `VehicleParameters`.
-- Dodano `Locomotive` jako niezależny typ pojazdu.
-- Dodano `Wagon` jako niezależny typ pojazdu.
-- Dodano `LocomotiveType` dla różnych typów lokomotyw.
-- Dodano `TrainComposition` przechowujący uporządkowaną listę pojazdów.
-- Dodano obliczanie długości składu na podstawie długości pojazdów.
-- Dodano sprawdzanie zdolności składu do ruchu na podstawie obecności lokomotywy.
-- Dodano `Train` jako reprezentację składu posiadającego własną tożsamość.
-- Dodano `TrainManager` zarządzający aktywnymi pociągami.
-- Dodano `TrainRenderer` renderujący lokomotywy i wagony jako oddzielne pojazdy.
-- Dodano testowy skład składający się z lokomotywy i dwóch wagonów.
-- Dodano powiązanie pociągu z `GameMap`.
-- Dodano podstawową walidację możliwości ruchu pociągu względem toru.
-- Pociąg stojący na polu bez toru pozostaje nieruchomy.
-- Dodano pierwszy etap ruchu pociągu po rzeczywistym torze.
-- Pociąg może rozpocząć ruch na wschód, jeżeli zajmowane pole posiada połączenie `East`.
+- Przeniesiono `SAVE` i `LOAD` z głównego HUD do menu pauzy.
+- Zachowano skróty `F6` i `F7`.
+- Uporządkowano `GameplayScreen.cs` po wcześniejszym problemie z formatowaniem klasy w jednej linii.
+- Zintegrowano zapis mapy z `DepotController` używanym przez gameplay.
 
-### Build
+## [0.0.15b] — Map Save / Load
+**Data:** 2026-08-31
 
-- `RailDispatchMono.Core` — build OK po dodaniu systemu pociągów.
-- `RailDispatchMono.DesktopGL` — build OK.
-- Dodano podstawowy przepływ aktualizacji: `GameplayScreen` → `TrainManager` → `Train`.
+- Dodano zapis i odczyt infrastruktury mapy przez `map.json`.
+- Zapisywane są tory, geometria, połączenia, rozjazdy, semafory, stacje i depoty.
+- Format zapisu posiada `schemaVersion`.
+- Odczyt odbudowuje obiekty infrastruktury z DTO.
+- Zachowywane są stabilne ID stacji, semaforów i depotów.
+- Po załadowaniu odbudowywane są bloki torowe.
+- Stan pociągów i pasażerów nie jest jeszcze częścią `map.json`.
 
-### Controls
+## [0.0.15a] — Fundament persistence
+**Data:** 2026-08-31
 
-- `1` — wybór toru prostego.
-- `2` — wybór zakrętu.
-- `H` — orientacja pozioma.
-- `V` — orientacja pionowa.
-- `R` — obrót zakrętu.
-- LPM — postaw jeden element toru.
-- PPM — usuń jeden element toru.
-- MMB — przesuwanie kamery.
-- Kółko myszy — zoom mapy.
+- Rozpoczęto system wieloplikowego zapisu stanu gry w JSON.
+- Przyjęto rozdzielenie danych na przyszłe pliki: mapa, pociągi i wagony, rozkłady, pozostały stan oraz ekonomia.
+- Pierwszym rzeczywiście zaimplementowanym obszarem persistence jest infrastruktura mapy.
+- Ekonomia pozostaje przygotowana jako pusty obszar przyszłego zapisu.
 
-### Known gaps / Poza zakresem tego wpisu
+## [0.0.15] — Save System
+**Data:** 2026-08-31
 
-- Usuwanie toru nie aktualizuje jeszcze połączeń sąsiednich elementów.
-- Ruch pociągu nie obsługuje jeszcze pełnego przebiegu po sieci torowej.
-- Ruch po zakrętach nie jest jeszcze powiązany z geometrią toru.
-- Pociąg nie zatrzymuje się jeszcze automatycznie przed końcem istniejącego toru.
-- Brak obsługi kierunku jazdy i zmiany kierunku.
-- Brak rozjazdów (`Junction`).
-- Brak semaforów (`Signal`).
-- Brak sekcji blokowych (`BlockSection`).
-- Brak interlockingu.
-- Brak pełnej fizyki ruchu pociągu.
-- Brak wykolejenia.
-- Brak manewrów i sprzęgania w warstwie symulacji.
-- Brak planowania jazdy.
-- Brak pasażerów.
-- Brak harmonogramów.
-- Brak proceduralnego generowania terenu.
+- Rozpoczęto prace nad persistence stanu gry.
+- Przyjęto JSON jako format zapisu.
+- Zdefiniowano rozdzielenie danych na osobne obszary zapisu przed przyszłym scaleniem ich w jeden system save.
 
----
+## [0.0.14c] — Stabilizacja edycji tras wagonów
+**Data:** 2026-08-31
+
+- Naprawiono zamykanie menu trasy wagonu w pierwszym `Update()` po otwarciu.
+- Pierwszy update po otwarciu menu jest konsumowany.
+- Kolejne nowe kliknięcie LPM wykonuje akcję lub zamyka menu.
+- PPM zamyka menu.
+- Kliknięcia przycisków stacji są obsługiwane niezależnie.
+- Dodano aktywny przycisk `S` jako wizualne oznaczenie trybu edycji trasy.
+- Zmiana trasy jest zapisywana przez istniejący `ScheduleStorage`.
+
+## [0.0.14b] — Naprawa menu trasy wagonu
+**Data:** 2026-08-31
+
+- Naprawiono natychmiastowe zamykanie `WagonRouteMenu` po `S` + LPM.
+- Poprawiono obsługę przycisków stacji.
+- Potwierdzono budowanie stacji przez `TrackBuildMode.Station`.
+- Uporządkowano zapis tras JSON.
+
+## [0.0.14a] — Trwałe trasy wagonów
+**Data:** 2026-08-31
+
+- Przeniesiono edycję trasy wagonu do trybu `S` (Schedule).
+- Dodano `TrainSchedule` i `ScheduleStorage`.
+- Rozkłady są zapisywane jako JSON w katalogu `schedules`.
+- Dodano wybór zestawienia pociągu przy Depot.
+- Przygotowano format JSON pod przyszłe rozszerzenia rozkładów.
+
+## [0.0.14] — Podstawowy system kolizji
+**Data:** 2026-08-31
+
+- Dodano `TrainCollisionController`.
+- Pociąg wykrywa inne składy na wybranej drodze torowej.
+- Wprowadzono 2-komórkowy odstęp bezpieczeństwa.
+- Dodano awaryjne zatrzymanie `RadioStop`.
+- Dodano ochronę miejsca spawnowania całego składu.
+- Ustalono priorytet: semafor → kolizja → stacja.
+
+## [0.0.13pre] — Debug, zegar i porządkowanie dokumentacji
+**Data:** 2026-08-31
+
+- Wprowadzono globalne ograniczenie logów debugowania.
+- Ustalono skalowanie czasu symulacji i zachowanie pauzy.
+- Ujednolicono dokumentację w jednym katalogu `docs/`.
+- Dodano `docs/changelog/` jako miejsce szczegółowych changelogów.
+
+## [0.0.13] — Trasy wagonów
+**Data:** 2026-08-31
+
+- Dodano `TrainRoute` przypisany do konkretnego wagonu.
+- Trasa przechowuje uporządkowaną listę stacji i aktualny punkt.
+- Dodano ograniczanie przyjmowania pasażerów zgodnie z trasą wagonu.
+- Dodano edytor trasy wagonu i rozszerzony tooltip.
+- Przygotowano model trasy do serializacji JSON.
+- Trasa wagonu nie steruje bezpośrednio ruchem lokomotywy.
+
+## [0.0.12c] — Zegar, Depot i kompletne orientacje rozjazdów
+**Data:** 2026-08-31
+
+- Naprawiono aktualizację zegara symulacji.
+- Poprawiono interakcję z Depot i tworzenie składu.
+- Rozszerzono rozjazdy do 12 orientacji.
+- Zaktualizowano podgląd i radialne menu rozjazdów.
+
+## [0.0.12b] — HUD i prędkość symulacji
+**Data:** 2026-08-31
+
+- Poprawiono przyciski `x1`, `x2`, `x5`.
+- Uporządkowano HUD i panel obiektów.
+- Depot pozostał elementem świata zamiast elementem HUD.
+
+## [0.0.12a] — Depot, UI i okno desktopowe
+**Data:** 2026-08-31
+
+- Dodano Depot jako budynek świata i `DepotController`.
+- Dodano programowy renderer Depot.
+- Dodano tryb budowy Depot (`9` / NumPad `9`).
+- Zwiększono domyślne okno desktopowe do `1600x900`.
+- Dodano zmianę rozmiaru okna i zapis ustawienia.
+
+## [0.0.12] — Zegar symulacji i panel obiektów
+**Data:** 2026-08-31
+
+- Dodano 24-godzinny `GameClock`.
+- Dodano prędkości symulacji `x1`, `x2`, `x5`.
+- Dodano panel obiektów z listą pociągów i stacji.
+- Dodano podstawowy system tworzenia składów z Depot.
+- Rozszerzono informacje o prędkości pociągu.
+- Dodano programowy `FloatingTextManager`.
+
+## [0.0.11] — Przebudowa systemu stacji i pasażerów
+**Data:** 2026-08-31
+
+- Rozdzielono decyzję o postoju od obsługi pasażerów.
+- Dodano `ITrainStopDecision` i `IPassengerService`.
+- Rozszerzono model pasażera o bieżącą stację i obsługę wagonową.
+- Dodano automatyczne generowanie popytu pasażerskiego.
+- Rozszerzono tooltip wagonu o dane pasażerskie i `ServiceRoute`.
+
+## [0.0.10] — Stacje i pasażerowie
+**Data:** 2026-08-31
+
+- Dodano model i kontroler stacji.
+- Dodano model pasażera i `PassengerManager`.
+- Dodano typy wagonów, pojemność pasażerską i obsługę pasażerów wagon po wagonie.
+- Dodano przygotowanie `ServiceRoute` pod przyszłe rozdzielanie tras wagonów.
+- Naprawiono odliczanie cooldownu bloków i resetowanie semaforów.
+
+## [0.0.9] — Look-ahead semaforów i hamowanie
+**Data:** 2026-08-30
+
+- Rozszerzono wykrywanie następnego semafora o kolejne komórki toru.
+- Dodano rzeczywistą odległość do sygnału.
+- Dodano bezpieczną prędkość i drogę hamowania.
+- Pociąg może rozpocząć fizyczne hamowanie przed semaforem STOP.
+- Look-ahead obsługuje również przejście przez zakręty.
+
+## [0.0.8b] — Naprawa menu pauzy
+**Data:** 2026-08-30
+
+- Poprawiono wyświetlanie i obsługę menu pauzy.
+- Dodano diagnostykę `MenuScreen` i `PauseScreen`.
+- Uporządkowano obsługę wejścia dla pauzy.
+
+## [0.0.8a] — System pauzy i menu ekranowego
+**Data:** 2026-08-30
+
+- Dodano `PauseScreen`.
+- Dodano zatrzymywanie symulacji podczas pauzy.
+- Rozszerzono `MenuScreen` i `MenuEntry`.
+- Dodano nawigację po menu pauzy.
+
+## [0.0.8] — Tooltip pociągu
+**Data:** 2026-08-30
+
+- Dodano tooltip pojazdu/pociągu.
+- Dodano wykrywanie pojazdu pod kursorem.
+- Tooltip pokazuje podstawowe dane składu i pojazdu.
+
+## [0.0.7c] — Debug i automatyczny reset semaforów
+**Data:** 2026-08-30
+
+- Dodano centralny `DebugManager`.
+- Dodano kategorie logowania i zapis logów do pliku.
+- Dodano automatyczny reset semaforów po opuszczeniu bloku.
+- Dodano cooldown bloku i śledzenie bloków przez pociąg.
+
+## [0.0.7b] — Refaktoryzacja Train
+**Data:** 2026-08-30
+
+- Podzielono `Train` na `Train.cs`, `TrainMovement.cs` i `TrainGeometry.cs`.
+- Poprawiono API ruchu, geometrię zakrętów i metody pomocnicze.
+
+## [0.0.7a] — Naprawa połączeń torów prostych
+**Data:** 2026-08-29
+
+- Naprawiono `GetExitDirection` dla torów prostych.
+- Poprawiono przechodzenie pociągu do kolejnych komórek.
+- Dodano diagnostykę połączeń torowych.
+
+## [0.0.7] — Obsługa rozjazdów przez pociągi
+**Data:** 2026-08-29
+
+- Dodano przejazd pociągu przez rozjazdy.
+- Pociąg uwzględnia `SwitchPosition`.
+- Dodano obsługę jazdy prosto i po odchyleniu.
+- Rozszerzono `TrackCell` o informacje o rozjeździe.
+
+## [0.0.6b] — Diagnostyka ruchu i prędkości
+**Data:** 2026-08-29
+
+- Rozszerzono logowanie prędkości, przyspieszania i hamowania.
+- Dodano diagnostykę ruchu po zakrętach.
+- Rozszerzono `TrainDebugger`.
+
+## [0.0.6] — Semafory i rozjazdy w ruchu pociągów
+**Data:** 2026-08-29
+
+- Zintegrowano semafory z ruchem pociągów.
+- Dodano płynne przyspieszanie i hamowanie zależne od aspektu.
+- Dodano parametry hamowania pojazdów.
+- Dodano podstawową integrację rozjazdów i semaforów z `TrainManager`.
+
+## [0.0.5] — System semaforów i rozjazdów
+**Data:** 2026-08-29
+
+- Dodano rozjazdy i ich radialne menu.
+- Dodano system semaforów z aspektami.
+- Rozszerzono tryby budowania infrastruktury.
+- Dodano podstawową integrację sygnalizacji z torami.
 
 ## [0.0.2] — Mapa
 
-### Railway / Map
-
-- Dodano `GameMap`, `MapCell`, `MapPosition`, `MapSize`.
-- Dodano typy terenu: `TerrainType`.
-- Dodano podstawowe renderowanie mapy z kamerą.
-- Zweryfikowano kompilację całego rozwiązania.
-
----
+- Dodano podstawowy model `GameMap` i komórki mapy.
+- Dodano typy terenu i renderowanie mapy.
+- Dodano kamerę mapy.
 
 ## [0.0.0] — Fundament projektu
 
-- Utworzono repozytorium GitHub.
-- Skonfigurowano projekt w Visual Studio (.NET, bez zewnętrznego silnika gier).
-- Utworzono strukturę rozwiązania: `RailDispatch.Domain`, `RailDispatch.Infrastructure`, `RailDispatch.Simulation`, `RailDispatch.UI`, `RailDispatch.App`, `RailDispatch.Tests`.
-- Dodano dokumentację: `VISION.md`, `GAMEPLAY.md`, `RAILWAY.md`, `TRAIN_SYSTEM.md`, `SCHEDULES.md`, `PASSENGERS.md`, `MAP.md`, `UI.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `TECHNICAL.md`, `DEVELOPMENT.md`, `ROADMAP.md`.
-```
+- Utworzono repozytorium i strukturę projektu.
+- Skonfigurowano rozwiązanie .NET/MonoGame.
+- Utworzono podstawową strukturę domeny, symulacji, UI i dokumentacji.
