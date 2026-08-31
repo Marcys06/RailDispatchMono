@@ -20,6 +20,7 @@ public sealed class SaveSlotMetadata
 public static class SaveSlotService
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    private static readonly string[] RequiredFiles = { "metadata.json", "map.json", "trains.json", "schedules.json", "passengers.json", "economy.json" };
 
     public static IReadOnlyList<SaveSlotMetadata> GetSlots()
     {
@@ -60,18 +61,31 @@ public static class SaveSlotService
         return directory;
     }
 
+    public static void ValidateSlot(string directory)
+    {
+        if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
+        foreach (string file in RequiredFiles)
+        {
+            string path = Path.Combine(directory, file);
+            if (!File.Exists(path)) throw new InvalidDataException($"Brak pliku {file}.");
+            try
+            {
+                using JsonDocument _ = JsonDocument.Parse(File.ReadAllText(path));
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"Plik {file} jest uszkodzony.", ex);
+            }
+        }
+
+        var metadata = JsonSerializer.Deserialize<SaveSlotMetadata>(File.ReadAllText(Path.Combine(directory, "metadata.json")), Options)
+            ?? throw new InvalidDataException("metadata.json jest pusty lub niepoprawny.");
+        if (metadata.SchemaVersion != 1) throw new InvalidDataException($"Nieobsługiwana wersja save: {metadata.SchemaVersion}.");
+    }
+
     private static void InitializeEmptyDocuments()
     {
-        WriteJson("map.json", new
-        {
-            schemaVersion = 1,
-            gameVersion = "0.0.16",
-            map = new { width = 100, height = 100 },
-            tracks = Array.Empty<object>(),
-            signals = Array.Empty<object>(),
-            stations = Array.Empty<object>(),
-            depots = Array.Empty<object>()
-        });
+        WriteJson("map.json", new { schemaVersion = 1, gameVersion = "0.0.16", map = new { width = 100, height = 100 }, tracks = Array.Empty<object>(), signals = Array.Empty<object>(), stations = Array.Empty<object>(), depots = Array.Empty<object>() });
         WriteJson("trains.json", new { schemaVersion = 1, gameVersion = "0.0.16", gameDay = 1, gameTimeSeconds = 0d, trains = Array.Empty<object>() });
         WriteJson("schedules.json", new { schemaVersion = 1, schedules = Array.Empty<object>() });
         WriteJson("passengers.json", new { schemaVersion = 1, passengers = Array.Empty<object>() });
@@ -83,8 +97,7 @@ public static class SaveSlotService
 
     public static void Activate(string directory)
     {
-        if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
-        if (!File.Exists(Path.Combine(directory, "metadata.json"))) throw new InvalidDataException("metadata.json is missing.");
+        ValidateSlot(directory);
         SaveSlotContext.SetActiveSlot(directory);
     }
 
