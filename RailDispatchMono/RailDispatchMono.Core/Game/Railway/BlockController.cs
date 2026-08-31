@@ -191,8 +191,9 @@ namespace RailDispatchMono.Core.Game.Railway
                 if (signal == null || block.IsOccupied || block.IsCoolingDown) continue;
                 if (!_pendingAutomaticStops.Remove(block.Id)) continue;
 
-                if (signal.Aspect != SignalAspect.Stop && signal.Aspect != SignalAspect.StopStation && signal.SetAspect(SignalAspect.Stop))
-                    DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: {signal.GetAspectName()} -> Stop po 3s od zwolnienia bloku {block.Name}");
+                var oldAspect = signal.Aspect;
+                if (oldAspect != SignalAspect.Stop && oldAspect != SignalAspect.StopStation && signal.SetAspect(SignalAspect.Stop))
+                    DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: {oldAspect} -> Stop po 3s od zwolnienia bloku {block.Name}");
             }
         }
 
