@@ -3,6 +3,7 @@
 // ============================================================
 
 using Microsoft.Xna.Framework;
+using RailDispatchMono.Core;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Train;
 using System;
@@ -59,8 +60,7 @@ namespace RailDispatchMono.Core.Game.Railway
 
             foreach (var startSignal in sortedSignals)
             {
-                if (visitedSignals.Contains(startSignal.Id))
-                    continue;
+                if (visitedSignals.Contains(startSignal.Id)) continue;
 
                 var path = FindPathFromSignal(startSignal, visitedSignals);
                 if (path == null || path.Count == 0)
@@ -70,8 +70,7 @@ namespace RailDispatchMono.Core.Game.Railway
                 }
 
                 var endSignal = FindSignalAtPosition(path[^1]);
-                if (endSignal == null || visitedSignals.Contains(endSignal.Id))
-                    continue;
+                if (endSignal == null || visitedSignals.Contains(endSignal.Id)) continue;
 
                 var block = new Block();
                 block.TrackCells.AddRange(path);
@@ -97,8 +96,7 @@ namespace RailDispatchMono.Core.Game.Railway
 
         private List<MapPosition>? FindPathFromSignal(Signal startSignal, HashSet<Guid> visitedSignals)
         {
-            if (_map == null)
-                return null;
+            if (_map == null) return null;
 
             var path = new List<MapPosition>();
             var currentPos = startSignal.Position;
@@ -112,23 +110,18 @@ namespace RailDispatchMono.Core.Game.Railway
             for (int steps = 0; steps < maxSteps; steps++)
             {
                 var nextPos = GetNextCell(currentPos, direction);
-                if (nextPos.X < 0 || nextPos.X >= _map.Size.Width || nextPos.Y < 0 || nextPos.Y >= _map.Size.Height)
-                    break;
-                if (!_map.TryGetTrack(nextPos, out var track) || track == null)
-                    break;
-                if (!visitedCells.Add(nextPos))
-                    break;
+                if (nextPos.X < 0 || nextPos.X >= _map.Size.Width || nextPos.Y < 0 || nextPos.Y >= _map.Size.Height) break;
+                if (!_map.TryGetTrack(nextPos, out var track) || track == null) break;
+                if (!visitedCells.Add(nextPos)) break;
 
                 path.Add(nextPos);
                 var signalAtPos = FindSignalAtPosition(nextPos);
-                if (signalAtPos != null && signalAtPos.Id != startSignal.Id)
-                    return path;
+                if (signalAtPos != null && signalAtPos.Id != startSignal.Id) return path;
 
                 var exits = track.GetAvailableDirections();
                 var opposite = GetOppositeDirection(direction);
                 var nextDirection = exits.FirstOrDefault(d => d != opposite);
-                if (nextDirection == TrackConnections.None)
-                    break;
+                if (nextDirection == TrackConnections.None) break;
 
                 currentPos = nextPos;
                 direction = nextDirection;
@@ -139,21 +132,15 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public void Update(float deltaTime)
         {
-            if (!IsInitialized)
-                return;
-
+            if (!IsInitialized) return;
             UpdateOccupancy();
-
-            foreach (var block in _blocks)
-                block.UpdateCooldown(deltaTime);
-
+            foreach (var block in _blocks) block.UpdateCooldown(deltaTime);
             UpdateSignals();
         }
 
         public void UpdateOccupancy()
         {
-            if (_trainManager == null)
-                return;
+            if (_trainManager == null) return;
 
             foreach (var block in _blocks)
             {
@@ -190,28 +177,22 @@ namespace RailDispatchMono.Core.Game.Railway
         }
 
         /// <summary>
-        /// Automatic signal control is intentionally one-way and event-driven:
-        /// after a block becomes free, Clear -> Stop occurs once after 3 seconds.
-        /// Stop -> permissive aspects are never automated.
+        /// After a block has been clear for the full cooldown, every non-stop
+        /// aspect of its entry signal is forced to Stop. Stop aspects are left
+        /// untouched. The reverse transition remains manual.
         /// </summary>
         public void UpdateSignals()
         {
-            if (_signalController == null)
-                return;
+            if (_signalController == null) return;
 
             foreach (var block in _blocks)
             {
                 var signal = block.EntrySignal;
-                if (signal == null || block.IsOccupied || block.IsCoolingDown)
-                    continue;
+                if (signal == null || block.IsOccupied || block.IsCoolingDown) continue;
+                if (!_pendingAutomaticStops.Remove(block.Id)) continue;
 
-                if (!_pendingAutomaticStops.Remove(block.Id))
-                    continue;
-
-                if (signal.Aspect == SignalAspect.Clear && signal.SetAspect(SignalAspect.Stop))
-                {
-                    DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: Clear -> Stop po zwolnieniu bloku {block.Name}");
-                }
+                if (signal.Aspect != SignalAspect.Stop && signal.Aspect != SignalAspect.StopStation && signal.SetAspect(SignalAspect.Stop))
+                    DebugManager.Log($"[SIGNAL] {signal.Name} automatycznie: {signal.GetAspectName()} -> Stop po 3s od zwolnienia bloku {block.Name}");
             }
         }
 
@@ -220,54 +201,41 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public Block? GetBlockForSignal(Signal signal)
         {
-            if (signal == null)
-                return null;
+            if (signal == null) return null;
             return _blocks.FirstOrDefault(b => b.EntrySignal == signal || b.ExitSignal == signal);
         }
 
         public List<Block> GetBlocksForTrain(Train.Train train)
         {
             var result = new List<Block>();
-            if (train == null)
-                return result;
+            if (train == null) return result;
 
             var headBlock = GetBlockAtPosition(train.Position);
-            if (headBlock != null)
-                result.Add(headBlock);
+            if (headBlock != null) result.Add(headBlock);
 
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
             {
                 var block = GetBlockAtPosition(train.GetVehicleTransform(i).Position);
-                if (block != null && !result.Contains(block))
-                    result.Add(block);
+                if (block != null && !result.Contains(block)) result.Add(block);
             }
 
             var tailBlock = GetBlockAtPosition(train.GetLastVehiclePosition());
-            if (tailBlock != null && !result.Contains(tailBlock))
-                result.Add(tailBlock);
-
+            if (tailBlock != null && !result.Contains(tailBlock)) result.Add(tailBlock);
             return result;
         }
 
         public bool ReserveBlock(Block block, Train.Train train) => block != null && train != null && block.TryReserve(train);
-
-        public void ReleaseBlock(Block block)
-        {
-            if (block != null)
-                block.ReleaseReservation();
-        }
+        public void ReleaseBlock(Block block) { if (block != null) block.ReleaseReservation(); }
 
         public float CalculateBlockLength(Block block)
         {
-            if (block == null || _map == null)
-                return 0f;
+            if (block == null || _map == null) return 0f;
             return block.TrackCells.Sum(GetCellLength);
         }
 
         public float GetCellLength(MapPosition cell)
         {
-            if (_map == null || !_map.TryGetTrack(cell, out var track) || track == null)
-                return 0f;
+            if (_map == null || !_map.TryGetTrack(cell, out var track) || track == null) return 0f;
             return track.Geometry == TrackGeometry.Curve ? MathF.PI / 2f : 1.0f;
         }
 
@@ -289,23 +257,13 @@ namespace RailDispatchMono.Core.Game.Railway
             _ => TrackConnections.None
         };
 
-        private Signal? FindSignalAtPosition(MapPosition position)
-        {
-            if (_signalController == null)
-                return null;
-            return _signalController.GetSignalsAt(position).FirstOrDefault();
-        }
-
-        private bool IsSignalPosition(MapPosition position) =>
-            _signalController != null && _signalController.GetSignalsAt(position).Count > 0;
+        private Signal? FindSignalAtPosition(MapPosition position) => _signalController?.GetSignalsAt(position).FirstOrDefault();
 
         public void AddBlock(Block block)
         {
-            if (block == null)
-                return;
+            if (block == null) return;
             _blocks.Add(block);
-            foreach (var cell in block.TrackCells)
-                _cellToBlock[cell] = block;
+            foreach (var cell in block.TrackCells) _cellToBlock[cell] = block;
         }
 
         public void ClearBlocks()
