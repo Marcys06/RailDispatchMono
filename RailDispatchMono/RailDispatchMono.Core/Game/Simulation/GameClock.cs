@@ -8,16 +8,16 @@ namespace RailDispatchMono.Core.Game.Simulation;
 /// </summary>
 public sealed class GameClock
 {
-    public const float SecondsPerDay = 24f * 60f * 60f;
+    public const double SecondsPerDay = 24d * 60d * 60d;
 
-    private float _seconds;
+    private double _seconds;
 
     public float SimulationSpeed { get; private set; } = 1f;
-    public float Seconds => _seconds;
+    public double Seconds => _seconds;
     public TimeSpan Time => TimeSpan.FromSeconds(_seconds);
     public string DisplayTime => $"{Time.Hours:00}:{Time.Minutes:00}";
 
-    public void Reset() => _seconds = 0f;
+    public void Reset() => _seconds = 0d;
 
     public void SetSpeed(float multiplier)
     {
@@ -32,9 +32,11 @@ public sealed class GameClock
 
     public float Update(float realDeltaSeconds)
     {
-        if (realDeltaSeconds <= 0f) return 0f;
-        float scaled = realDeltaSeconds * SimulationSpeed;
+        if (realDeltaSeconds <= 0f)
+            return 0f;
+
+        double scaled = realDeltaSeconds * SimulationSpeed;
         _seconds = (_seconds + scaled) % SecondsPerDay;
-        return scaled;
+        return (float)scaled;
     }
 }
