@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
+using RailDispatchMono.Core.Game.Debug;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Rendering;
@@ -81,6 +82,9 @@ namespace RailDispatchMono.Core.Screens.UI
 
             _signalRenderer = new SignalRenderer(_map, _signalController);
             _signalRenderer.LoadContent(_graphicsDevice);
+
+            _signalDirectionMenu.DirectionSelected += OnDirectionSelected;
+            _signalDirectionMenu.MenuClosed += (s, e) => DebugManager.Log("[SIGNAL] Menu kierunków zamknięte");
 
             DebugManager.Log("[INPUT] InputManager utworzony z SignalController, StationController i Rendererami");
         }
@@ -257,13 +261,9 @@ namespace RailDispatchMono.Core.Screens.UI
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
             {
                 if (_builder.Mode == TrackBuildMode.Signal)
-                {
                     PlaceSignal(mapPosition, screenPosition);
-                }
                 else if (_builder.Mode == TrackBuildMode.Station)
-                {
                     PlaceStation(mapPosition);
-                }
                 else
                 {
                     _builder.BuildAt(mapPosition);
@@ -397,14 +397,7 @@ namespace RailDispatchMono.Core.Screens.UI
 
             var waiting = _stationController.Passengers.GetWaitingAt(station).ToList();
             int waitingCount = waiting.Count;
-            int onboardForStation = _stationController.Passengers.Passengers.Count(p =>
-                p.State == RailDispatchMono.Core.Game.Passengers.PassengerState.OnBoard &&
-                p.OriginStation.Id == station.Id);
-            int totalCapacity = _trainManager.Trains
-                .SelectMany(t => t.Composition.Vehicles)
-                .OfType<Wagon>()
-                .Where(w => w.WagonType == WagonType.Passenger)
-                .Sum(w => w.PassengerCapacity);
+            int destinationCount = waiting.Select(p => p.DestinationStation.Id).Distinct().Count();
 
             string[] lines =
             {
@@ -412,8 +405,7 @@ namespace RailDispatchMono.Core.Screens.UI
                 station.Name,
                 "ID: " + station.Id.ToString()[..8],
                 "Oczekujacy: " + waitingCount,
-                "W drodze: " + onboardForStation,
-                "Pasazerska pojemnosc: " + totalCapacity,
+                "Rozne cele: " + destinationCount,
                 "Obsluga: " + (station.PassengerServiceEnabled ? "TAK" : "NIE"),
                 "Postoj: " + station.DwellTimeSeconds.ToString("F1") + " s"
             };
