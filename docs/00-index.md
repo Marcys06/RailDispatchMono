@@ -1,34 +1,38 @@
 # RailDispatchMono documentation
 
-This directory is the canonical project documentation intended for both humans and AI coding agents.
+This directory is the canonical project documentation for humans and AI coding agents.
 
 ## Documentation map
 
-- `01-project-overview.md` — project purpose, technology and high-level boundaries.
-- `02-repository-structure.md` — solution/project and source tree orientation.
-- `03-architecture.md` — architectural responsibilities and dependency rules.
-- `04-runtime-lifecycle.md` — MonoGame startup, update, draw and shutdown flow.
-- `05-screen-system.md` — `GameScreen`, `ScreenManager`, transitions and input routing.
-- `06-input.md` — input state, coordinate transformation and touch/desktop considerations.
-- `07-game-domain.md` — railway, train, vehicle and rendering-domain components discovered in the source tree.
-- `08-settings-localization.md` — settings and localization boundaries.
-- `09-content-platforms.md` — Content pipeline and platform projects.
-- `10-development-workflows.md` — safe procedures for adding and modifying features.
-- `11-ai-agent-rules.md` — concise rules for AI agents working on this repository.
-- `12-known-issues-and-cautions.md` — implementation details that can easily mislead an AI.
-- `13-code-index.md` — source-file index and purpose map.
-- `14-documentation-maintenance.md` — rules for keeping this documentation synchronized with code.
+- `01-project-overview.md` — project purpose and technology.
+- `02-repository-structure.md` — repository and source tree orientation.
+- `03-architecture.md` — architectural responsibilities.
+- `04-runtime-lifecycle.md` — MonoGame startup/update/draw flow.
+- `05-screen-system.md` — screens, pause and input routing.
+- `06-input.md` — current keyboard/mouse controls and coordinate handling.
+- `07-game-domain.md` — railway, train, station and passenger domain.
+- `08-settings-localization.md` — persistent settings, display and localization.
+- `09-content-platforms.md` — Content pipeline and supported desktop projects.
+- `10-development-workflows.md` — development and build workflow.
+- `11-ai-agent-rules.md` — rules for AI-assisted repository changes.
+- `12-known-issues-and-cautions.md` — current limitations and traps.
+- `13-code-index.md` — source-file index.
+- `14-documentation-maintenance.md` — documentation synchronization rules.
+- `19-current-state-0.0.12.md` — authoritative current implementation snapshot before `0.0.13`.
 
 ## Source-of-truth policy
 
-The implementation is authoritative. Documentation must never invent behavior that is not present in source code. When documentation and code disagree, treat the code as current behavior and update the relevant documentation.
+Code is authoritative. If an older document contradicts the implementation, update the document rather than relying on the obsolete description.
 
-## Important current facts
+## Current baseline
 
-- The default branch is `master`.
-- The shared game implementation is in `RailDispatchMono/RailDispatchMono.Core`.
-- `RailDispatchMono.Core.csproj` targets `net9.0`, enables nullable reference types, and references `MonoGame.Framework.Native` version `3.8.*`.
-- `RailDispatchMonoGame` derives from `Microsoft.Xna.Framework.Game`.
-- `ScreenManager` is a `DrawableGameComponent` and owns the active screen collection plus shared drawing/input infrastructure.
-- `GameScreen` is the base abstraction for individual screens.
-- The current desktop game bootstrap sets a 1280x720 preferred backbuffer and a fixed 60 FPS timestep.
+- Current feature line: `0.0.12a`.
+- The next planned major feature line is `0.0.13` — route creation.
+- Shared implementation is in `RailDispatchMono/RailDispatchMono.Core`.
+- Desktop bootstrap uses a `1600x900` default window and permits user resizing.
+- The game uses a fixed 60 FPS update loop while simulation time can run at `x1`, `x2` or `x5`.
+- Stations support rectangular areas and passenger exchange.
+- Passengers are quasi-individual entities with origin/destination and train/station state.
+- Wagons manage passenger capacity independently.
+- Depots are world buildings and are the planned origin point for future route creation.
+- UI graphics are generated programmatically; external UI image assets are not required.
