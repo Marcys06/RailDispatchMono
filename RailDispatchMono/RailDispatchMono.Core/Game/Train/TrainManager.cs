@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using RailDispatchMono.Core.Game.Debug;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using System;
@@ -16,28 +17,35 @@ public sealed class TrainManager
 
     public IReadOnlyList<Train> Trains => _trains;
     public StationController StationController { get; private set; }
+    public TrainCollisionController CollisionController { get; }
 
     public TrainManager(GameMap map)
     {
         _map = map ?? throw new ArgumentNullException(nameof(map));
         StationController = new StationController();
+        CollisionController = new TrainCollisionController(_map, this);
     }
 
     public void Add(Train train)
     {
         if (train == null) throw new ArgumentNullException(nameof(train));
-        if (!_trains.Contains(train) && !_trainsToAdd.Contains(train))
+        if (_trains.Contains(train) || _trainsToAdd.Contains(train)) return;
+
+        if (IsSpawnBlocked(train))
         {
-            train.SetMap(_map);
-            _trainsToAdd.Add(train);
+            DebugManager.LogWarning($"[COLLISION] Train {train.Id.ToString()[..8]} spawn rejected: occupied track cell.");
+            return;
         }
+
+        train.SetMap(_map);
+        _trainsToAdd.Add(train);
     }
 
     public Train CreateTrain(Vector2 position, TrackConnections direction, float speed)
     {
         var train = new Train(position, direction, speed);
         train.SetMap(_map);
-        _trainsToAdd.Add(train);
+        Add(train);
         return train;
     }
 
@@ -85,14 +93,27 @@ public sealed class TrainManager
             _trains.Remove(train);
         _trainsToRemove.Clear();
 
-        // Passenger demand is a world/station system, not a train-only concern.
         StationController.Update(deltaTime);
 
         foreach (var train in _trains)
         {
             bool holdAtStation = StationController.BeforeTrainUpdate(train, deltaTime);
-            if (!holdAtStation)
-                train.Update(deltaTime);
+            if (holdAtStation)
+            {
+                train.RadioStop();
+                continue;
+            }
+
+            if (CollisionController.ShouldRadioStop(train))
+            {
+                train.RadioStop();
+                DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {2f:F0} cells without a protecting signal.");
+                StationController.AfterTrainUpdate(train, deltaTime);
+                continue;
+            }
+
+            train.ClearRadioStop();
+            train.Update(deltaTime);
             StationController.AfterTrainUpdate(train, deltaTime);
         }
 
@@ -157,5 +178,28 @@ public sealed class TrainManager
             result[train] = transforms;
         }
         return result;
+    }
+
+    private bool IsSpawnBlocked(Train candidate)
+    {
+        var occupiedCells = new HashSet<MapPosition>();
+        foreach (var train in _trains.Concat(_trainsToAdd))
+        {
+            if (train.Id == candidate.Id) continue;
+            foreach (var vehicle in train.Composition.Vehicles.Select((_, index) => index))
+            {
+                var transform = train.GetVehicleTransform(vehicle);
+                occupiedCells.Add(new MapPosition(
+                    (int)MathF.Floor(transform.Position.X),
+                    (int)MathF.Floor(transform.Position.Y)));
+            }
+        }
+
+        foreach (var position in candidate.GetVehiclePositions())
+        {
+            var cell = new MapPosition((int)MathF.Floor(position.X), (int)MathF.Floor(position.Y));
+            if (occupiedCells.Contains(cell)) return true;
+        }
+        return false;
     }
 }

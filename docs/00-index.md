@@ -24,12 +24,14 @@ This is the single canonical documentation tree for the project. Code is authori
 - `24-passengers-0.0.10.md` — passenger model.
 - `25-stations-0.0.10.md` — station model.
 - `26-wagon-routes-0.0.13.md` — wagon route model and UI.
+- `27-collision-system-0.0.14.md` — train collision protection.
 - `changelog/` — one changelog directory containing versioned release notes.
 
 ## Current baseline
 
-- Current line: `0.0.13`.
+- Current line: `0.0.14`.
 - `0.0.13` adds per-wagon station routes and JSON-ready route data.
+- `0.0.14` adds minimal collision protection and the `RadioStop` command.
 - Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
 - Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
 - Pause stops both simulation and game clock.
@@ -38,6 +40,7 @@ This is the single canonical documentation tree for the project. Code is authori
 - Wagons manage passenger capacity and routes independently.
 - Depots are world buildings and are the planned origin for future train creation/route workflows.
 - Locomotives remain controlled by signals and switches; wagon routes do not directly control locomotive movement.
+- Signal protection has priority over the simple collision rule; collision protection uses a 2-cell safety distance when no protecting signal exists.
 
 ## Documentation structure rule
 
