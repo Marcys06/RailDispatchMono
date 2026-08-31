@@ -8,6 +8,7 @@ using RailDispatchMono.Core.Game.Rendering;
 using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Screens.UI
 {
@@ -31,6 +32,9 @@ namespace RailDispatchMono.Core.Screens.UI
         private readonly StationController _stationController;
         private readonly StationRenderer _stationRenderer;
         private readonly SignalRenderer _signalRenderer;
+
+        private SpriteFont? _tooltipFont;
+        private Texture2D? _tooltipPixel;
 
         private MouseState _previousMouse;
         private KeyboardState _previousKeyboard;
@@ -77,9 +81,6 @@ namespace RailDispatchMono.Core.Screens.UI
 
             _signalRenderer = new SignalRenderer(_map, _signalController);
             _signalRenderer.LoadContent(_graphicsDevice);
-
-            _signalDirectionMenu.DirectionSelected += OnDirectionSelected;
-            _signalDirectionMenu.MenuClosed += (s, e) => DebugManager.Log("[SIGNAL] Menu kierunków zamknięte");
 
             DebugManager.Log("[INPUT] InputManager utworzony z SignalController, StationController i Rendererami");
         }
@@ -390,11 +391,20 @@ namespace RailDispatchMono.Core.Screens.UI
             var station = _stationController.GetStationAt(mouseMapPosition);
             if (station == null) return;
 
+            var font = GetTooltipFont();
+            var pixel = GetTooltipPixel();
+            if (font == null || pixel == null) return;
+
             var waiting = _stationController.Passengers.GetWaitingAt(station).ToList();
             int waitingCount = waiting.Count;
             int onboardForStation = _stationController.Passengers.Passengers.Count(p =>
-                p.State == Passengers.PassengerState.OnBoard &&
+                p.State == RailDispatchMono.Core.Game.Passengers.PassengerState.OnBoard &&
                 p.OriginStation.Id == station.Id);
+            int totalCapacity = _trainManager.Trains
+                .SelectMany(t => t.Composition.Vehicles)
+                .OfType<Wagon>()
+                .Where(w => w.WagonType == WagonType.Passenger)
+                .Sum(w => w.PassengerCapacity);
 
             string[] lines =
             {
@@ -403,15 +413,16 @@ namespace RailDispatchMono.Core.Screens.UI
                 "ID: " + station.Id.ToString()[..8],
                 "Oczekujacy: " + waitingCount,
                 "W drodze: " + onboardForStation,
+                "Pasazerska pojemnosc: " + totalCapacity,
                 "Obsluga: " + (station.PassengerServiceEnabled ? "TAK" : "NIE"),
                 "Postoj: " + station.DwellTimeSeconds.ToString("F1") + " s"
             };
 
             float padding = 8f;
-            float lineHeight = 20f;
+            float lineHeight = font.MeasureString("A").Y + 2f;
             float maxWidth = 0f;
             foreach (var line in lines)
-                maxWidth = MathF.Max(maxWidth, 8f * line.Length);
+                maxWidth = MathF.Max(maxWidth, font.MeasureString(line).X);
 
             float tooltipWidth = maxWidth + padding * 2f;
             float tooltipHeight = lines.Length * lineHeight + padding * 2f;
@@ -426,17 +437,15 @@ namespace RailDispatchMono.Core.Screens.UI
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
 
             Rectangle bgRect = new((int)tooltipPos.X, (int)tooltipPos.Y, (int)tooltipWidth, (int)tooltipHeight);
-            _spriteBatch.Draw(CreateTooltipPixel(), bgRect, new Color(30, 90, 150, 230));
+            _spriteBatch.Draw(pixel, bgRect, new Color(30, 90, 150, 230));
 
             const int border = 2;
             var borderColor = new Color(100, 190, 255, 230);
-            var pixel = CreateTooltipPixel();
             _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y - border, bgRect.Width + border * 2, border), borderColor);
             _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y + bgRect.Height, bgRect.Width + border * 2, border), borderColor);
             _spriteBatch.Draw(pixel, new Rectangle(bgRect.X - border, bgRect.Y - border, border, bgRect.Height + border * 2), borderColor);
             _spriteBatch.Draw(pixel, new Rectangle(bgRect.X + bgRect.Width, bgRect.Y - border, border, bgRect.Height + border * 2), borderColor);
 
-            SpriteFont font = GetTooltipFont();
             Vector2 textPos = tooltipPos + new Vector2(padding, padding);
             for (int i = 0; i < lines.Length; i++)
             {
@@ -447,16 +456,29 @@ namespace RailDispatchMono.Core.Screens.UI
             _spriteBatch.End();
         }
 
-        private Texture2D CreateTooltipPixel()
+        private SpriteFont? GetTooltipFont()
         {
-            var pixel = new Texture2D(_graphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
-            return pixel;
+            if (_tooltipFont != null) return _tooltipFont;
+
+            try
+            {
+                _tooltipFont = _screenManager.Game.Content.Load<SpriteFont>("Arial24");
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+
+            return _tooltipFont;
         }
 
-        private SpriteFont GetTooltipFont()
+        private Texture2D GetTooltipPixel()
         {
-            throw new InvalidOperationException("Station tooltip font must be provided by GameplayScreen.");
+            if (_tooltipPixel != null) return _tooltipPixel;
+
+            _tooltipPixel = new Texture2D(_graphicsDevice, 1, 1);
+            _tooltipPixel.SetData(new[] { Color.White });
+            return _tooltipPixel;
         }
     }
 }
