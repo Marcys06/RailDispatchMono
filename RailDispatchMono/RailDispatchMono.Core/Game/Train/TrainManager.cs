@@ -3,6 +3,7 @@ using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -16,16 +17,11 @@ public sealed class TrainManager
     public IReadOnlyList<Train> Trains => _trains;
     public StationController? StationController { get; private set; }
 
-    public TrainManager(GameMap map)
-    {
-        _map = map ?? throw new ArgumentNullException(nameof(map));
-    }
+    public TrainManager(GameMap map) => _map = map ?? throw new ArgumentNullException(nameof(map));
 
     public void Add(Train train)
     {
-        if (train == null)
-            throw new ArgumentNullException(nameof(train));
-
+        if (train == null) throw new ArgumentNullException(nameof(train));
         if (!_trains.Contains(train) && !_trainsToAdd.Contains(train))
         {
             train.SetMap(_map);
@@ -41,24 +37,15 @@ public sealed class TrainManager
         return train;
     }
 
-    public Train CreateTrain(MapPosition cell, TrackConnections direction, float speed)
-    {
-        Vector2 position = new Vector2(cell.X + 0.5f, cell.Y + 0.5f);
-        return CreateTrain(position, direction, speed);
-    }
+    public Train CreateTrain(MapPosition cell, TrackConnections direction, float speed) =>
+        CreateTrain(new Vector2(cell.X + 0.5f, cell.Y + 0.5f), direction, speed);
 
     public bool Remove(Train train)
     {
-        if (train == null)
-            return false;
-
-        if (_trains.Contains(train))
-        {
-            _trainsToRemove.Add(train);
-            return true;
-        }
-
-        return false;
+        if (train == null) return false;
+        if (!_trains.Contains(train)) return false;
+        _trainsToRemove.Add(train);
+        return true;
     }
 
     private BlockController? _blockController;
@@ -66,16 +53,10 @@ public sealed class TrainManager
     public void ClearAll()
     {
         foreach (var train in _trains)
-        {
-            if (!_trainsToRemove.Contains(train))
-                _trainsToRemove.Add(train);
-        }
+            if (!_trainsToRemove.Contains(train)) _trainsToRemove.Add(train);
     }
 
-    public void Initialize(BlockController blockController)
-    {
-        _blockController = blockController;
-    }
+    public void Initialize(BlockController blockController) => _blockController = blockController;
 
     public void InitializeStations(StationController stationController)
     {
@@ -84,34 +65,25 @@ public sealed class TrainManager
 
     public void Update(float deltaTime)
     {
-        if (_trainsToAdd.Count > 0)
+        foreach (var train in _trainsToAdd)
         {
-            foreach (var train in _trainsToAdd)
+            if (!_trains.Contains(train))
             {
-                if (!_trains.Contains(train))
-                {
-                    train.SetMap(_map);
-                    _trains.Add(train);
-                }
+                train.SetMap(_map);
+                _trains.Add(train);
             }
-            _trainsToAdd.Clear();
         }
+        _trainsToAdd.Clear();
 
-        if (_trainsToRemove.Count > 0)
-        {
-            foreach (var train in _trainsToRemove)
-            {
-                _trains.Remove(train);
-            }
-            _trainsToRemove.Clear();
-        }
+        foreach (var train in _trainsToRemove)
+            _trains.Remove(train);
+        _trainsToRemove.Clear();
 
         foreach (var train in _trains)
         {
             bool holdAtStation = StationController?.BeforeTrainUpdate(train, deltaTime) ?? false;
             if (!holdAtStation)
                 train.Update(deltaTime);
-
             StationController?.AfterTrainUpdate(train, deltaTime);
         }
 
@@ -122,20 +94,14 @@ public sealed class TrainManager
     public bool IsCellOccupied(MapPosition cell)
     {
         foreach (var train in _trains)
-        {
-            if (train.GetCurrentCell() == cell)
-                return true;
-        }
+            if (train.GetCurrentCell() == cell) return true;
         return false;
     }
 
     public Train? GetTrainAtCell(MapPosition cell)
     {
         foreach (var train in _trains)
-        {
-            if (train.GetCurrentCell() == cell)
-                return train;
-        }
+            if (train.GetCurrentCell() == cell) return train;
         return null;
     }
 
@@ -143,14 +109,8 @@ public sealed class TrainManager
     {
         var result = new List<Train>();
         float radiusSquared = radius * radius;
-
         foreach (var train in _trains)
-        {
-            float distanceSquared = Vector2.DistanceSquared(center, train.Position);
-            if (distanceSquared <= radiusSquared)
-                result.Add(train);
-        }
-
+            if (Vector2.DistanceSquared(center, train.Position) <= radiusSquared) result.Add(train);
         return result;
     }
 
@@ -160,27 +120,21 @@ public sealed class TrainManager
     public List<Vector2> GetAllHeadPositions()
     {
         var positions = new List<Vector2>(_trains.Count);
-        foreach (var train in _trains)
-            positions.Add(train.Position);
+        foreach (var train in _trains) positions.Add(train.Position);
         return positions;
     }
 
     public Dictionary<Train, Vector2[]> GetAllVehiclePositions(float vehicleSpacing = 1.0f)
     {
         var result = new Dictionary<Train, Vector2[]>();
-        foreach (var train in _trains)
-        {
-            var positions = train.GetVehiclePositions(vehicleSpacing);
-            result[train] = positions.ToArray();
-        }
+        foreach (var train in _trains) result[train] = train.GetVehiclePositions(vehicleSpacing).ToArray();
         return result;
     }
 
     public Dictionary<Train, float> GetAllRotations()
     {
         var result = new Dictionary<Train, float>();
-        foreach (var train in _trains)
-            result[train] = train.GetRotation();
+        foreach (var train in _trains) result[train] = train.GetRotation();
         return result;
     }
 
