@@ -8,7 +8,7 @@ public enum TrackBuildMode
     Junction,
     Signal,
     Station,
-    Reserved6,
+    Depot,
     Reserved7,
     Reserved8,
     Reserved9
