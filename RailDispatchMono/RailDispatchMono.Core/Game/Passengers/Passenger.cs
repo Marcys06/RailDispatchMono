@@ -4,8 +4,8 @@ using System;
 namespace RailDispatchMono.Core.Game.Passengers;
 
 /// <summary>
-/// Quasi-individual passenger. A passenger has a fixed origin and destination
-/// station. Transfers are deliberately not performed in the first version.
+/// Quasi-individual passenger with fixed origin and destination.
+/// Transfers are not performed yet, but the state model is ready for them.
 /// </summary>
 public sealed class Passenger
 {
@@ -13,6 +13,7 @@ public sealed class Passenger
     public Station OriginStation { get; }
     public Station DestinationStation { get; }
     public PassengerState State { get; internal set; }
+    public Guid? CurrentStationId { get; internal set; }
     public Guid? CurrentTrainId { get; internal set; }
     public DateTime CreatedAtUtc { get; }
 
@@ -27,6 +28,7 @@ public sealed class Passenger
         OriginStation = originStation;
         DestinationStation = destinationStation;
         State = PassengerState.WaitingAtStation;
+        CurrentStationId = originStation.Id;
         CreatedAtUtc = DateTime.UtcNow;
     }
 }
