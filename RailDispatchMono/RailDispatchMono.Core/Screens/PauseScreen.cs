@@ -22,54 +22,45 @@ namespace RailDispatchMono.Core.Screens
             TransitionOnTime = TimeSpan.Zero;
             TransitionOffTime = TimeSpan.Zero;
 
-            MenuEntry resumeGameMenuEntry = new MenuEntry("WZNÓW GRĘ");
-            MenuEntry saveGameMenuEntry = new MenuEntry("ZAPISZ GRĘ");
-            MenuEntry loadGameMenuEntry = new MenuEntry("WCZYTAJ GRĘ")
-            {
-                Enabled = canLoad
-            };
-            MenuEntry quitGameMenuEntry = new MenuEntry(Resources.Quit);
+            MenuEntries.Add(CreateEntry("WZNÓW GRĘ", ResumeGameEntrySelected));
+            MenuEntries.Add(CreateEntry("ZAPISZ GRĘ", SaveGameEntrySelected));
+            MenuEntries.Add(CreateEntry("WCZYTAJ GRĘ", LoadGameEntrySelected, canLoad));
+            MenuEntries.Add(CreateEntry(Resources.Quit, QuitGameMenuEntrySelected));
+        }
 
-            resumeGameMenuEntry.Selected += ResumeGameEntrySelected;
-            saveGameMenuEntry.Selected += SaveGameEntrySelected;
-            loadGameMenuEntry.Selected += LoadGameEntrySelected;
-            quitGameMenuEntry.Selected += QuitGameMenuEntrySelected;
-
-            MenuEntries.Add(resumeGameMenuEntry);
-            MenuEntries.Add(saveGameMenuEntry);
-            MenuEntries.Add(loadGameMenuEntry);
-            MenuEntries.Add(quitGameMenuEntry);
+        private static MenuEntry CreateEntry(
+            string text,
+            EventHandler<PlayerIndexEventArgs> handler,
+            bool enabled = true)
+        {
+            MenuEntry entry = new MenuEntry(text, enabled);
+            entry.Selected += handler;
+            return entry;
         }
 
         public override void LoadContent()
         {
             base.LoadContent();
 
-            if (ScreenManager != null && ScreenManager.GraphicsDevice != null)
-            {
-                _overlayTexture = new Texture2D(ScreenManager.GraphicsDevice, 1, 1);
-                _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
-            }
+            _overlayTexture = new Texture2D(ScreenManager.GraphicsDevice, 1, 1);
+            _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
         }
 
         public override void UnloadContent()
         {
-            base.UnloadContent();
             _overlayTexture?.Dispose();
             _overlayTexture = null;
+            base.UnloadContent();
         }
 
         public override void HandleInput(GameTime gameTime, InputState inputState)
         {
+            // The ESC that opened this screen belongs to GameplayScreen.
+            // Do not let it immediately close the newly created menu.
             if (_ignoreFirstCancel)
             {
-                PlayerIndex ignoredPlayer;
-                if (inputState.IsMenuCancel(ControllingPlayer, out ignoredPlayer))
-                {
-                    _ignoreFirstCancel = false;
-                    return;
-                }
                 _ignoreFirstCancel = false;
+                return;
             }
 
             base.HandleInput(gameTime, inputState);
@@ -115,21 +106,10 @@ namespace RailDispatchMono.Core.Screens
             ExitScreen();
         }
 
-        public void Cancel(PlayerIndex playerIndex)
-        {
-            OnCancel(playerIndex);
-        }
-
         public override void Draw(GameTime gameTime)
         {
-            if (ScreenManager == null)
-                return;
-
             GraphicsDevice graphicsDevice = ScreenManager.GraphicsDevice;
             SpriteBatch spriteBatch = ScreenManager.SpriteBatch;
-
-            if (graphicsDevice == null || spriteBatch == null)
-                return;
 
             if (_overlayTexture == null)
             {
@@ -137,10 +117,12 @@ namespace RailDispatchMono.Core.Screens
                 _overlayTexture.SetData(new[] { new Color(0, 0, 0, 170) });
             }
 
+            // Draw the pause dimmer first, then let MenuScreen draw the actual
+            // title and entries above it using the same UI coordinate system.
             spriteBatch.Begin(
                 SpriteSortMode.Deferred,
-                null,
-                null,
+                BlendState.AlphaBlend,
+                SamplerState.PointClamp,
                 null,
                 null,
                 null,
