@@ -15,6 +15,7 @@ public sealed class TrainManager
     private readonly List<Train> _trainsToAdd = new();
     private readonly List<Train> _trainsToRemove = new();
 
+    public static TrainManager? Current { get; private set; }
     public IReadOnlyList<Train> Trains => _trains;
     public StationController StationController { get; private set; }
     public TrainCollisionController CollisionController { get; }
@@ -25,6 +26,7 @@ public sealed class TrainManager
         _map = map ?? throw new ArgumentNullException(nameof(map));
         StationController = new StationController();
         CollisionController = new TrainCollisionController(_map, this);
+        Current = this;
     }
 
     public void Add(Train train)
