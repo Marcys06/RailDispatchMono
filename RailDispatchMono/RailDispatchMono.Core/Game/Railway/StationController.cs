@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using RailDispatchMono.Core;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Passengers;
+using RailDispatchMono.Core.Game.Train;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,8 +12,8 @@ using TrainClass = RailDispatchMono.Core.Game.Train.Train;
 namespace RailDispatchMono.Core.Game.Railway;
 
 /// <summary>
-/// Station stop controller. Station geometry is an area; semaphores remain
-/// responsible for the actual stopping point of a train.
+/// Coordinates station detection and train dwell, while delegating the actual
+/// stop decision and passenger handling to independent services.
 /// </summary>
 public sealed class StationController
 {
@@ -30,34 +31,95 @@ public sealed class StationController
 
     private readonly List<Station> _stations = new();
     private readonly Dictionary<Guid, DwellState> _dwellingTrains = new();
+    private readonly Dictionary<Guid, float> _generationTimers = new();
     private readonly PassengerManager _passengers;
+    private readonly ITrainStopDecision _stopDecision;
+    private readonly IPassengerService _passengerService;
+    private readonly IPassengerDemandProvider _demandProvider;
 
     public IReadOnlyList<Station> Stations => _stations;
     public PassengerManager Passengers => _passengers;
+    public ITrainStopDecision StopDecision => _stopDecision;
+    public IPassengerService PassengerService => _passengerService;
+    public IPassengerDemandProvider DemandProvider => _demandProvider;
 
-    public StationController(PassengerManager? passengers = null) =>
+    public StationController(
+        PassengerManager? passengers = null,
+        ITrainStopDecision? stopDecision = null,
+        IPassengerService? passengerService = null,
+        IPassengerDemandProvider? demandProvider = null)
+    {
         _passengers = passengers ?? new PassengerManager();
+        _stopDecision = stopDecision ?? new DefaultTrainStopDecision();
+        _passengerService = passengerService ?? new DefaultPassengerService(_passengers);
+        _demandProvider = demandProvider ?? new RandomPassengerDemandProvider();
+    }
 
     public void AddStation(Station station)
     {
         if (station == null) throw new ArgumentNullException(nameof(station));
         if (_stations.Any(s => s.Id == station.Id)) return;
-
-        // Do not allow two station areas to overlap.
         if (_stations.Any(s => s.GetCells().Any(station.Contains)))
             throw new InvalidOperationException("Station area overlaps an existing station.");
 
         _stations.Add(station);
+        _generationTimers[station.Id] = station.PassengerGenerationIntervalSeconds;
     }
 
-    public bool RemoveStation(Station station) =>
-        station != null && _stations.Remove(station);
+    public bool RemoveStation(Station station)
+    {
+        if (station == null || !_stations.Remove(station)) return false;
+        _generationTimers.Remove(station.Id);
+        return true;
+    }
 
     public Station? GetStationAt(MapPosition position) =>
         _stations.FirstOrDefault(s => s.Contains(position));
 
     public IReadOnlyList<Station> GetStationsAt(MapPosition position) =>
         _stations.Where(s => s.Contains(position)).ToList();
+
+    /// <summary>Advances automatic passenger generation.</summary>
+    public void Update(float deltaTime)
+    {
+        deltaTime = MathF.Max(0f, deltaTime);
+        foreach (var station in _stations)
+        {
+            if (!station.PassengerGenerationEnabled || station.PassengerGenerationIntervalSeconds <= 0f)
+                continue;
+
+            float timer = _generationTimers.TryGetValue(station.Id, out var value)
+                ? value - deltaTime
+                : station.PassengerGenerationIntervalSeconds - deltaTime;
+
+            while (timer <= 0f)
+            {
+                GeneratePassengers(station);
+                timer += station.PassengerGenerationIntervalSeconds;
+            }
+
+            _generationTimers[station.Id] = timer;
+        }
+    }
+
+    private void GeneratePassengers(Station origin)
+    {
+        int waiting = _passengers.GetWaitingCount(origin);
+        int available = Math.Max(0, origin.PassengerWaitingCapacity - waiting);
+        int requested = Math.Min(Math.Max(0, origin.PassengerGenerationBatchSize), available);
+        if (requested <= 0 || _stations.Count < 2) return;
+
+        int generated = 0;
+        foreach (var destination in _demandProvider.GetDestinations(origin, _stations, requested))
+        {
+            if (generated >= requested || destination.Id == origin.Id) break;
+            _passengers.CreatePassenger(origin, destination);
+            generated++;
+        }
+
+        if (generated > 0)
+            DebugManager.Log($"[STATION] {origin.Name}: generated {generated} passenger(s)");
+    }
 
     public bool BeforeTrainUpdate(TrainClass train, float deltaTime)
     {
@@ -74,20 +136,22 @@ public sealed class StationController
     public void AfterTrainUpdate(TrainClass train, float deltaTime)
     {
         var currentStation = FindStationAtTrain(train);
-        if (currentStation != null && currentStation.PassengerServiceEnabled && train.Speed <= 0.75f)
+        if (currentStation != null && _stopDecision.ShouldStopAt(train, currentStation) &&
+            train.Speed <= 0.75f)
         {
             train.Speed = 0f;
             if (!_dwellingTrains.ContainsKey(train.Id))
             {
-                ServiceStation(train, currentStation);
+                var result = _passengerService.ServiceTrainAtStation(train, currentStation);
                 _dwellingTrains[train.Id] = new DwellState(currentStation);
-                DebugManager.Log($"[STATION] Train {train.Id} arrived at {currentStation.Name}; dwell started.");
+                DebugManager.Log($"[STATION] Train {train.Id} arrived at {currentStation.Name}; " +
+                                 $"alighted={result.Alighted}, boarded={result.Boarded}, dwell started.");
             }
             return;
         }
 
         var nextStation = FindNextStation(train);
-        if (nextStation == null) return;
+        if (nextStation == null || !_stopDecision.ShouldStopAt(train, nextStation)) return;
 
         float distance = EstimateDistanceToStation(train, nextStation);
         float braking = GetTrainBraking(train);
@@ -104,18 +168,10 @@ public sealed class StationController
 
     public bool IsDwelling(TrainClass train) => _dwellingTrains.ContainsKey(train.Id);
 
-    private void ServiceStation(TrainClass train, Station station)
-    {
-        _passengers.AlightPassengers(train, station);
-        _passengers.BoardPassengers(train, station);
-    }
-
     private Station? FindStationAtTrain(TrainClass train)
     {
         var cell = train.GetCurrentCell();
-        var station = _stations.FirstOrDefault(s =>
-            s.PassengerServiceEnabled && s.Contains(cell));
-
+        var station = _stations.FirstOrDefault(s => s.PassengerServiceEnabled && s.Contains(cell));
         if (station == null) return null;
 
         Vector2 stationCenter = new(
@@ -137,7 +193,7 @@ public sealed class StationController
         foreach (var station in _stations)
         {
             if (!station.PassengerServiceEnabled || station.Contains(current)) continue;
-            if (!IsStationAhead(train, station, current)) continue;
+            if (!_stopDecision.ShouldStopAt(train, station) || !IsStationAhead(train, station, current)) continue;
 
             float distance = EstimateDistanceToStation(train, station);
             if (distance < bestDistance)
