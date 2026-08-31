@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Localization;
 using System;
 
@@ -20,7 +19,10 @@ namespace RailDispatchMono.Core.Screens
 
             MenuEntry resumeGameMenuEntry = new MenuEntry("WZNÓW GRĘ");
             MenuEntry saveGameMenuEntry = new MenuEntry("ZAPISZ GRĘ");
-            MenuEntry loadGameMenuEntry = new MenuEntry("WCZYTAJ GRĘ") { Enabled = canLoad };
+            MenuEntry loadGameMenuEntry = new MenuEntry("WCZYTAJ GRĘ")
+            {
+                Enabled = canLoad
+            };
             MenuEntry quitGameMenuEntry = new MenuEntry(Resources.Quit);
 
             resumeGameMenuEntry.Selected += ResumeGameEntrySelected;
@@ -52,8 +54,7 @@ namespace RailDispatchMono.Core.Screens
 
         private void QuitGameMenuEntrySelected(object? sender, PlayerIndexEventArgs e)
         {
-            string message = Resources.QuitQuestion;
-            MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen(message);
+            MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen(Resources.QuitQuestion);
             confirmQuitMessageBox.Accepted += ConfirmQuitMessageBoxAccepted;
             confirmQuitMessageBox.Cancelled += ConfirmQuitMessageBoxCancelled;
             ScreenManager.AddScreen(confirmQuitMessageBox, ControllingPlayer);
@@ -65,7 +66,9 @@ namespace RailDispatchMono.Core.Screens
             ScreenManager.Game.Exit();
         }
 
-        private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e) { }
+        private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e)
+        {
+        }
 
         protected override void OnCancel(PlayerIndex playerIndex)
         {
@@ -73,6 +76,9 @@ namespace RailDispatchMono.Core.Screens
             ExitScreen();
         }
 
-        public void Cancel(PlayerIndex playerIndex) => OnCancel(playerIndex);
+        public void Cancel(PlayerIndex playerIndex)
+        {
+            OnCancel(playerIndex);
+        }
     }
 }
