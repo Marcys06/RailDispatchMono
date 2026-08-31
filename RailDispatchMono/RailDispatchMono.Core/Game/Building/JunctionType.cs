@@ -1,20 +1,29 @@
 namespace RailDispatchMono.Core.Game.Building;
 
+/// <summary>
+/// All twelve possible three-way junction orientations.
+/// The first direction is the common stem; the two remaining directions
+/// are the straight and diverging exits respectively.
+/// </summary>
 public enum JunctionType
 {
-    // --- WJAZD Z PO£UDNIA ---
-    South_NorthEast, // Wjazd z Po³udnia -> Prosto na Pó³noc | Skrêt na Wschód
-    South_NorthWest, // Wjazd z Po³udnia -> Prosto na Pó³noc | Skrêt na Zachód
+    // Common stem: South
+    South_NorthEast,
+    South_NorthWest,
+    South_EastWest,
 
-    // --- WJAZD Z ZACHODU ---
-    West_EastSouth,  // Wjazd z Zachodu  -> Prosto na Wschód  | Skrêt na Po³udnie
-    West_EastNorth,   // Wjazd z Zachodu  -> Prosto na Wschód  | Skrêt na Pó³noc
+    // Common stem: North
+    North_SouthEast,
+    North_SouthWest,
+    North_EastWest,
 
-    // --- WJAZD Z PÓ£NOCY ---
-    North_SouthEast, // Wjazd z Pó³nocy  -> Prosto na Po³udnie | Skrêt na Wschód
-    North_SouthWest, // Wjazd z Pó³nocy  -> Prosto na Po³udnie | Skrêt na Zachód
+    // Common stem: East
+    East_WestNorth,
+    East_WestSouth,
+    East_NorthSouth,
 
-    // --- WJAZD ZE WSCHODU ---
-    East_WestSouth,  // Wjazd ze Wschodu -> Prosto na Zachód  | Skrêt na Po³udnie
-    East_WestNorth   // Wjazd ze Wschodu -> Prosto na Zachód  | Skrêt na Pó³noc
+    // Common stem: West
+    West_EastNorth,
+    West_EastSouth,
+    West_NorthSouth
 }
