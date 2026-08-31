@@ -1,13 +1,15 @@
+using System;
+
 namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
-    /// <summary>Current infrastructure/signal speed target before the consist Vmax cap.</summary>
-    public float TargetSpeed => _targetSpeed;
+    /// <summary>Current speed target calculated from the next applicable signal.</summary>
+    public float TargetSpeed => GetSpeedFromSignal(GetNextSignal());
 
     /// <summary>Maximum speed permitted by the slowest vehicle in the consist.</summary>
     public float MaxSpeed => _maxSpeed;
 
     /// <summary>Effective target speed after applying the consist Vmax limit.</summary>
-    public float EffectiveTargetSpeed => System.MathF.Min(_targetSpeed, _maxSpeed);
+    public float EffectiveTargetSpeed => MathF.Min(TargetSpeed, MaxSpeed);
 }
