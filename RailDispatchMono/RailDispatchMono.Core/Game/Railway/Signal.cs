@@ -9,26 +9,17 @@ using RailDispatchMono.Core.Game.Map;
 
 namespace RailDispatchMono.Core.Game.Railway
 {
-    /// <summary>
-    /// Semafor kolejowy - komunikacja z poci¹gami
-    /// </summary>
     public class Signal
     {
-        // IDENTYFIKACJA
         public Guid Id { get; }
         public string Name { get; set; }
         public MapPosition Position { get; }
-
-        // KONFIGURACJA
         public TrackConnections Direction { get; }
         public SignalAspect Aspect { get; private set; }
         public List<SignalAspect> AvailableAspects { get; }
         public bool IsLocked { get; set; }
-
-        // KOMUNIKACJA Z POCI¥GIEM
         public Train.Train? CurrentTrain { get; private set; }
 
-        // ZDARZENIA
         public event EventHandler<SignalEventArgs>? AspectChanged;
         public event EventHandler<SignalEventArgs>? SignalLocked;
         public event EventHandler<SignalEventArgs>? SignalUnlocked;
@@ -51,57 +42,40 @@ namespace RailDispatchMono.Core.Game.Railway
             }
         }
 
-        public void ResetToDefault()
+        public Signal(MapPosition position, TrackConnections direction, List<SignalAspect>? availableAspects = null)
+            : this(Guid.NewGuid(), position, direction, availableAspects)
         {
-            // Ustaw na domyœlny aspekt (Clear/Vmax)
-            SetAspect(SignalAspect.Clear);
         }
 
-        // KONSTRUKTOR
-        public Signal(MapPosition position, TrackConnections direction, List<SignalAspect>? availableAspects = null)
+        public Signal(Guid id, MapPosition position, TrackConnections direction, List<SignalAspect>? availableAspects = null)
         {
-            Id = Guid.NewGuid();
+            Id = id;
             Position = position;
             Direction = direction;
             AvailableAspects = availableAspects ?? new List<SignalAspect>
             {
-                SignalAspect.Stop,
-                SignalAspect.StopStation,
-                SignalAspect.Clear,
-                SignalAspect.Warning,
-                SignalAspect.Speed100,
-                SignalAspect.Speed40,
-                SignalAspect.Reserve1,
-                SignalAspect.Reserve2,
-                SignalAspect.Reserve3,
-                SignalAspect.Reserve4
+                SignalAspect.Stop, SignalAspect.StopStation, SignalAspect.Clear, SignalAspect.Warning,
+                SignalAspect.Speed100, SignalAspect.Speed40, SignalAspect.Reserve1, SignalAspect.Reserve2,
+                SignalAspect.Reserve3, SignalAspect.Reserve4
             };
             Aspect = SignalAspect.Stop;
             IsLocked = false;
             CurrentTrain = null;
+            Name = $"Signal-{Id.ToString()[..8]}";
         }
 
-        // METODY
         public bool SetAspect(SignalAspect newAspect, Train.Train? train = null)
         {
-            if (IsLocked)
-                return false;
-
-            if (!AvailableAspects.Contains(newAspect))
-                return false;
-
+            if (IsLocked || !AvailableAspects.Contains(newAspect)) return false;
             var oldAspect = Aspect;
             Aspect = newAspect;
-
             AspectChanged?.Invoke(this, new SignalEventArgs(this, oldAspect, newAspect, train));
             return true;
         }
 
         public bool CanTrainPass(Train.Train train)
         {
-            if (IsLocked && CurrentTrain != train)
-                return false;
-
+            if (IsLocked && CurrentTrain != train) return false;
             return Aspect switch
             {
                 SignalAspect.Stop => false,
@@ -139,13 +113,10 @@ namespace RailDispatchMono.Core.Game.Railway
             }
         }
 
+        public void ResetToDefault() => SetAspect(SignalAspect.Clear);
         public string GetAspectName() => Aspect.GetName();
         public string GetAspectDescription() => Aspect.GetDescription();
         public float GetSpeedLimitKmh() => Aspect.GetSpeedLimit();
-
-        public override string ToString()
-        {
-            return $"[Signal {Id.ToString()[..8]}] {GetAspectName()} at ({Position.X},{Position.Y})";
-        }
+        public override string ToString() => $"[Signal {Id.ToString()[..8]}] {GetAspectName()} at ({Position.X},{Position.Y})";
     }
 }
