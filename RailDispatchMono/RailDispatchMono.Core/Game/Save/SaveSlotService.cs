@@ -17,7 +17,6 @@ public sealed class SaveSlotMetadata
     [JsonIgnore] public string DirectoryPath { get; internal set; } = "";
 }
 
-/// <summary>Creates and enumerates versioned save slots.</summary>
 public static class SaveSlotService
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
@@ -53,11 +52,34 @@ public static class SaveSlotService
         string directory = Path.Combine(SaveSlotContext.RootDirectory, directoryName);
         int suffix = 2;
         while (Directory.Exists(directory)) directory = Path.Combine(SaveSlotContext.RootDirectory, directoryName + "-" + suffix++);
+
         Directory.CreateDirectory(directory);
         SaveSlotContext.SetActiveSlot(directory);
         WriteMetadata(new SaveSlotMetadata { Name = displayName, DirectoryPath = directory, CreatedAt = now, LastSavedAt = now });
+        InitializeEmptyDocuments();
         return directory;
     }
+
+    private static void InitializeEmptyDocuments()
+    {
+        WriteJson("map.json", new
+        {
+            schemaVersion = 1,
+            gameVersion = "0.0.16",
+            map = new { width = 100, height = 100 },
+            tracks = Array.Empty<object>(),
+            signals = Array.Empty<object>(),
+            stations = Array.Empty<object>(),
+            depots = Array.Empty<object>()
+        });
+        WriteJson("trains.json", new { schemaVersion = 1, gameVersion = "0.0.16", gameDay = 1, gameTimeSeconds = 0d, trains = Array.Empty<object>() });
+        WriteJson("schedules.json", new { schemaVersion = 1, schedules = Array.Empty<object>() });
+        WriteJson("passengers.json", new { schemaVersion = 1, passengers = Array.Empty<object>() });
+        WriteJson("economy.json", new { schemaVersion = 1, money = 0, income = 0, expenses = 0 });
+    }
+
+    private static void WriteJson(string fileName, object value)
+        => File.WriteAllText(Path.Combine(SaveSlotContext.ActiveSlotDirectory!, fileName), JsonSerializer.Serialize(value, Options));
 
     public static void Activate(string directory)
     {
