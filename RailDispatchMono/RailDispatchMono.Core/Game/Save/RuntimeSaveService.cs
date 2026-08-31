@@ -56,7 +56,6 @@ public sealed class PassengerSaveData
     public PassengerState State { get; set; }
 }
 
-/// <summary>Persists train consists, wagon routes, onboard passengers and simulation time.</summary>
 public static class RuntimeSaveService
 {
     private static readonly JsonSerializerOptions Options = new()
@@ -75,6 +74,8 @@ public static class RuntimeSaveService
         if (clock == null) throw new ArgumentNullException(nameof(clock));
 
         var data = new RuntimeSaveData { GameDay = clock.GameDay, GameTimeSeconds = clock.Seconds };
+        var passengers = new List<PassengerSaveData>();
+
         foreach (Train train in trainManager.Trains)
         {
             var savedTrain = new TrainSaveData
@@ -110,12 +111,14 @@ public static class RuntimeSaveService
                     savedVehicle.ServiceRoute = wagon.ServiceRoute.ToList();
                     foreach (Passenger passenger in wagon.Passengers)
                     {
-                        savedVehicle.Passengers.Add(new PassengerSaveData
+                        var snapshot = new PassengerSaveData
                         {
                             OriginStationId = passenger.OriginStation.Id,
                             DestinationStationId = passenger.DestinationStation.Id,
                             State = passenger.State
-                        });
+                        };
+                        savedVehicle.Passengers.Add(snapshot);
+                        passengers.Add(snapshot);
                     }
                 }
                 savedTrain.Vehicles.Add(savedVehicle);
@@ -125,6 +128,8 @@ public static class RuntimeSaveService
 
         Directory.CreateDirectory(SaveSlotContext.ActiveSlotDirectory!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
+        File.WriteAllText(Path.Combine(SaveSlotContext.ActiveSlotDirectory!, "passengers.json"),
+            JsonSerializer.Serialize(new { schemaVersion = 1, passengers }, Options));
     }
 
     public static void Load(TrainManager trainManager, SignalController signals, BlockController blocks, StationController stations, GameClock clock)
@@ -145,12 +150,9 @@ public static class RuntimeSaveService
                 var p = new VehicleParameters(savedVehicle.MaxSpeed, savedVehicle.AccelerationCoefficient,
                     savedVehicle.BrakingCoefficient, savedVehicle.Mass, savedVehicle.Length,
                     savedVehicle.MassCoefficient, savedVehicle.TechnicalCondition);
-
-                Vehicle vehicle;
-                if (string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase))
-                    vehicle = new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p);
-                else
-                    vehicle = new Wagon(p, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
+                Vehicle vehicle = string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase)
+                    ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p)
+                    : new Wagon(p, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
                 vehicle.Orientation = savedVehicle.Orientation;
                 vehicles.Add(vehicle);
             }
