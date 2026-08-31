@@ -1,6 +1,6 @@
 # RailDispatchMono documentation
 
-This directory is the canonical project documentation for humans and AI coding agents.
+This is the single canonical documentation tree for the project. Code is authoritative; documents describe the current implementation and must be updated when behavior changes.
 
 ## Documentation map
 
@@ -9,30 +9,34 @@ This directory is the canonical project documentation for humans and AI coding a
 - `03-architecture.md` — architectural responsibilities.
 - `04-runtime-lifecycle.md` — MonoGame startup/update/draw flow.
 - `05-screen-system.md` — screens, pause and input routing.
-- `06-input.md` — current keyboard/mouse controls and coordinate handling.
-- `07-game-domain.md` — railway, train, station and passenger domain.
+- `06-input.md` — current keyboard/mouse controls.
+- `07-game-domain.md` — railway, train, station, passenger and depot domain.
 - `08-settings-localization.md` — persistent settings, display and localization.
-- `09-content-platforms.md` — Content pipeline and supported desktop projects.
+- `09-content-platforms.md` — Content pipeline and supported hosts.
 - `10-development-workflows.md` — development and build workflow.
-- `11-ai-agent-rules.md` — rules for AI-assisted repository changes.
-- `12-known-issues-and-cautions.md` — current limitations and traps.
+- `11-ai-agent-rules.md` — AI-assisted repository rules.
+- `12-known-issues-and-cautions.md` — current limitations.
 - `13-code-index.md` — source-file index.
-- `14-documentation-maintenance.md` — documentation synchronization rules.
-- `19-current-state-0.0.12.md` — authoritative current implementation snapshot before `0.0.13`.
-
-## Source-of-truth policy
-
-Code is authoritative. If an older document contradicts the implementation, update the document rather than relying on the obsolete description.
+- `14-documentation-maintenance.md` — synchronization rules.
+- `19-current-state-0.0.12.md` — previous implementation snapshot.
+- `20-debug-logging.md` — debug categories and output throttling.
+- `23-simulation-time-and-0.0.13pre.md` — current mini-update changes.
+- `24-passengers-0.0.10.md` — passenger model.
+- `25-stations-0.0.10.md` — station model.
+- `changelog/` — one changelog directory containing versioned release notes.
 
 ## Current baseline
 
-- Current feature line: `0.0.12a`.
-- The next planned major feature line is `0.0.13` — route creation.
-- Shared implementation is in `RailDispatchMono/RailDispatchMono.Core`.
-- Desktop bootstrap uses a `1600x900` default window and permits user resizing.
-- The game uses a fixed 60 FPS update loop while simulation time can run at `x1`, `x2` or `x5`.
+- Current line: `0.0.13pre`.
+- `0.0.13` is planned for route creation.
+- Shared implementation: `RailDispatchMono/RailDispatchMono.Core`.
+- Game time starts at `00:00` and runs at 5× wall-clock time at x1. x2/x5 multiply that rate further.
+- Pause stops both simulation and game clock.
+- The 5× clock scale does not multiply train velocity, acceleration, braking or travelled distance.
 - Stations support rectangular areas and passenger exchange.
-- Passengers are quasi-individual entities with origin/destination and train/station state.
 - Wagons manage passenger capacity independently.
-- Depots are world buildings and are the planned origin point for future route creation.
-- UI graphics are generated programmatically; external UI image assets are not required.
+- Depots are world buildings and are the planned origin for future route creation.
+
+## Documentation structure rule
+
+There is no second documentation tree under `RailDispatchMono.Core`. All maintained documentation lives here. Historical changelogs and release notes live only in `docs/changelog/`.
