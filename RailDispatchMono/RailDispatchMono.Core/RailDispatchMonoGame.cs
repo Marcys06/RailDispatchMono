@@ -52,8 +52,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     private void StartGameplay(string request)
     {
-        // CreateSlot() activates a new slot immediately, so active-slot state
-        // cannot distinguish a new game from loading an existing game.
         bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
         string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal)
             ? request[4..]
@@ -76,18 +74,16 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     protected override void LoadContent()
     {
         _myraUI.Initialize(this);
-        // ScreenManager owns screen content loading.
     }
 
     protected override void Update(GameTime gameTime)
     {
-        // ScreenManager is registered in Components and is updated by Game.
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        // ScreenManager is registered in Components and is drawn by Game.
         base.Draw(gameTime);
+        _myraUI.Render();
     }
 }
