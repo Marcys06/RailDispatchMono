@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.UI.Myra;
 using System;
-using RailDispatchMono.Core.Localization;  // Jeśli Resources jest w tej przestrzeni
+using RailDispatchMono.Core.Localization;
 
 namespace RailDispatchMono.Core.Screens;
 
@@ -16,9 +16,6 @@ internal sealed class PauseScreen : GameScreen
 
     private readonly bool _canLoad;
     private MyraPauseView? _myraView;
-    private bool _resumeRequested;
-    private bool _saveRequested;
-    private bool _loadRequested;
 
     public PauseScreen(bool canLoad = true)
     {
@@ -54,32 +51,6 @@ internal sealed class PauseScreen : GameScreen
         base.UnloadContent();
     }
 
-    public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
-    {
-        base.Update(gameTime, otherScreenHasFocus, coveredByOtherScreen);
-
-        // Myra dispatches Button.Click while Desktop.Render() is running. Do not
-        // mutate ScreenManager or game state from that render callback. Queue the
-        // action and execute it from the normal screen update phase instead.
-        if (_resumeRequested)
-        {
-            _resumeRequested = false;
-            OnResume?.Invoke(this, EventArgs.Empty);
-        }
-
-        if (_saveRequested)
-        {
-            _saveRequested = false;
-            OnSave?.Invoke(this, EventArgs.Empty);
-        }
-
-        if (_loadRequested)
-        {
-            _loadRequested = false;
-            OnLoad?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
     public override void HandleInput(GameTime gameTime, InputState inputState)
     {
         base.HandleInput(gameTime, inputState);
@@ -88,17 +59,24 @@ internal sealed class PauseScreen : GameScreen
             ResumeFromMyra();
     }
 
-    private void ResumeFromMyra()
-        => _resumeRequested = true;
-
-    private void SaveFromMyra()
+    private void Queue(Action action)
     {
-        _saveRequested = true;
-        _myraView?.SetLoadEnabled(true);
+        if (ScreenManager.Game is RailDispatchMonoGame game)
+            game.MyraUI.QueueAction(action);
     }
 
+    private void ResumeFromMyra()
+        => Queue(() => OnResume?.Invoke(this, EventArgs.Empty));
+
+    private void SaveFromMyra()
+        => Queue(() =>
+        {
+            OnSave?.Invoke(this, EventArgs.Empty);
+            _myraView?.SetLoadEnabled(true);
+        });
+
     private void LoadFromMyra()
-        => _loadRequested = true;
+        => Queue(() => OnLoad?.Invoke(this, EventArgs.Empty));
 
     private void QuitFromMyra()
         => ShowQuitConfirmation();
