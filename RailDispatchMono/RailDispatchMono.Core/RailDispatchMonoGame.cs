@@ -1,11 +1,16 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using RailDispatchMono.Core.Game.Building;
+using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Save;
+using RailDispatchMono.Core.Game.Rendering;
 using RailDispatchMono.Core.Game.Simulation;
+using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.UI.Myra;
 using System;
+using System.Reflection;
 
 namespace RailDispatchMono.Core;
 
@@ -71,9 +76,10 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
         _gameplayView = new MyraGameplayView(
             speed => _myraUI.QueueAction(() => GameClock.Current?.SetSpeed(speed)),
-            _ => { },
-            _ => { },
-            _ => { });
+            train => _myraUI.QueueAction(() => FocusTrain(train)),
+            station => _myraUI.QueueAction(() => FocusStation(station)),
+            mode => _myraUI.QueueAction(() => SetBuildMode(mode)),
+            () => _myraUI.QueueAction(ToggleRouteEditMode));
         _myraUI.SetRoot(_gameplayView.Root);
         _gameplayUiRefreshTimer = 0d;
 
@@ -82,6 +88,52 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
             _screenManager.RemoveScreen(_mainMenu);
             _mainMenu = null;
         }
+    }
+
+    private void FocusTrain(Train train)
+    {
+        Camera? camera = GetGameplayField<Camera>("_camera");
+        if (camera != null)
+            camera.Position = train.Position;
+    }
+
+    private void FocusStation(Station station)
+    {
+        Camera? camera = GetGameplayField<Camera>("_camera");
+        if (camera != null)
+            camera.Position = new Vector2(
+                station.Position.X + station.Width / 2f,
+                station.Position.Y + station.Height / 2f);
+    }
+
+    private void SetBuildMode(TrackBuildMode mode)
+    {
+        TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
+        if (builder != null)
+            builder.Mode = mode;
+    }
+
+    private void ToggleRouteEditMode()
+    {
+        InputManager? input = GetGameplayField<InputManager>("_inputManager");
+        if (input == null)
+            return;
+
+        FieldInfo? modeField = typeof(InputManager).GetField(
+            "_wagonRouteEditMode",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        modeField?.SetValue(input, !(bool)(modeField.GetValue(input) ?? false));
+    }
+
+    private T? GetGameplayField<T>(string fieldName) where T : class
+    {
+        if (_gameplay == null)
+            return null;
+
+        FieldInfo? field = typeof(GameplayScreen).GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        return field?.GetValue(_gameplay) as T;
     }
 
     protected override void LoadContent()
