@@ -19,15 +19,25 @@
 - `Shift + PPM` — explicit removal for objects that support it
 - `MMB` — move camera
 - mouse wheel — zoom camera
-- `Escape` / `P` — pause
+- `Escape` / `P` — pause/resume
+
+## Pause input ownership
+
+At `0.1.2pre`, pause is owned by `GameplayScreen`.
+
+- `ESC` is handled by the gameplay screen as the authoritative pause/resume toggle.
+- The pause UI is rendered by `MyraPauseView` through the shared `MyraUIManager`.
+- Myra pointer input is handled by the shared `Desktop`.
+- `InputManager` does not own a second pause menu and does not compete with Myra for pause button clicks.
+- The pause menu is not a `GameScreen` popup, so it cannot block gameplay by remaining in the `ScreenManager` stack after resume.
+
+Pause button actions are dispatched to gameplay-owned operations and are executed through the normal update lifecycle rather than mutating screen/gameplay state from inside a Myra render callback.
 
 ## Wagon route edit mode
 
 Pressing `S` toggles wagon route edit mode and clears the active build mode. While the mode is active, the HUD/menu shows a small active `S` indicator.
 
 With the mode active, a new LPM click on a wagon opens its screen-space route editor. The editor handles station buttons independently, supports adding/removing/clearing stations and persists route changes through the existing schedule storage. PPM closes the editor.
-
-The editor consumes the opening input state so the click that opened it cannot immediately be reused as a second menu action or close the menu.
 
 ## Station building
 
@@ -47,4 +57,4 @@ The desktop game window is user-resizable. UI should use the current viewport/cl
 
 ## AI rule
 
-Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding controls.
+Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding gameplay controls. For Myra menus, use the shared `MyraUIManager`/`Desktop` and preserve a single owner for each action.
