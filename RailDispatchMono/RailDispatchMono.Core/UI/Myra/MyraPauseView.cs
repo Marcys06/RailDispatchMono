@@ -11,6 +11,8 @@ internal sealed class MyraPauseView
 {
     public Widget Root { get; }
 
+    private readonly Button _loadButton;
+
     public MyraPauseView(
         Action resume,
         Action save,
@@ -39,24 +41,28 @@ internal sealed class MyraPauseView
 
         AddButton(grid, 1, "WZNÓW GRĘ", resume, true);
         AddButton(grid, 2, "ZAPISZ GRĘ", save, true);
-        AddButton(grid, 3, "WCZYTAJ GRĘ", load, canLoad);
+        _loadButton = AddButton(grid, 3, "WCZYTAJ GRĘ", load, canLoad);
         AddButton(grid, 4, "WYJDŹ", quit, true);
 
         Root = grid;
     }
 
-    private static void AddButton(Grid grid, int row, string text, Action action, bool enabled)
+    public void SetLoadEnabled(bool enabled)
+        => _loadButton.Enabled = enabled;
+
+    private static Button AddButton(Grid grid, int row, string text, Action action, bool enabled)
     {
         var button = new Button
         {
             Content = new Label { Text = text },
             Width = 320,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Enabled = enabled   
+            Enabled = enabled
         };
 
         button.Click += (_, _) => action();
         Grid.SetRow(button, row);
         grid.Widgets.Add(button);
+        return button;
     }
 }
