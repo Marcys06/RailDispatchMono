@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.UI.Myra;
 using System;
@@ -14,8 +13,17 @@ internal sealed class PauseScreen : GameScreen
     public event EventHandler? OnSave;
     public event EventHandler? OnLoad;
 
+    private enum PauseCommand
+    {
+        None,
+        Resume,
+        Save,
+        Load
+    }
+
     private readonly bool _canLoad;
     private MyraPauseView? _myraView;
+    private PauseCommand _pendingCommand;
 
     public PauseScreen(bool canLoad = true)
     {
@@ -32,9 +40,9 @@ internal sealed class PauseScreen : GameScreen
         if (ScreenManager.Game is RailDispatchMonoGame game)
         {
             _myraView = new MyraPauseView(
-                ResumeFromMyra,
-                SaveFromMyra,
-                LoadFromMyra,
+                RequestResume,
+                RequestSave,
+                RequestLoad,
                 QuitFromMyra,
                 _canLoad);
 
@@ -48,7 +56,38 @@ internal sealed class PauseScreen : GameScreen
             game.MyraUI.Clear();
 
         _myraView = null;
+        _pendingCommand = PauseCommand.None;
         base.UnloadContent();
+    }
+
+    public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
+    {
+        base.Update(gameTime, otherScreenHasFocus, coveredByOtherScreen);
+
+        // Myra raises Button.Click from Desktop.Render(). The callback only records
+        // the requested operation. Execute it here, during the normal ScreenManager
+        // update pass, never while Myra is rendering its widget tree.
+        PauseCommand command = _pendingCommand;
+        _pendingCommand = PauseCommand.None;
+
+        switch (command)
+        {
+            case PauseCommand.Resume:
+                DebugManager.Log("[PAUSE] Resume command consumed by PauseScreen.Update()");
+                OnResume?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case PauseCommand.Save:
+                DebugManager.Log("[PAUSE] Save command consumed by PauseScreen.Update()");
+                OnSave?.Invoke(this, EventArgs.Empty);
+                _myraView?.SetLoadEnabled(true);
+                break;
+
+            case PauseCommand.Load:
+                DebugManager.Log("[PAUSE] Load command consumed by PauseScreen.Update()");
+                OnLoad?.Invoke(this, EventArgs.Empty);
+                break;
+        }
     }
 
     public override void HandleInput(GameTime gameTime, InputState inputState)
@@ -56,27 +95,17 @@ internal sealed class PauseScreen : GameScreen
         base.HandleInput(gameTime, inputState);
 
         if (inputState.IsMenuCancel(ControllingPlayer, out _))
-            ResumeFromMyra();
+            RequestResume();
     }
 
-    private void Queue(Action action)
-    {
-        if (ScreenManager.Game is RailDispatchMonoGame game)
-            game.MyraUI.QueueAction(action);
-    }
+    private void RequestResume()
+        => _pendingCommand = PauseCommand.Resume;
 
-    private void ResumeFromMyra()
-        => Queue(() => OnResume?.Invoke(this, EventArgs.Empty));
+    private void RequestSave()
+        => _pendingCommand = PauseCommand.Save;
 
-    private void SaveFromMyra()
-        => Queue(() =>
-        {
-            OnSave?.Invoke(this, EventArgs.Empty);
-            _myraView?.SetLoadEnabled(true);
-        });
-
-    private void LoadFromMyra()
-        => Queue(() => OnLoad?.Invoke(this, EventArgs.Empty));
+    private void RequestLoad()
+        => _pendingCommand = PauseCommand.Load;
 
     private void QuitFromMyra()
         => ShowQuitConfirmation();
