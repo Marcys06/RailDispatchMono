@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Inputs;
 using RailDispatchMono.Core.UI.Myra;
 using System;
+using RailDispatchMono.Core.Localization;  // Jeśli Resources jest w tej przestrzeni
 
 namespace RailDispatchMono.Core.Screens;
 
