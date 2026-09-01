@@ -383,9 +383,23 @@ public sealed partial class Train
         if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
         {
             const float reactionTime = 0.15f;
-            float stopOffsetMeters = SimulationScale.GridToMeters(0.3f);
-            float availableDistance = MathF.Max(0f, distance - stopOffsetMeters - Speed * reactionTime);
-            return MathF.Min(_maxSpeed, MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
+            const float stopOffsetCells = 0.3f;
+            float stopOffsetMeters = SimulationScale.GridToMeters(stopOffsetCells);
+
+            // Position is the centre of the first vehicle. The requested 0.3-cell
+            // clearance applies to the physical front of that vehicle, so its
+            // half-length must also be removed from the braking target distance.
+            float frontHalfLengthCells = Composition.Vehicles.Count > 0
+                ? Composition.Vehicles[0].Parameters.Length * 0.5f
+                : 0f;
+            float frontHalfLengthMeters = SimulationScale.GridToMeters(frontHalfLengthCells);
+
+            float availableDistance = MathF.Max(
+                0f,
+                distance - stopOffsetMeters - frontHalfLengthMeters - Speed * reactionTime);
+
+            return MathF.Min(_maxSpeed,
+                MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
         }
 
         if (Speed > signalSpeed && brakingRate > 0f)
