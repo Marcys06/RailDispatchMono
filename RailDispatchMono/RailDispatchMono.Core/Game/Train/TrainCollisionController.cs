@@ -2,7 +2,6 @@ using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -64,7 +63,6 @@ public sealed class TrainCollisionController
             current = next;
             direction = exit;
 
-            // Signal protection has priority over the simple collision rule.
             if (protectingSignal?.Position == current)
                 return false;
 
@@ -85,12 +83,11 @@ public sealed class TrainCollisionController
             if (train.Id == source.Id)
                 continue;
 
-            foreach (var vehicle in train.Composition.Vehicles.Select((_, index) => index))
+            foreach (var position in train.GetVehiclePositions())
             {
-                var transform = train.GetVehicleTransform(vehicle);
                 var vehicleCell = new MapPosition(
-                    (int)MathF.Floor(transform.Position.X),
-                    (int)MathF.Floor(transform.Position.Y));
+                    (int)MathF.Floor(position.X),
+                    (int)MathF.Floor(position.Y));
                 if (vehicleCell == cell)
                     return true;
             }
