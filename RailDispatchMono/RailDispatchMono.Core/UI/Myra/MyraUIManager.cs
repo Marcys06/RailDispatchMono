@@ -42,6 +42,14 @@ public sealed class MyraUIManager
         Desktop.Root = null;
     }
 
+    public void Update(GameTime gameTime)
+    {
+        if (!_initialized || Desktop.Root == null)
+            return;
+
+        Desktop.Update(gameTime);
+    }
+
     public void Render()
     {
         if (!_initialized || Desktop.Root == null)
