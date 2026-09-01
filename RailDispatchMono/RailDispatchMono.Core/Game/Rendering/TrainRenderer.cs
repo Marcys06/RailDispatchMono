@@ -27,9 +27,7 @@ public sealed class TrainRenderer
             return;
 
         foreach (var train in trainManager.Trains)
-        {
             DrawTrain(spriteBatch, train);
-        }
     }
 
     private void DrawTrain(SpriteBatch spriteBatch, global::RailDispatchMono.Core.Game.Train.Train train)
@@ -39,13 +37,13 @@ public sealed class TrainRenderer
 
         const float vehicleWidth = 0.45f;
         var origin = new Vector2(0.5f, 0.5f);
+        var positions = train.GetVehiclePositions();
 
         for (var i = 0; i < train.Composition.Vehicles.Count; i++)
         {
             var vehicle = train.Composition.Vehicles[i];
-            var transform = train.GetVehicleTransform(i);
-            Vector2 position = transform.Position;
-            float angle = transform.Rotation;
+            Vector2 position = positions[i];
+            float angle = train.GetVehicleTransform(i).Rotation;
 
             var color = vehicle is Locomotive
                 ? Color.Red
@@ -65,7 +63,7 @@ public sealed class TrainRenderer
     }
 
     // ============================================================
-    // NOWE METODY - WYKRYWANIE POJAZDU POD KURSOREM
+    // VEHICLE PICKING
     // ============================================================
 
     public (Train.Train train, int vehicleIndex, Vector2 worldPosition)? GetVehicleAtPosition(
@@ -76,17 +74,14 @@ public sealed class TrainRenderer
         if (trainManager == null)
             return null;
 
-        // Sprawdzamy od tylu (ostatni pojazd jest najblizej kursora)
         foreach (var train in trainManager.Trains)
         {
-            for (int i = train.Composition.Vehicles.Count - 1; i >= 0; i--)
+            var positions = train.GetVehiclePositions();
+            for (int i = positions.Count - 1; i >= 0; i--)
             {
-                var transform = train.GetVehicleTransform(i);
-                float distance = Vector2.Distance(transform.Position, worldPosition);
+                float distance = Vector2.Distance(positions[i], worldPosition);
                 if (distance < detectionRadius)
-                {
-                    return (train, i, transform.Position);
-                }
+                    return (train, i, positions[i]);
             }
         }
         return null;
