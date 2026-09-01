@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4a] — Train and semaphore mechanics
+**Data:** 2026-09-01
+
+- Train compositions spawn/render using physical vehicle spacing instead of stacking all vehicles at the head position.
+- Spawn and train collision checks use spaced vehicle positions.
+- Added persistent per-train semaphore speed limits.
+- Semaphore state is tracked by signal identity, so multiple directional signals in one cell remain independent.
+- A semaphore changes the train's persistent speed limit only after it is passed.
+- `Clear` no longer causes acceleration before the train passes it.
+- Existing BlockController/StationController stop and dwell systems remain authoritative for their respective responsibilities.
+- Detailed notes: `docs/changelog/0.1.4a.md`.
+
 ## [0.1.3pre] — Myra Gameplay UI stabilization
 **Data:** 2026-09-01
 
@@ -21,7 +33,6 @@ This file is the high-level release history. Detailed release notes are kept in 
 
 - Equal-width speed controls and train/station camera navigation.
 - Removed duplicate legacy train/station HUD.
-- Updated current-state documentation.
 
 ## [0.1.3d]
 **Data:** 2026-09-01
