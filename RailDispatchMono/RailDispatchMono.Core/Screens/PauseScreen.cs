@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Inputs;
-using RailDispatchMono.Core.Localization;
 using RailDispatchMono.Core.UI.Myra;
 using System;
 
@@ -55,14 +54,17 @@ internal sealed class PauseScreen : GameScreen
     {
         base.HandleInput(gameTime, inputState);
 
-        if (inputState.IsMenuCancel(ControllingPlayer, out PlayerIndex playerIndex))
+        if (inputState.IsMenuCancel(ControllingPlayer, out _))
             ResumeFromMyra();
     }
 
     private void ResumeFromMyra()
     {
+        // GameplayScreen owns removal of the pause screen. Do not call ExitScreen()
+        // here: Resume is also invoked from a Myra callback while the shared Desktop
+        // is rendering, and changing the GameScreen lifecycle twice leaves gameplay
+        // in a paused lifecycle state.
         OnResume?.Invoke(this, EventArgs.Empty);
-        ExitScreen();
     }
 
     private void SaveFromMyra()
