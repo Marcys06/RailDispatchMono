@@ -50,13 +50,10 @@ public sealed class GameplayScreen : GameScreen
     private KeyboardState _previousKeyboard;
     private Inputs.InputState? _inputState;
     private readonly Dictionary<(Guid TrainId, int WagonIndex), int> _wagonPassengerSnapshot = new();
-
-    private const int PanelWidth = 0;
+    private bool _spawnArmed;
 
     public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager)
-        : this(graphicsDevice, screenManager, false)
-    {
-    }
+        : this(graphicsDevice, screenManager, false) { }
 
     public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager, bool loadExisting)
     {
@@ -87,9 +84,7 @@ public sealed class GameplayScreen : GameScreen
             _trainRenderer, _junctionRadialMenu, _signalController, _signalRadialMenu,
             screenManager, _signalDirectionMenu, _signalSelectionMenu, _map, _depotController);
         _inputManager.DepotSelected += OnDepotSelected;
-
-        if (!loadExisting)
-            CreateTestTrack();
+        if (!loadExisting) CreateTestTrack();
     }
 
     private void OnDepotSelected(Depot depot)
@@ -97,13 +92,8 @@ public sealed class GameplayScreen : GameScreen
         _builder.Mode = TrackBuildMode.None;
         _spawnArmed = false;
         if (ScreenManager?.Game is RailDispatchMonoGame game)
-        {
-            var depotScreen = new DepotScreen(_trainManager, _signalController, _blockController, depot, game.MyraUI);
-            ScreenManager.AddScreen(depotScreen, null);
-        }
+            ScreenManager.AddScreen(new DepotScreen(_trainManager, _signalController, _blockController, depot, game.MyraUI), null);
     }
-
-    private bool _spawnArmed;
 
     public void LoadContent(ContentManager content)
     {
@@ -127,6 +117,13 @@ public sealed class GameplayScreen : GameScreen
     {
         float realDelta = (float)gameTime.ElapsedGameTime.TotalSeconds;
         KeyboardState keyboard = Keyboard.GetState();
+
+        if (coveredByOtherScreen)
+        {
+            _previousKeyboard = keyboard;
+            _previousMouse = Mouse.GetState();
+            return;
+        }
 
         if (_inputState != null && _inputState.IsPauseKeyJustPressed())
         {
@@ -171,15 +168,13 @@ public sealed class GameplayScreen : GameScreen
 
     private void TogglePause()
     {
-        if (_isPaused) ResumeGame();
-        else PauseGame();
+        if (_isPaused) ResumeGame(); else PauseGame();
     }
 
     private void PauseGame()
     {
         if (_isPaused) return;
         if (ScreenManager?.Game is not RailDispatchMonoGame game) return;
-
         _isPaused = true;
         _pauseView = new MyraPauseView(
             () => game.MyraUI.QueueAction(ResumeGame),
@@ -195,19 +190,15 @@ public sealed class GameplayScreen : GameScreen
         if (!_isPaused) return;
         _isPaused = false;
         _pauseView = null;
-        if (ScreenManager?.Game is RailDispatchMonoGame game)
-            game.MyraUI.Clear();
+        if (ScreenManager?.Game is RailDispatchMonoGame game) game.MyraUI.Clear();
     }
 
     private bool HandleHudInput() => false;
-
-    private bool IsKeyPressed(KeyboardState keyboard, Keys key)
-        => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
+    private bool IsKeyPressed(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
 
     private void CreateTestTrack()
     {
-        for (int x = 8; x <= 32; x++)
-            _builder.BuildStraight(new MapPosition(x, 20), true);
+        for (int x = 8; x <= 32; x++) _builder.BuildStraight(new MapPosition(x, 20), true);
     }
 
     private void SnapshotWagonPassengers()
@@ -215,8 +206,7 @@ public sealed class GameplayScreen : GameScreen
         _wagonPassengerSnapshot.Clear();
         foreach (Train train in _trainManager.Trains)
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-                if (train.Composition.Vehicles[i] is Wagon wagon)
-                    _wagonPassengerSnapshot[(train.Id, i)] = wagon.PassengerCount;
+                if (train.Composition.Vehicles[i] is Wagon wagon) _wagonPassengerSnapshot[(train.Id, i)] = wagon.PassengerCount;
     }
 
     private void CapturePassengerChanges()
@@ -293,8 +283,7 @@ public sealed class GameplayScreen : GameScreen
             if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 380, 50), new Color(20, 20, 20, 230));
-            _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawić budynek", new Vector2(20, 85),
-                Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawić budynek", new Vector2(20, 85), Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             _spriteBatch.End();
         }
         else if (_spawnArmed)
@@ -302,8 +291,7 @@ public sealed class GameplayScreen : GameScreen
             if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 370, 50), new Color(20, 20, 20, 230));
-            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejący tor, aby ustawić pociąg", new Vector2(20, 85),
-                Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejący tor, aby ustawić pociąg", new Vector2(20, 85), Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             _spriteBatch.End();
         }
     }
@@ -338,9 +326,7 @@ public sealed class GameplayScreen : GameScreen
             linesList.Add("Typ wagonu: " + wagon.WagonType);
             linesList.Add("Pasażerowie: " + wagon.PassengerCount + "/" + wagon.PassengerCapacity);
             linesList.Add("Wolne miejsca: " + wagon.AvailablePassengerCapacity);
-            var destinationGroups = wagon.Passengers.GroupBy(p => p.DestinationStation.Id)
-                .Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() })
-                .OrderByDescending(x => x.Count).Take(5).ToList();
+            var destinationGroups = wagon.Passengers.GroupBy(p => p.DestinationStation.Id).Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() }).OrderByDescending(x => x.Count).Take(5).ToList();
             linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasażerów:");
             foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
@@ -357,8 +343,7 @@ public sealed class GameplayScreen : GameScreen
         float y = position.Y + padding;
         foreach (string line in linesList)
         {
-            _spriteBatch.DrawString(_tooltipFont, line, new Vector2(position.X + padding, y), Color.White,
-                0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_tooltipFont, line, new Vector2(position.X + padding, y), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
             y += lineHeight;
         }
         _spriteBatch.End();
