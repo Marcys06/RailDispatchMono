@@ -73,6 +73,10 @@ public sealed class FloatingTextManager
     public void Draw(SpriteBatch spriteBatch, Camera camera)
     {
         if (_font == null || _items.Count == 0) return;
+
+        // 🔥 DODAJ WŁASNY Begin/End
+        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+
         foreach (var item in _items)
         {
             float alpha = 1f - MathHelper.Clamp(item.Age / item.Lifetime, 0f, 1f);
@@ -80,5 +84,7 @@ public sealed class FloatingTextManager
             var screen = camera.MapToScreen(item.Position) - new Vector2(size.X / 2f, size.Y);
             spriteBatch.DrawString(_font, item.Text, screen, Color.White * alpha);
         }
+
+        spriteBatch.End();
     }
 }
