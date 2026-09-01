@@ -33,9 +33,10 @@ This index is a navigation aid based on source files confirmed in the repository
 
 | Path | Role |
 |---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model. Signal braking uses composition-aware physical mass data. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear 1.30 exponent to locomotive performance. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Authoritative train lifecycle and composition-based creation. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Internal physics parameters plus physical mass/length metadata. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle. |
