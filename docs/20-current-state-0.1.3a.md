@@ -4,7 +4,7 @@
 
 ## Myra gameplay HUD
 
-The gameplay session now mounts `MyraGameplayView` as the active Myra root.
+The gameplay session mounts `MyraGameplayView` as the active Myra root.
 
 The HUD currently contains:
 
@@ -18,6 +18,14 @@ The HUD currently contains:
 
 The train and station lists are refreshed approximately every 0.5 seconds.
 
+The simulation clock and speed controls are now exclusively owned visually by Myra. The previous `SpriteBatch` clock/speed HUD has been removed from `GameplayScreen`.
+
+## Main menu transition
+
+The Myra main menu and gameplay HUD share one `MyraUIManager` desktop. `StartGameplay()` removes `MainMenuScreen` before installing `MyraGameplayView`, because `MainMenuScreen.UnloadContent()` clears the shared Myra root.
+
+This prevents the main-menu root from immediately clearing the gameplay HUD during the transition to gameplay.
+
 ## Navigation
 
 Train and station list entries dispatch navigation actions to the active gameplay camera. The current bridge obtains the existing gameplay-owned camera and builder from `GameplayScreen` so that the UI migration does not duplicate gameplay state.
@@ -30,7 +38,7 @@ The wagon route edit control exposes the existing `S` workflow through the gamep
 
 ## Pause interaction
 
-The pause system remains owned by `GameplayScreen`. Myra gameplay HUD and pause UI share the same `MyraUIManager` desktop. The manager preserves the previous root while a temporary pause root is active so that Resume restores the gameplay HUD.
+The pause system remains owned by `GameplayScreen`. Myra gameplay HUD and pause UI share the same `MyraUIManager` desktop. The pause view temporarily replaces the gameplay root and Resume restores the gameplay HUD.
 
 ## Persistence
 
