@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.2i`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.2j`.
 
 ## 1. Never invent architecture
 
@@ -75,7 +75,7 @@ The application enters through the Main Menu. New Game creates a new empty game 
 - Wagon routes describe passenger-service destinations; they do not directly control locomotive movement.
 - Passenger exchange may emit floating `+X` / `-X` notifications.
 
-## 18. Myra integration contract
+## 18. Myra integration contract — frozen at 0.1.2j
 
 - Myra is consumed through the standard `Myra` NuGet package (`1.6.5`).
 - `MyraUIManager` is the single Core integration boundary for `MyraEnvironment.Game` and the shared `Desktop`.
@@ -88,6 +88,7 @@ The application enters through the Main Menu. New Game creates a new empty game 
 - A migrated screen must clear the shared desktop when it leaves ownership.
 - Do not create separate Myra desktops from unrelated screens.
 - Myra is not a blanket replacement for railway rendering, gameplay HUD or radial gameplay tools.
+- `0.1.2j` closes the current Myra migration scope. Do not perform additional Myra migration under `0.1.2x`.
 
 ## 19. Release contract
 
@@ -95,4 +96,4 @@ The application enters through the Main Menu. New Game creates a new empty game 
 
 ## 20. Documentation version discipline
 
-Current-state documents describe the latest committed `0.1.2x` stage. Historical documents and changelog entries retain their original version identifiers.
+Current-state documentation describes the latest committed stage. Historical documents and changelog entries retain their original version identifiers.
