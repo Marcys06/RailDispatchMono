@@ -6,8 +6,9 @@ This file is the high-level release history. Detailed release notes are kept in 
 **Data:** 2026-09-01
 
 - Added the first large Myra gameplay HUD integration.
-- Added simulation clock and `GameDay` display.
-- Added `x1` / `x2` / `x5` simulation speed controls.
+- Migrated the simulation clock and `GameDay` display to `MyraGameplayView`.
+- Removed the legacy SpriteBatch-rendered clock and speed controls from `GameplayScreen`.
+- Added `x1` / `x2` / `x5` simulation speed controls to Myra.
 - Added live train and station lists with approximately 0.5 s refresh cadence.
 - Station entries display the number of waiting passengers.
 - Train and station entries dispatch camera-centering actions.
@@ -15,6 +16,8 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Added a Myra control for the existing wagon route-edit workflow.
 - Kept existing keyboard shortcuts as an additional input path.
 - Preserved pause as a `GameplayScreen`-owned state while allowing the gameplay Myra root to be restored after pause.
+- Fixed the main-menu-to-game transition so `MainMenuScreen.UnloadContent()` cannot clear the newly installed gameplay Myra root.
+- Verified the gameplay transition path: Main Menu -> Gameplay now leaves the gameplay HUD as the active Myra root.
 - Added `0.1.3a` current-state and detailed changelog documentation.
 
 `0.1.3a` is intentionally a large feature milestone. Follow-up `0.1.3x` stages should focus on bugfixes, stabilization and completing the remaining object-window/radial-menu migrations.
