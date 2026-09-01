@@ -131,7 +131,6 @@ public sealed partial class Train
         return _map.TryGetTrack(cell, out var track) && track != null;
     }
 
-    /// <summary>Returns physical distance from the train head to the centre of a vehicle in metres.</summary>
     public float GetDistanceToVehicle(int vehicleIndex)
     {
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
@@ -150,7 +149,7 @@ public sealed partial class Train
     {
         if (Composition.Vehicles.Count == 0) return Position;
         int lastIndex = Composition.Vehicles.Count - 1;
-        return GetPositionBehindHead(SimulationScale.MetersToGrid(GetDistanceToVehicle(lastIndex)));
+        return GetPositionBehindHead(GetDistanceToVehicle(lastIndex));
     }
 
     public TrackConnections GetLastVehicleDirection()
@@ -165,7 +164,7 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        float distanceBehindHead = SimulationScale.MetersToGrid(GetDistanceToVehicle(vehicleIndex));
+        float distanceBehindHead = GetDistanceToVehicle(vehicleIndex);
         float targetDistance = _totalTravelDistance - distanceBehindHead;
 
         if (_trajectory.Count == 0)
@@ -241,7 +240,7 @@ public sealed partial class Train
         return MathF.Atan2(tangent.Y, tangent.X);
     }
 
-    public List<Vector2> GetVehiclePositions(float vehicleSpacing = 0.0f)
+    public List<Vector2> GetVehiclePositions(float vehicleSpacing = 1.0f)
     {
         var result = new List<Vector2>(Composition.Vehicles.Count);
         if (Composition.Vehicles.Count == 0) return result;
@@ -253,13 +252,11 @@ public sealed partial class Train
             if (i == 0)
             {
                 result.Add(Position);
-                distanceBehind = SimulationScale.MetersToGrid(vehicle.Parameters.Length);
+                distanceBehind = vehicle.Parameters.Length;
             }
             else
             {
-                float spacing = vehicleSpacing > MovementEpsilon
-                    ? vehicleSpacing
-                    : SimulationScale.MetersToGrid(vehicle.Parameters.Length);
+                float spacing = vehicleSpacing > MovementEpsilon ? vehicleSpacing : vehicle.Parameters.Length;
                 result.Add(GetPositionBehindHead(distanceBehind));
                 distanceBehind += spacing;
             }
