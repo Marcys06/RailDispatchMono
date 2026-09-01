@@ -5,32 +5,23 @@ using System;
 public class VehicleParameters
 {
     public float MaxSpeed { get; }
-
-    /// <summary>Effective acceleration rate calculated from d, m, x and k.</summary>
     public float Acceleration { get; }
-
-    /// <summary>Effective braking rate calculated from d, m, x and k.</summary>
     public float Braking { get; }
-
     public float Mass { get; }
     public float Length { get; }
 
-    /// <summary>Mass influence coefficient x.</summary>
+    /// <summary>Real-world mass in tonnes. Legacy vehicle values are derived from kilograms.</summary>
+    public float MassTons { get; }
+
+    /// <summary>Real-world length in metres. Legacy vehicle values are derived from map cells.</summary>
+    public float LengthMeters { get; }
+
     public float MassCoefficient { get; }
-
-    /// <summary>Technical condition multiplier k, constrained to &lt;0.5, 1.5&gt;.</summary>
     public float TechnicalCondition { get; }
-
-    /// <summary>Original acceleration coefficient d before the mass/condition model.</summary>
     public float AccelerationCoefficient { get; }
-
-    /// <summary>Original braking coefficient d before the mass/condition model.</summary>
     public float BrakingCoefficient { get; }
 
-    // 0.1.4c: acceleration remains at the previously accepted 50% response.
     private const float AccelerationResponseScale = 0.5f;
-
-    // 0.1.4c: braking reduced by another 30% from the previous 50% response.
     private const float BrakingResponseScale = 0.35f;
 
     public VehicleParameters(
@@ -44,7 +35,9 @@ public class VehicleParameters
     {
         MaxSpeed = maxSpeed;
         Mass = Math.Max(0.001f, mass);
-        Length = length;
+        Length = Math.Max(0f, length);
+        MassTons = Mass / 1000f;
+        LengthMeters = Length * 10f;
 
         MassCoefficient = Math.Max(0.000001f, massCoefficient);
         TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));
@@ -56,13 +49,56 @@ public class VehicleParameters
         Braking = CalculateRate(BrakingCoefficient) * BrakingResponseScale;
     }
 
+    private VehicleParameters(
+        float maxSpeed,
+        float acceleration,
+        float braking,
+        float massTons,
+        float lengthMeters,
+        float visualLengthCells,
+        float massCoefficient,
+        float technicalCondition)
+    {
+        MaxSpeed = Math.Max(0f, maxSpeed);
+        Acceleration = Math.Max(0f, acceleration);
+        Braking = Math.Max(0f, braking);
+        MassTons = Math.Max(0.001f, massTons);
+        Mass = MassTons * 1000f;
+        LengthMeters = Math.Max(0f, lengthMeters);
+        Length = Math.Max(0f, visualLengthCells);
+        MassCoefficient = Math.Max(0.000001f, massCoefficient);
+        TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));
+        AccelerationCoefficient = Acceleration;
+        BrakingCoefficient = Braking;
+    }
+
     /// <summary>
-    /// a = m^(d*x^0.9) * k
-    ///
-    /// Mass is expressed in the same unit as VehicleParameters.Mass. The
-    /// mass coefficient x is deliberately configurable because the formula
-    /// is a gameplay tuning model rather than a dimensional SI equation.
+    /// Creates a rolling-stock parameter set from physical gameplay values.
+    /// Internal speed remains m/s and is converted from the catalog's km/h.
+    /// Physical length/mass are stored separately so the 10 m map-cell scale
+    /// does not shrink the established visual vehicle proportions.
     /// </summary>
+    public static VehicleParameters CreatePhysical(
+        float maxSpeedKmh,
+        float accelerationMps2,
+        float decelerationMps2,
+        float massTons,
+        float lengthMeters,
+        float visualLengthCells = 1.0f,
+        float massCoefficient = 0.01f,
+        float technicalCondition = 1.0f)
+    {
+        return new VehicleParameters(
+            maxSpeedKmh / 3.6f,
+            accelerationMps2,
+            decelerationMps2,
+            massTons,
+            lengthMeters,
+            visualLengthCells,
+            massCoefficient,
+            technicalCondition);
+    }
+
     private float CalculateRate(float d)
     {
         if (d <= 0f)
