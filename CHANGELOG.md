@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.2j] — Final Myra integration and pause-resume lifecycle fix
+**Data:** 2026-09-01
+
+- Naprawiono `WZNÓW GRĘ`: kliknięcie przycisku Myra poprawnie kończy stan pauzy i usuwa dokładnie ten `PauseScreen` ze `ScreenManager`.
+- `PauseScreen` nie wykonuje już drugiego `ExitScreen()` po wywołaniu callbacku Resume; lifecycle jest zamykany wyłącznie przez `GameplayScreen.ResumeGame()`.
+- Zachowano `ESC`/controller cancel jako alternatywną drogę wznowienia, korzystającą z tego samego lifecycle path.
+- Potwierdzono jeden współdzielony `MyraUIManager`/`Desktop` oraz czyszczenie root widgetu przy opuszczaniu aktywnego ekranu.
+- Main Menu, Settings, About i Pause korzystają ze standardowych widgetów Myra.
+- Save/Load pozostają wyłącznie w Myra Pause Menu; Gameplay HUD nie posiada drugiej powierzchni persistence.
+- `0.1.2j` zamyka zakres migracji Myra dla linii `0.1.2x`. Dalsze prace nad UI/Myra wymagają osobnego celu wydaniowego.
+- Zaktualizowano dokumentację AI, inventory UI, kontekst architektury i changelog do finalnego stanu integracji Myra.
+
 ## [0.1.2i] — Full Myra pause surface and UI consolidation
 **Data:** 2026-09-01
 
