@@ -54,11 +54,13 @@ public sealed class GameplayScreen : GameScreen
     private bool _spawnArmed;
     private readonly Dictionary<(Guid TrainId, int WagonIndex), int> _wagonPassengerSnapshot = new();
 
-    private const int PanelWidth = 285;
+    // The train/station object panel is now owned exclusively by MyraGameplayView.
+    // Keep the legacy bounds outside the viewport so the old SpriteBatch panel cannot be drawn or receive input.
+    private const int PanelWidth = 0;
     private const float PanelTextScale = 0.75f;
 
     private Rectangle PanelBounds => new(
-        _graphicsDevice.Viewport.Width - PanelWidth,
+        _graphicsDevice.Viewport.Width + 1,
         0,
         PanelWidth,
         _graphicsDevice.Viewport.Height);
@@ -210,55 +212,8 @@ public sealed class GameplayScreen : GameScreen
 
     private bool HandleHudInput()
     {
-        MouseState mouse = Mouse.GetState();
-        if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
-        {
-            if (PanelBounds.Contains(mouse.Position))
-            {
-                int y = 86;
-                if (new Rectangle(PanelBounds.X + 10, y, 120, 36).Contains(mouse.Position))
-                {
-                    _showTrains = true;
-                    return true;
-                }
-                if (new Rectangle(PanelBounds.X + 135, y, 120, 36).Contains(mouse.Position))
-                {
-                    _showTrains = false;
-                    return true;
-                }
-                if (_showTrains)
-                {
-                    y += 50;
-                    foreach (Train train in _trainManager.Trains)
-                    {
-                        if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
-                        {
-                            _camera.Position = train.Position;
-                            return true;
-                        }
-                        y += 38;
-                    }
-                }
-                else
-                {
-                    y += 50;
-                    foreach (Station station in _trainManager.StationController.Stations)
-                    {
-                        if (new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34).Contains(mouse.Position))
-                        {
-                            _camera.Position = new Vector2(
-                                station.Position.X + station.Width / 2f,
-                                station.Position.Y + station.Height / 2f);
-                            return true;
-                        }
-                        y += 38;
-                    }
-                }
-                return true;
-            }
-        }
-
-        if (PanelBounds.Contains(mouse.Position)) return true;
+        // Train/station HUD interaction is fully owned by MyraGameplayView.
+        // The legacy SpriteBatch panel intentionally has no hit area.
         return false;
     }
 
@@ -368,41 +323,10 @@ public sealed class GameplayScreen : GameScreen
 
     private void DrawHud()
     {
-        if (_tooltipFont == null || _pixel == null) return;
-        _spriteBatch.Begin();
-
-        // The simulation clock and speed controls are now rendered exclusively by MyraGameplayView.
-        DrawRect(PanelBounds, new Color(18, 18, 18, 235));
-        _spriteBatch.DrawString(_tooltipFont, "OBIEKTY", new Vector2(PanelBounds.X + 10, 10), Color.White, 0f,
-            Vector2.Zero, PanelTextScale, SpriteEffects.None, 0f);
-        DrawButton(new Rectangle(PanelBounds.X + 10, 86, 120, 36), "POCIAGI", _showTrains, PanelTextScale);
-        DrawButton(new Rectangle(PanelBounds.X + 135, 86, 120, 36), "STACJE", !_showTrains, PanelTextScale);
-        int y = 136;
-
-        if (_showTrains)
-        {
-            foreach (Train train in _trainManager.Trains)
-            {
-                string text = $"{train.Id.ToString()[..8]}  {train.Speed * 3.6f:0} km/h";
-                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34), text, PanelTextScale);
-                y += 38;
-            }
-        }
-        else
-        {
-            foreach (Station station in _trainManager.StationController.Stations)
-            {
-                int waiting = _trainManager.StationController.Passengers.GetWaitingCount(station);
-                DrawListItem(new Rectangle(PanelBounds.X + 10, y, PanelWidth - 20, 34),
-                    $"{station.Name}  {waiting} oczek.", PanelTextScale);
-                y += 38;
-            }
-        }
-
-        _spriteBatch.End();
-
+        // Legacy train/station HUD rendering was removed. Train/station presentation is Myra-only.
         if (_depotOpen)
         {
+            if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(50, 95, 310, 185), new Color(20, 20, 20, 245));
             _spriteBatch.DrawString(_tooltipFont, "DEPOT", new Vector2(80, 110), Color.Yellow);
@@ -413,6 +337,7 @@ public sealed class GameplayScreen : GameScreen
         }
         else if (_builder.Mode == TrackBuildMode.Depot)
         {
+            if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 380, 50), new Color(20, 20, 20, 230));
             _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawic budynek", new Vector2(20, 85),
@@ -421,6 +346,7 @@ public sealed class GameplayScreen : GameScreen
         }
         else if (_spawnArmed)
         {
+            if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 370, 50), new Color(20, 20, 20, 230));
             _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejacy tor, aby ustawic pociag", new Vector2(20, 85),
@@ -492,12 +418,5 @@ public sealed class GameplayScreen : GameScreen
         Vector2 size = _tooltipFont!.MeasureString(text) * scale;
         Vector2 position = new(rectangle.Center.X - size.X / 2f, rectangle.Center.Y - size.Y / 2f);
         _spriteBatch.DrawString(_tooltipFont, text, position, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-    }
-
-    private void DrawListItem(Rectangle rectangle, string text, float scale)
-    {
-        DrawRect(rectangle, new Color(35, 35, 35, 255));
-        _spriteBatch.DrawString(_tooltipFont!, text, new Vector2(rectangle.X + 8, rectangle.Y + 7), Color.White,
-            0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 }
