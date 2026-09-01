@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Localization;
+using RailDispatchMono.Core.UI.Myra;
 using System;
 
 namespace RailDispatchMono.Core.Screens;
@@ -8,10 +9,14 @@ namespace RailDispatchMono.Core.Screens;
 internal sealed class MainMenuScreen : MenuScreen
 {
     private readonly Action<string> _startGame;
+    private MyraMainMenuView? _myraView;
 
     public MainMenuScreen(Action<string> startGame) : base("RAIL DISPATCHER")
     {
         _startGame = startGame;
+
+        // Preserve the existing MenuEntry contract while migrating the visual
+        // and mouse/keyboard surface to the shared Myra desktop.
         var newGame = new MenuEntry("NOWA GRA");
         var loadGame = new MenuEntry("WCZYTAJ GRĘ");
         var settings = new MenuEntry(Resources.Settings);
@@ -29,6 +34,43 @@ internal sealed class MainMenuScreen : MenuScreen
         MenuEntries.Add(settings);
         MenuEntries.Add(about);
         MenuEntries.Add(quit);
+    }
+
+    public override void LoadContent()
+    {
+        base.LoadContent();
+
+        if (ScreenManager.Game is RailDispatchMonoGame game)
+        {
+            _myraView = new MyraMainMenuView(
+                StartNewGame,
+                OpenLoadMenu,
+                () => ScreenManager.AddScreen(new SettingsScreen(), ControllingPlayer),
+                () => ScreenManager.AddScreen(new AboutScreen(), ControllingPlayer),
+                () => ScreenManager.Game.Exit());
+
+            game.MyraUI.SetRoot(_myraView.Root);
+        }
+    }
+
+    public override void UnloadContent()
+    {
+        if (ScreenManager.Game is RailDispatchMonoGame game)
+            game.MyraUI.Clear();
+
+        _myraView = null;
+        base.UnloadContent();
+    }
+
+    public override void HandleInput(GameTime gameTime, RailDispatchMono.Core.Inputs.InputState inputState)
+    {
+        // Myra Desktop owns the main-menu pointer/keyboard interaction.
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        // The shared Myra desktop is rendered by the game host after the
+        // ScreenManager-owned screen stack.
     }
 
     private void StartNewGame()
