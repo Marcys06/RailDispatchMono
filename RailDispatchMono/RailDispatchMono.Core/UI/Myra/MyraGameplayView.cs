@@ -37,9 +37,7 @@ internal sealed class MyraGameplayView
         root.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
 
         _left = new Grid { Width = 300, RowSpacing = 5, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-        _left.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        _left.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        _left.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        for (int i = 0; i < 4; i++) _left.RowsProportions.Add(new Proportion(ProportionType.Auto));
 
         var clock = new VerticalStackPanel { Width = 280, Spacing = 1, HorizontalAlignment = HorizontalAlignment.Left };
         _clockLabel = new Label { Text = "00:00", HorizontalAlignment = HorizontalAlignment.Left };
@@ -48,7 +46,9 @@ internal sealed class MyraGameplayView
         Grid.SetRow(clock, 0); _left.Widgets.Add(clock);
 
         var speed = new Grid { Width = 280, Height = 36, ColumnSpacing = 4, HorizontalAlignment = HorizontalAlignment.Left };
-        speed.ColumnsProportions.Add(new Proportion(ProportionType.Fill)); speed.ColumnsProportions.Add(new Proportion(ProportionType.Fill)); speed.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        speed.ColumnsProportions.Add(new Proportion(ProportionType.Pixel, 90));
+        speed.ColumnsProportions.Add(new Proportion(ProportionType.Pixel, 90));
+        speed.ColumnsProportions.Add(new Proportion(ProportionType.Pixel, 90));
         AddSpeedButton(speed, 0, "x1", 1f); AddSpeedButton(speed, 1, "x2", 2f); AddSpeedButton(speed, 2, "x5", 5f);
         Grid.SetRow(speed, 1); _left.Widgets.Add(speed);
 
@@ -61,8 +61,7 @@ internal sealed class MyraGameplayView
         tools.Widgets.Add(_toolToggle);
         _toolContent = new VerticalStackPanel { Width = 280, Spacing = 3, Visible = false, HorizontalAlignment = HorizontalAlignment.Left };
         tools.Widgets.Add(_toolContent);
-        Grid.SetRow(tools, 3); _left.RowsProportions.Add(new Proportion(ProportionType.Auto)); _left.Widgets.Add(tools);
-
+        Grid.SetRow(tools, 3); _left.Widgets.Add(tools);
         Grid.SetColumn(_left, 0); Grid.SetRow(_left, 0); root.Widgets.Add(_left);
 
         _right = new Grid { Width = 360, RowSpacing = 6, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
@@ -113,7 +112,7 @@ internal sealed class MyraGameplayView
     }
 
     private void ToggleTools() { _toolsExpanded = !_toolsExpanded; RebuildTools(); }
-    private void AddSpeedButton(Grid panel, int column, string text, float speed) { var b = new Button { Content = new Label { Text = text }, HorizontalAlignment = HorizontalAlignment.Stretch }; b.Click += (_, _) => _setSpeed(speed); Grid.SetColumn(b, column); panel.Widgets.Add(b); }
+    private void AddSpeedButton(Grid panel, int column, string text, float speed) { var b = new Button { Content = new Label { Text = text }, Width = 90, HorizontalAlignment = HorizontalAlignment.Stretch }; b.Click += (_, _) => _setSpeed(speed); Grid.SetColumn(b, column); panel.Widgets.Add(b); }
     private static void AddListButton(Grid grid, string text, Action action) { var b = new Button { Content = new Label { Text = text }, HorizontalAlignment = HorizontalAlignment.Stretch }; b.Click += (_, _) => action(); Grid.SetRow(b, grid.Widgets.Count); grid.RowsProportions.Add(new Proportion(ProportionType.Auto)); grid.Widgets.Add(b); }
     private void AddToolButton(string text, TrackBuildMode mode) { var b = new Button { Content = new Label { Text = text }, Width = 280, HorizontalAlignment = HorizontalAlignment.Stretch }; b.Click += (_, _) => _setBuildMode(mode); _toolContent.Widgets.Add(b); }
     private void AddRouteButton() { var b = new Button { Content = new Label { Text = "Edytuj trasę wagonu (S)" }, Width = 280, HorizontalAlignment = HorizontalAlignment.Stretch }; b.Click += (_, _) => _toggleRouteEdit(); _toolContent.Widgets.Add(b); }
