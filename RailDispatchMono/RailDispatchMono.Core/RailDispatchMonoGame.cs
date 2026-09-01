@@ -53,7 +53,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     protected override void Initialize()
     {
         _myraUI.Initialize(this);
-
         _screenManager = new ScreenManager(this) { TraceEnabled = false };
         Components.Add(_screenManager);
         _mainMenu = new MainMenuScreen(StartGameplay);
@@ -64,11 +63,18 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     private void StartGameplay(string request)
     {
         bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
-        string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal)
-            ? request[4..]
-            : request;
+        string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal) ? request[4..] : request;
 
         SaveSlotService.Activate(slotDirectory);
+
+        // MainMenuScreen.UnloadContent() clears the shared Myra desktop.
+        // Remove it before installing the gameplay root.
+        if (_mainMenu != null)
+        {
+            _screenManager.RemoveScreen(_mainMenu);
+            _mainMenu = null;
+        }
+
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
         _screenManager.AddScreen(_gameplay, null);
 
@@ -83,12 +89,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
             () => _myraUI.QueueAction(ToggleRouteEditMode));
         _myraUI.SetRoot(_gameplayView.Root);
         _gameplayUiRefreshTimer = 0d;
-
-        if (_mainMenu != null)
-        {
-            _screenManager.RemoveScreen(_mainMenu);
-            _mainMenu = null;
-        }
     }
 
     private void FocusTrain(Train train)
