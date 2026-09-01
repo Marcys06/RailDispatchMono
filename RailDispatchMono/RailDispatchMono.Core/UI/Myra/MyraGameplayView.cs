@@ -22,12 +22,15 @@ internal sealed class MyraGameplayView
     private readonly Label _speedLabel;
     private readonly Grid _trainList;
     private readonly Grid _stationList;
-    private readonly Grid _toolList;
+    private readonly VerticalStackPanel _toolContent;
+    private readonly Button _toolToggle;
+    private readonly Grid _speedPanel;
     private readonly Action<float> _setSpeed;
     private readonly Action<Train> _focusTrain;
     private readonly Action<Station> _focusStation;
     private readonly Action<TrackBuildMode> _setBuildMode;
     private readonly Action _toggleRouteEdit;
+    private bool _toolsExpanded;
 
     public MyraGameplayView(
         Action<float> setSpeed,
@@ -46,49 +49,83 @@ internal sealed class MyraGameplayView
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            ColumnSpacing = 8,
-            RowSpacing = 6
+            ColumnSpacing = 10,
+            RowSpacing = 8
         };
-        _grid.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
         _grid.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
-        _grid.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
-        for (int i = 0; i < 3; i++)
-            _grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        _grid.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        _grid.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        _grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        _grid.RowsProportions.Add(new Proportion(ProportionType.Fill));
+        _grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
 
-        var clockPanel = new Grid { Width = 230, RowSpacing = 3 };
-        clockPanel.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        clockPanel.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        var clockPanel = new VerticalStackPanel { Width = 210, Spacing = 2 };
         _clockLabel = new Label { Text = "00:00", HorizontalAlignment = HorizontalAlignment.Left };
         _dayLabel = new Label { Text = "Dzień 1", HorizontalAlignment = HorizontalAlignment.Left };
-        Grid.SetRow(_clockLabel, 0);
-        Grid.SetRow(_dayLabel, 1);
         clockPanel.Widgets.Add(_clockLabel);
         clockPanel.Widgets.Add(_dayLabel);
         Grid.SetColumn(clockPanel, 0);
         Grid.SetRow(clockPanel, 0);
         _grid.Widgets.Add(clockPanel);
 
-        var speedPanel = new Grid { Width = 220, ColumnSpacing = 4 };
-        speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
-        speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
-        speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
-        AddSpeedButton(speedPanel, 0, "x1", 1f);
-        AddSpeedButton(speedPanel, 1, "x2", 2f);
-        AddSpeedButton(speedPanel, 2, "x5", 5f);
-        Grid.SetColumn(speedPanel, 1);
-        Grid.SetRow(speedPanel, 0);
-        _grid.Widgets.Add(speedPanel);
-
-        _speedLabel = new Label { Text = "Prędkość: x1", HorizontalAlignment = HorizontalAlignment.Right };
-        Grid.SetColumn(_speedLabel, 2);
+        _speedLabel = new Label
+        {
+            Text = "Prędkość: x1",
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        Grid.SetColumn(_speedLabel, 1);
         Grid.SetRow(_speedLabel, 0);
         _grid.Widgets.Add(_speedLabel);
 
-        _trainList = CreateListGrid(285);
+        _speedPanel = new Grid
+        {
+            Width = 180,
+            Height = 34,
+            ColumnSpacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        _speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        _speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        _speedPanel.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
+        AddSpeedButton(_speedPanel, 0, "x1", 1f);
+        AddSpeedButton(_speedPanel, 1, "x2", 2f);
+        AddSpeedButton(_speedPanel, 2, "x5", 5f);
+        Grid.SetColumn(_speedPanel, 2);
+        Grid.SetRow(_speedPanel, 2);
+        _grid.Widgets.Add(_speedPanel);
+
+        _trainList = CreateListGrid(300);
         AddSection(_grid, "POCIĄGI", _trainList, 0);
-        _toolList = CreateListGrid(300);
-        AddSection(_grid, "NARZĘDZIA", _toolList, 1);
-        _stationList = CreateListGrid(285);
+
+        var toolsSection = new VerticalStackPanel
+        {
+            Width = 280,
+            Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        _toolToggle = new Button
+        {
+            Content = new Label { Text = "NARZĘDZIA  ▼" },
+            Width = 280,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        _toolToggle.Click += (_, _) => ToggleTools();
+        toolsSection.Widgets.Add(_toolToggle);
+
+        _toolContent = new VerticalStackPanel
+        {
+            Width = 280,
+            Spacing = 3,
+            Visible = false,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        toolsSection.Widgets.Add(_toolContent);
+        Grid.SetColumn(toolsSection, 1);
+        Grid.SetRow(toolsSection, 1);
+        _grid.Widgets.Add(toolsSection);
+
+        _stationList = CreateListGrid(300);
         AddSection(_grid, "STACJE", _stationList, 2);
 
         Root = _grid;
@@ -97,13 +134,13 @@ internal sealed class MyraGameplayView
 
     private static void AddSection(Grid parent, string title, Grid content, int column)
     {
-        var section = new Grid { RowSpacing = 3 };
-        section.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        section.RowsProportions.Add(new Proportion(ProportionType.Fill));
-        var label = new Label { Text = title };
-        Grid.SetRow(label, 0);
-        Grid.SetRow(content, 1);
-        section.Widgets.Add(label);
+        var section = new VerticalStackPanel
+        {
+            Spacing = 3,
+            Width = content.Width,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        section.Widgets.Add(new Label { Text = title, HorizontalAlignment = HorizontalAlignment.Left });
         section.Widgets.Add(content);
         Grid.SetColumn(section, column);
         Grid.SetRow(section, 1);
@@ -130,7 +167,7 @@ internal sealed class MyraGameplayView
                 var button = new Button
                 {
                     Content = new Label { Text = $"Pociąg {train.Id.ToString()[..6]}  {train.Speed:0.0} m/s" },
-                    Width = 275,
+                    Width = 290,
                     HorizontalAlignment = HorizontalAlignment.Left
                 };
                 Train selected = train;
@@ -152,7 +189,7 @@ internal sealed class MyraGameplayView
                 var button = new Button
                 {
                     Content = new Label { Text = $"{station.Name}  [{passengers}]" },
-                    Width = 275,
+                    Width = 290,
                     HorizontalAlignment = HorizontalAlignment.Left
                 };
                 Station selected = station;
@@ -163,8 +200,12 @@ internal sealed class MyraGameplayView
             }
         }
 
-        _toolList.Widgets.Clear();
-        _toolList.RowsProportions.Clear();
+        RefreshTools();
+    }
+
+    private void RefreshTools()
+    {
+        _toolContent.Widgets.Clear();
         AddToolButton("Tor prosty", TrackBuildMode.Straight);
         AddToolButton("Zakręt", TrackBuildMode.Curve);
         AddToolButton("Rozjazd", TrackBuildMode.Junction);
@@ -172,6 +213,14 @@ internal sealed class MyraGameplayView
         AddToolButton("Stacja", TrackBuildMode.Station);
         AddToolButton("Depot", TrackBuildMode.Depot);
         AddRouteButton();
+        _toolContent.Visible = _toolsExpanded;
+        _toolToggle.Content = new Label { Text = _toolsExpanded ? "NARZĘDZIA  ▲" : "NARZĘDZIA  ▼" };
+    }
+
+    private void ToggleTools()
+    {
+        _toolsExpanded = !_toolsExpanded;
+        RefreshTools();
     }
 
     private void AddSpeedButton(Grid panel, int column, string text, float speed)
@@ -184,32 +233,26 @@ internal sealed class MyraGameplayView
 
     private void AddToolButton(string text, TrackBuildMode mode)
     {
-        int row = _toolList.Widgets.Count;
         var button = new Button
         {
             Content = new Label { Text = text },
-            Width = 290,
+            Width = 275,
             HorizontalAlignment = HorizontalAlignment.Left
         };
         button.Click += (_, _) => _setBuildMode(mode);
-        Grid.SetRow(button, row);
-        _toolList.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        _toolList.Widgets.Add(button);
+        _toolContent.Widgets.Add(button);
     }
 
     private void AddRouteButton()
     {
-        int row = _toolList.Widgets.Count;
         var button = new Button
         {
             Content = new Label { Text = "Edytuj trasę wagonu (S)" },
-            Width = 290,
+            Width = 275,
             HorizontalAlignment = HorizontalAlignment.Left
         };
         button.Click += (_, _) => _toggleRouteEdit();
-        Grid.SetRow(button, row);
-        _toolList.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        _toolList.Widgets.Add(button);
+        _toolContent.Widgets.Add(button);
     }
 
     private static Grid CreateListGrid(int width)
