@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
+using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Railway
@@ -38,7 +39,7 @@ namespace RailDispatchMono.Core.Game.Railway
         public Train.Train? ReservedFor { get; private set; }
 
         public float Length { get; private set; }
-        public float LengthInMeters => Length * 100f;
+        public float LengthInMeters => SimulationScale.GridToMeters(Length);
 
         public Block? PreviousBlock { get; set; }
         public Block? NextBlock { get; set; }
@@ -108,10 +109,6 @@ namespace RailDispatchMono.Core.Game.Railway
                 StartCooldown();
         }
 
-        /// <summary>
-        /// Kept for API compatibility. Signal aspect changes from Stop to a permissive
-        /// aspect are intentionally manual and are not performed here.
-        /// </summary>
         public void ResetEntrySignals()
         {
         }
