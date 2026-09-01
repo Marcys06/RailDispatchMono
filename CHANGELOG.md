@@ -2,6 +2,21 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4f] — Depot Myra migration
+**Data:** 2026-09-01
+
+- Removed the legacy `DepotTrainMenu` SpriteBatch train-preset UI.
+- Removed the three hardcoded short/standard/long consist presets.
+- Clicking an existing Depot now opens `DepotScreen` directly through `InputManager.DepotSelected`.
+- Depot train creation is fully owned by `MyraDepotView` and `DepotScreen`.
+- Removed the former preset-based `InputManager` train spawning path and its hardcoded EU06-style `VehicleParameters`.
+- `TrainManager.CreateTrainFromComposition()` remains the single train-creation path for Depot consists.
+- Kept the shared single `MyraUIManager` / `Desktop`; no second Myra UI host was introduced.
+- Depot remains a full-screen `GameScreen`; gameplay is covered while the builder is active and the gameplay Myra root is restored on close.
+- Updated documentation baseline to `0.1.4f`.
+- No `current-state` snapshot was created; `0.1.4f` is a lettered development stage.
+- Detailed notes: `docs/changelog/0.1.4f.md`.
+
 ## [0.1.4e] — Rolling stock and Depot train builder
 **Data:** 2026-09-01
 
@@ -66,7 +81,6 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Train/station selection centers the camera on the selected world object.
 - Main Menu → Gameplay Myra lifecycle is corrected.
 - Pause remains a stable `GameplayScreen`-owned state with `MyraPauseView` as its UI surface.
-- Latest developer bugfix is included in this pre-release state.
 - Remaining legacy world-interaction UI is tracked explicitly for future migration.
 
 ## [0.1.3e]
