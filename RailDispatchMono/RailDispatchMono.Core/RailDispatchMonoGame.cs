@@ -43,9 +43,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
-        // ScreenManager can load screens during its own initialization, before
-        // Game.LoadContent() is reached. Myra must therefore receive the Game
-        // instance before the first Myra widget is constructed.
         _myraUI.Initialize(this);
 
         _screenManager = new ScreenManager(this) { TraceEnabled = false };
@@ -78,15 +75,13 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void LoadContent()
     {
-        // Initialize() establishes Myra before ScreenManager can construct any
-        // Myra widgets. Initialize() is idempotent, so this remains safe for
-        // the normal MonoGame content lifecycle.
         _myraUI.Initialize(this);
     }
 
     protected override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
+        _myraUI.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
