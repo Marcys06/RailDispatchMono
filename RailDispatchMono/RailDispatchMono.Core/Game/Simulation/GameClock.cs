@@ -6,6 +6,8 @@ namespace RailDispatchMono.Core.Game.Simulation;
 public sealed class GameClock
 {
     public const double SecondsPerDay = 24d * 60d * 60d;
+    // The existing design intentionally runs the simulation faster than wall-clock time.
+    // x1 = 5 simulation seconds per real second; x2/x5 multiply this baseline.
     public const double BaseTimeScale = 5d;
 
     private double _seconds;
@@ -42,6 +44,10 @@ public sealed class GameClock
         };
     }
 
+    /// <summary>
+    /// Advances the authoritative simulation clock and returns the elapsed
+    /// simulation seconds to be consumed by gameplay systems.
+    /// </summary>
     public float Update(float realDeltaSeconds)
     {
         if (realDeltaSeconds <= 0f) return 0f;
@@ -54,6 +60,6 @@ public sealed class GameClock
             GameDay++;
         }
 
-        return realDeltaSeconds * SimulationSpeed;
+        return (float)clockDelta;
     }
 }
