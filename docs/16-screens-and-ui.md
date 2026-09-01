@@ -1,15 +1,15 @@
 # Screens and UI inventory
 
-The Core screen area contains reusable screen infrastructure and concrete UI/game screens. Myra is now the standard presentation layer for the migrated Main Menu and Pause Menu surfaces.
+The Core screen area contains reusable screen infrastructure and concrete UI/game screens. Standard Myra widgets are now the presentation layer for the migrated application menus.
 
 ## Confirmed concrete screens
 
-- `GameplayScreen` — primary gameplay screen created by `RailDispatchMonoGame` during initialization.
-- `MenuScreen` — menu-oriented screen and legacy lifecycle/input abstraction.
-- `MenuEntry` — menu item/support object retained for compatibility and keyboard/controller routing.
-- `PauseScreen` — pause overlay/screen; its visible menu is presented by Myra.
-- `SettingsScreen` — settings UI, not yet migrated to Myra.
-- `AboutScreen` — about/information UI, not yet migrated to Myra.
+- `GameplayScreen` — primary gameplay screen created by `RailDispatchMonoGame`.
+- `MenuScreen` — legacy menu abstraction retained by other screens; it is no longer the base class of `PauseScreen`.
+- `MenuEntry` — legacy menu item/support object retained where older screens still require it.
+- `PauseScreen` — pause lifecycle and action owner; visible UI is exclusively Myra.
+- `SettingsScreen` — settings logic owner with Myra presentation.
+- `AboutScreen` — about logic owner with Myra presentation.
 - `LoadingScreen` — loading-stage screen.
 - `BackgroundScreen` — background presentation layer.
 - `MessageBoxScreen` — message/dialog overlay; still legacy.
@@ -17,14 +17,14 @@ The Core screen area contains reusable screen infrastructure and concrete UI/gam
 ## Myra surfaces
 
 - `MyraMainMenuView` — centered startup menu containing New Game, Settings, About and Quit.
+- `MyraSettingsView` — settings presentation.
+- `MyraAboutView` — about presentation.
 - `MyraPauseView` — centered pause menu containing Resume, Save, Load and Quit.
 - `MyraUIManager` — owns the shared Myra `Desktop` and active root widget.
 
-The startup Main Menu no longer exposes Load Game. Save/load actions are intentionally grouped with gameplay pause controls.
+The startup Main Menu does not expose Load Game. Save/Load exist only in the pause menu.
 
 ## Screen layering model
-
-The architecture supports multiple screens simultaneously. Typical layering can be represented as:
 
 ```text
 BackgroundScreen
@@ -34,13 +34,19 @@ BackgroundScreen
                  +--> Popup / MessageBox / Pause
 ```
 
-For migrated menus, the visible Myra root is rendered by `RailDispatchMonoGame` after the `ScreenManager` stack. The active screen remains the lifecycle owner and installs/clears the root through `MyraUIManager`.
+For migrated menus, the active screen installs the Myra root during `LoadContent()` and clears it during `UnloadContent()`. The game host renders the shared Myra desktop after the normal `ScreenManager` stack.
 
 ## Input ownership
 
-- Myra Desktop handles pointer interaction for migrated menu widgets.
-- Existing `MenuScreen` handling remains available for keyboard/controller semantics, including `ESC` on pause.
-- A migrated surface must not create a second visible legacy menu for the same actions.
+- Myra Desktop handles pointer interaction for migrated widgets.
+- `PauseScreen` handles only the non-visual pause contract, including `ESC`/controller cancel.
+- `PauseScreen` contains no `MenuEntry` instances and therefore cannot create a second visible legacy pause menu.
+- Gameplay Save/Load is not part of `GameplayScreen.DrawHud()`.
+- Gameplay HUD, railway rendering and radial gameplay tools remain outside Myra unless explicitly migrated later.
+
+## Persistence UI
+
+`MyraPauseView` dispatches Save and Load to `GameplayScreen` through `PauseScreen` callbacks. `MapSaveService` is the persistence boundary; the UI does not implement file I/O.
 
 ## AI rule for UI changes
 
@@ -50,4 +56,5 @@ Before adding a button, menu, dialog or overlay:
 2. inspect the current Myra view pattern before creating another widget tree;
 3. reuse the existing `ScreenManager` and input architecture;
 4. preserve logical 800x480 presentation semantics where legacy UI still depends on them;
-5. keep one clear owner for each visible UI action.
+5. keep one clear owner for each visible UI action;
+6. do not add a legacy fallback UI for a surface already migrated to Myra.
