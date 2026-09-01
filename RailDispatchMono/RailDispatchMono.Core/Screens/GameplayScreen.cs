@@ -12,6 +12,7 @@ using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.Screens.UI;
+using RailDispatchMono.Core.UI.Myra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +30,7 @@ public sealed class GameplayScreen : GameScreen
     private readonly Camera _camera;
     private readonly TrackRenderer _renderer;
     private bool _isPaused;
-    private PauseScreen? _pauseScreen;
+    private MyraPauseView? _pauseView;
     private readonly TrainManager _trainManager;
     private readonly TrainRenderer _trainRenderer;
     private readonly TrainDebugger _trainDebugger;
@@ -159,7 +160,9 @@ public sealed class GameplayScreen : GameScreen
 
         if (_isPaused)
         {
-            _inputManager.Update(gameTime);
+            // Gameplay owns the pause state. No second GameScreen is inserted into
+            // ScreenManager, so the normal gameplay input stack cannot be blocked by
+            // a popup screen. Myra remains the only visible pause UI.
             _previousKeyboard = keyboard;
             _previousMouse = Mouse.GetState();
             return;
@@ -206,20 +209,20 @@ public sealed class GameplayScreen : GameScreen
         if (_isPaused)
             return;
 
-        DebugManager.Log("[PAUSE] PauseGame() called");
+        if (ScreenManager?.Game is not RailDispatchMonoGame game)
+            return;
+
+        DebugManager.Log("[PAUSE] Entering pause state");
         _isPaused = true;
 
-        _pauseScreen = new PauseScreen(_mapSaveService.Exists);
-        _pauseScreen.OnResume += (_, _) => TogglePause();
-        _pauseScreen.OnSave += (_, _) => SaveMap();
-        _pauseScreen.OnLoad += (_, _) => LoadMap();
-        _pauseScreen.OnQuit += (_, _) => QuitToMainMenu();
+        _pauseView = new MyraPauseView(
+            () => game.MyraUI.QueueAction(ResumeGame),
+            () => game.MyraUI.QueueAction(SaveMap),
+            () => game.MyraUI.QueueAction(LoadMap),
+            () => game.MyraUI.QueueAction(ShowQuitConfirmation),
+            _mapSaveService.Exists);
 
-        if (ScreenManager != null)
-        {
-            DebugManager.Log("[PAUSE] Adding PauseScreen to ScreenManager");
-            ScreenManager.AddScreen(_pauseScreen, null);
-        }
+        game.MyraUI.SetRoot(_pauseView.Root);
     }
 
     private void ResumeGame()
@@ -227,12 +230,12 @@ public sealed class GameplayScreen : GameScreen
         if (!_isPaused)
             return;
 
+        DebugManager.Log("[PAUSE] Leaving pause state");
         _isPaused = false;
-        if (_pauseScreen != null && ScreenManager != null)
-        {
-            ScreenManager.RemoveScreen(_pauseScreen);
-            _pauseScreen = null;
-        }
+        _pauseView = null;
+
+        if (ScreenManager?.Game is RailDispatchMonoGame game)
+            game.MyraUI.Clear();
     }
 
     private bool HandleHudInput()
@@ -308,9 +311,7 @@ public sealed class GameplayScreen : GameScreen
         }
 
         if (PanelBounds.Contains(mouse.Position))
-        {
             return true;
-        }
 
         return false;
     }
@@ -405,6 +406,8 @@ public sealed class GameplayScreen : GameScreen
         {
             _mapSaveService.Save(_map, _signalController, _trainManager.StationController, _depotController);
             _floatingText.Add("ZAPISANO", _camera.Position);
+            _pauseView?.SetLoadEnabled(true);
+            DebugManager.Log("[PAUSE] Game saved");
         }
         catch (Exception ex)
         {
@@ -424,11 +427,29 @@ public sealed class GameplayScreen : GameScreen
             _spawnArmed = false;
             _floatingText.Add("WCZYTANO", _camera.Position);
             SnapshotWagonPassengers();
+            DebugManager.Log("[PAUSE] Game loaded");
         }
         catch (Exception ex)
         {
             DebugManager.Log("[LOAD] " + ex);
         }
+    }
+
+    private void ShowQuitConfirmation()
+    {
+        MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen(Localization.Resources.QuitQuestion);
+        confirmQuitMessageBox.Accepted += ConfirmQuitMessageBoxAccepted;
+        confirmQuitMessageBox.Cancelled += ConfirmQuitMessageBoxCancelled;
+        ScreenManager.AddScreen(confirmQuitMessageBox, null);
+    }
+
+    private void ConfirmQuitMessageBoxAccepted(object? sender, PlayerIndexEventArgs e)
+    {
+        QuitToMainMenu();
+    }
+
+    private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e)
+    {
     }
 
     private void QuitToMainMenu()
