@@ -2,58 +2,46 @@
 
 ## Purpose
 
-The `docs/` directory is part of the development infrastructure. Its purpose is to preserve architectural context that is otherwise easy for an AI agent to lose between tasks.
+The `docs/` directory preserves architectural context and development rules. Release history is maintained separately in `CHANGELOG.md` and `docs/changelog/`.
 
 ## Current baseline
 
-The current release baseline is `0.1.2a`, the first infrastructure stage of the Myra UI integration series.
+The current project baseline is `0.1.3pre`.
 
-Current-state documentation must describe the executable latest lettered stage. Historical documents and versioned changelogs retain their original version identifiers and must not be rewritten as current-state documentation.
+Only pre-release milestones receive current-state snapshots:
+
+- `19-current-state-0.1.2pre.md`
+- `20-current-state-0.1.3pre.md`
+
+Lettered stages do not receive current-state files.
 
 ## Documentation locations
 
-- `docs/*.md` — maintained architecture, domain, workflow, AI and current-state documentation.
+- `docs/*.md` — maintained architecture, domain, workflow and AI documentation plus the two pre-release snapshots.
 - `docs/changelog/*.md` — detailed historical release notes.
 - `CHANGELOG.md` — high-level release history.
 
-There is one canonical documentation tree. Do not create another `Docs` directory under a project or Core directory.
-
 ## When to update documentation
 
-Update documentation whenever a change affects project structure, dependency direction, application lifecycle, screen lifecycle or routing, input semantics, coordinate systems, settings or persistence, localization, content loading/assets, platform bootstrapping, domain ownership, public APIs used across subsystems, save format or release scope.
-
-For `0.1.2`, every lettered stage must update the relevant current-state documentation when its architecture or dependency boundary changes.
+Update maintained documentation when a change affects project structure, dependencies, lifecycle, screen routing, input semantics, coordinate systems, settings/persistence, localization, content loading, platform bootstrapping, domain ownership or public contracts. Every release change also gets a changelog entry.
 
 ## Change discipline
 
-Documentation changes must preserve historical release information. Do not delete old changelog files merely because the current baseline has advanced.
-
-A `0.1.2x` stage is immutable after commit. If a stage needs correction, create the next lettered stage and document the correction there.
+Historical lettered stages remain immutable. Do not create current-state snapshots for lettered stages. The next `pre` milestone becomes the next authoritative current-state snapshot.
 
 ## Audit procedure
 
-For a substantial code change:
+For a substantial change:
 
-1. read the target implementation;
+1. inspect implementation;
 2. search usages;
 3. inspect affected platform projects;
-4. verify the actual public/internal API before changing callers;
-5. update the relevant current-state document;
-6. update `docs/00-index.md` if the documentation map or current baseline changed;
-7. add a detailed entry under `docs/changelog/` for a release change;
-8. update `CHANGELOG.md` for the high-level release history;
-9. add a caution entry if the change introduces a non-obvious lifecycle or compatibility constraint.
+4. verify APIs;
+5. update affected maintained docs;
+6. update `docs/00-index.md` if the documentation map changes;
+7. add detailed release notes under `docs/changelog/`;
+8. update `CHANGELOG.md`.
 
 ## AI handoff
 
-An AI agent entering the repository should read, in order:
-
-1. `docs/00-index.md`
-2. `docs/01-project-overview.md`
-3. `docs/03-architecture.md`
-4. `docs/04-runtime-lifecycle.md`
-5. `docs/05-screen-system.md`
-6. `docs/11-ai-agent-rules.md`
-7. `docs/15-ai-context.md`
-
-Then read the subsystem-specific document relevant to the task.
+Start with `docs/00-index.md`, then read architecture/lifecycle/screen/AI documents relevant to the task and the current `pre` snapshot.
