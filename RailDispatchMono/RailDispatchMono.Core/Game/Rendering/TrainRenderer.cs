@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Rendering;
@@ -50,8 +49,6 @@ public sealed class TrainRenderer
                 ? Color.Red
                 : Color.Blue;
 
-            float worldLength = vehicle.Parameters.Length / SimulationScale.MetersPerGridCell;
-
             spriteBatch.Draw(
                 _pixel,
                 position,
@@ -59,7 +56,7 @@ public sealed class TrainRenderer
                 color,
                 angle,
                 origin,
-                new Vector2(worldLength, vehicleWidth),
+                new Vector2(vehicle.Parameters.Length, vehicleWidth),
                 SpriteEffects.None,
                 0f);
         }
