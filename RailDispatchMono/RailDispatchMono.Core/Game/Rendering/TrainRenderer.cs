@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Rendering;
@@ -35,7 +36,6 @@ public sealed class TrainRenderer
         if (_pixel is null)
             return;
 
-        const float vehicleWidth = 0.45f;
         var origin = new Vector2(0.5f, 0.5f);
         var positions = train.GetVehiclePositions();
 
@@ -49,6 +49,9 @@ public sealed class TrainRenderer
                 ? Color.Red
                 : Color.Blue;
 
+            float worldLength = vehicle.Parameters.Length / SimulationScale.MetersPerGridCell;
+            float worldWidth = vehicle.Parameters.Width / SimulationScale.MetersPerGridCell;
+
             spriteBatch.Draw(
                 _pixel,
                 position,
@@ -56,15 +59,11 @@ public sealed class TrainRenderer
                 color,
                 angle,
                 origin,
-                new Vector2(vehicle.Parameters.Length, vehicleWidth),
+                new Vector2(worldLength, worldWidth),
                 SpriteEffects.None,
                 0f);
         }
     }
-
-    // ============================================================
-    // VEHICLE PICKING
-    // ============================================================
 
     public (Train.Train train, int vehicleIndex, Vector2 worldPosition)? GetVehicleAtPosition(
         TrainManager trainManager,
