@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.3b] — Gameplay HUD layout polish
+**Data:** 2026-09-01
+
+- Reworked the gameplay tool panel into a collapsible Myra section.
+- Moved the `x1` / `x2` / `x5` simulation controls to the bottom-right corner of the HUD.
+- Kept the speed controls fully functional through the existing simulation clock.
+- Tightened HUD spacing, widths and alignment to reduce visual drift between panels.
+- Kept the simulation clock and `GameDay` presentation unchanged because their current layout is acceptable.
+- Kept the existing train and station list functionality unchanged.
+
+`0.1.3b` is a visual/layout follow-up to `0.1.3a`; it does not introduce a new gameplay architecture.
+
 ## [0.1.3a] — Myra Gameplay UI
 **Data:** 2026-09-01
 
