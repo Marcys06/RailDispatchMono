@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.2a`**  
+**Documentation baseline: `0.1.2c`**  
 **Status: current documentation set**
 
 This directory is intentionally limited to a compact set of authoritative documents. Historical release details belong in `docs/changelog/` and are not duplicated here.
@@ -25,7 +25,7 @@ This directory is intentionally limited to a compact set of authoritative docume
 16. [16-screens-and-ui.md](16-screens-and-ui.md) — current UI/screen inventory.
 17. [17-game-map-and-geometry.md](17-game-map-and-geometry.md) — map and geometry rules.
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
-19. [19-current-state-0.1.2a.md](19-current-state-0.1.2a.md) — authoritative current-state snapshot.
+19. [19-current-state-0.1.2a.md](19-current-state-0.1.2a.md) — historical 0.1.2a snapshot; current state is maintained in the latest lettered changelog and AI context.
 
 ## Version policy
 
