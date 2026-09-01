@@ -53,7 +53,6 @@ internal sealed class MyraGameplayView
         root.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
         root.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
 
-        // ===== LEWA STRONA =====
         _left = new Grid
         {
             Width = 300,
@@ -64,7 +63,6 @@ internal sealed class MyraGameplayView
         for (int i = 0; i < 4; i++)
             _left.RowsProportions.Add(new Proportion(ProportionType.Auto));
 
-        // Zegar
         var clock = new VerticalStackPanel
         {
             Width = 280,
@@ -78,7 +76,6 @@ internal sealed class MyraGameplayView
         Grid.SetRow(clock, 0);
         _left.Widgets.Add(clock);
 
-        // Przyciski prędkości
         _speedGrid = new Grid
         {
             Width = 280,
@@ -86,8 +83,6 @@ internal sealed class MyraGameplayView
             ColumnSpacing = 4,
             HorizontalAlignment = HorizontalAlignment.Left
         };
-
-        // ✅ Poprawne proporcje – Part z wagą zamiast Pixel
         _speedGrid.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
         _speedGrid.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
         _speedGrid.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
@@ -98,16 +93,14 @@ internal sealed class MyraGameplayView
         Grid.SetRow(_speedGrid, 1);
         _left.Widgets.Add(_speedGrid);
 
-        // Etykieta prędkości
         _speedLabel = new Label
         {
-            Text = "Prędkość: x1",
+            Text = "Prędkość symulacji: x1",
             HorizontalAlignment = HorizontalAlignment.Left
         };
         Grid.SetRow(_speedLabel, 2);
         _left.Widgets.Add(_speedLabel);
 
-        // Narzędzia
         var tools = new VerticalStackPanel
         {
             Width = 280,
@@ -138,7 +131,6 @@ internal sealed class MyraGameplayView
         Grid.SetRow(_left, 0);
         root.Widgets.Add(_left);
 
-        // ===== PRAWA STRONA =====
         _right = new Grid
         {
             Width = 360,
@@ -171,11 +163,7 @@ internal sealed class MyraGameplayView
             Spacing = 3,
             HorizontalAlignment = HorizontalAlignment.Left
         };
-        section.Widgets.Add(new Label
-        {
-            Text = title,
-            HorizontalAlignment = HorizontalAlignment.Left
-        });
+        section.Widgets.Add(new Label { Text = title, HorizontalAlignment = HorizontalAlignment.Left });
         section.Widgets.Add(content);
         Grid.SetRow(section, row);
         parent.Widgets.Add(section);
@@ -188,7 +176,7 @@ internal sealed class MyraGameplayView
         {
             _clockLabel.Text = clock.DisplayTime;
             _dayLabel.Text = $"Dzień {clock.GameDay}";
-            _speedLabel.Text = $"Prędkość: x{clock.SimulationSpeed:0}";
+            _speedLabel.Text = $"Prędkość symulacji: x{clock.SimulationSpeed:0}";
         }
         RebuildLists();
         RebuildTools();
@@ -204,15 +192,14 @@ internal sealed class MyraGameplayView
         var manager = TrainManager.Current;
         if (manager == null) return;
 
-        // Pociągi
         foreach (var train in manager.Trains.Take(10))
         {
+            float speedKmh = train.Speed * 3.6f;
             AddListButton(_trainList,
-                $"Pociąg {train.Id.ToString()[..6]}  {train.Speed:0.0} m/s",
+                $"Pociąg {train.Id.ToString()[..6]}  {speedKmh:0.0} km/h",
                 () => _focusTrain(train));
         }
 
-        // Stacje
         foreach (var station in manager.StationController.Stations.Take(10))
         {
             int passengers = manager.StationController.Passengers.GetWaitingCount(station);
@@ -225,7 +212,6 @@ internal sealed class MyraGameplayView
     private void RebuildTools()
     {
         _toolContent.Widgets.Clear();
-
         AddToolButton("Tor prosty", TrackBuildMode.Straight);
         AddToolButton("Zakręt", TrackBuildMode.Curve);
         AddToolButton("Rozjazd", TrackBuildMode.Junction);
@@ -235,10 +221,7 @@ internal sealed class MyraGameplayView
         AddRouteButton();
 
         _toolContent.Visible = _toolsExpanded;
-        _toolToggle.Content = new Label
-        {
-            Text = _toolsExpanded ? "NARZĘDZIA  ▲" : "NARZĘDZIA  ▼"
-        };
+        _toolToggle.Content = new Label { Text = _toolsExpanded ? "NARZĘDZIA  ▲" : "NARZĘDZIA  ▼" };
     }
 
     private void ToggleTools()
@@ -299,10 +282,6 @@ internal sealed class MyraGameplayView
 
     private static Grid CreateListGrid(int width)
     {
-        return new Grid
-        {
-            Width = width,
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
+        return new Grid { Width = width, HorizontalAlignment = HorizontalAlignment.Left };
     }
 }
