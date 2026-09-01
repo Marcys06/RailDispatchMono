@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.2j`**  
+**Documentation baseline: `0.1.2pre`**  
 **Status: current documentation set**
 
 This directory is intentionally limited to a compact set of authoritative documents. Historical release details belong in `docs/changelog/` and are not duplicated here.
@@ -25,15 +25,16 @@ This directory is intentionally limited to a compact set of authoritative docume
 16. [16-screens-and-ui.md](16-screens-and-ui.md) — current UI/screen inventory.
 17. [17-game-map-and-geometry.md](17-game-map-and-geometry.md) — map and geometry rules.
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
-19. [19-current-state-0.1.2j.md](19-current-state-0.1.2j.md) — authoritative current-state snapshot.
+19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — authoritative current-state snapshot.
 
 ## Version policy
 
 - `0.1.0` is the feature-complete gameplay baseline.
 - `0.1.1` restructured the documentation set.
-- `0.1.2` is the Myra UI integration series; each `0.1.2x` letter is an independent incremental stage.
-- `0.1.2j` is the final Myra integration stage of this series.
-- A failed `0.1.2x` stage is not rewritten in place. Fixes are introduced by the next lettered stage.
+- `0.1.2` is the Myra UI integration series; each `0.1.2x` letter is an independent historical stage.
+- `0.1.2pre` is the current stabilization preview following the immutable `0.1.2a`–`0.1.2k` stages.
+- Failed lettered stages are not rewritten in place. Corrections belong to a later stage or preview.
+- If a historical commit has no reliable functional description, document it as `bugfix` rather than inferring behavior.
 - From `0.1.x` onward, preserve existing APIs and architecture unless the task explicitly requires a reviewed change.
 
 ## Source of truth
