@@ -1,16 +1,13 @@
 using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
+using RailDispatchMono.Core.Game.Simulation;
 using System;
 
 namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
-    // ============================================================
-    // UPDATE
-    // ============================================================
-
     public void Update(float deltaTime)
     {
         if (deltaTime <= 0.0f || !CanMove || _map is null)
@@ -20,16 +17,6 @@ public sealed partial class Train
             $"[TRAIN] ?? START - Pos: ({Position.X:F4}, {Position.Y:F4}), " +
             $"Dir: {Direction}, Speed: {Speed:F2} m/s ({Speed * 3.6f:F1} km/h)");
 
-        // ============================================================
-        // ? KROK 1: ZAKTUALIZUJ SYSTEM BLOKOWY PRZED SYGNA£AMI
-        // ============================================================
-        // Dziêki temu semafory s¹ aktualne, zanim poci¹g sprawdzi sygna³.
-        // Poci¹g zobaczy Stop, zanim wjedzie na zajêty blok.
-        // ============================================================
-    
-        // ============================================================
-        // KROK 2: SPRAWD SYGNA£Y
-        // ============================================================
         var nextSignal = GetNextSignal();
         if (nextSignal != null)
         {
@@ -39,9 +26,6 @@ public sealed partial class Train
 
         _targetSpeed = _lastSignalSpeed;
 
-        // ============================================================
-        // KROK 3: OBLICZ PARAMETRY JAZDY
-        // ============================================================
         float maxSpeed = float.MaxValue;
         float maxAcceleration = 0f;
         float maxBraking = 0f;
@@ -59,9 +43,6 @@ public sealed partial class Train
 
         float decelerationRate = maxBraking > 0 ? maxBraking : 20.0f;
 
-        // ============================================================
-        // KROK 4: ZMIEÑ PRÊDKOŒÆ
-        // ============================================================
         if (Speed < _targetSpeed)
         {
             Speed = Math.Min(
@@ -77,17 +58,12 @@ public sealed partial class Train
             );
         }
 
-        // ============================================================
-        // KROK 5: WYKONAJ RUCH
-        // ============================================================
-        float distance = Speed * deltaTime;
+        // Speed is stored in physical m/s. World movement is measured in grid cells,
+        // so convert metres to cells at the single authoritative spatial boundary.
+        float distance = SimulationScale.MetersToGrid(Speed * deltaTime);
         if (distance > MovementEpsilon)
             Move(distance);
     }
-
-    // ============================================================
-    // MOVE - G£ÓWNA LOGIKA
-    // ============================================================
 
     private void Move(float distance)
     {
@@ -149,9 +125,6 @@ public sealed partial class Train
 
             TrackConnections entrySide = GetOppositeDirection(Direction);
 
-            // ============================================================
-            // OBS£UGA ROZJAZDU (JUNCTION)
-            // ============================================================
             if (track.Geometry == TrackGeometry.Junction)
             {
                 if (!HandleJunction(track, currentCell, entrySide, ref remaining))
@@ -159,9 +132,6 @@ public sealed partial class Train
                 continue;
             }
 
-            // ============================================================
-            // OBS£UGA ZAKRÊTU (CURVE)
-            // ============================================================
             if (track.Geometry == TrackGeometry.Curve)
             {
                 TrackConnections exitSide = GetCurveExitDirection(track.Connections, entrySide);
@@ -181,25 +151,16 @@ public sealed partial class Train
                 }
             }
 
-            // ============================================================
-            // OBS£UGA TORU PROSTEGO (STRAIGHT)
-            // ============================================================
             if (!HandleStraight(currentCell, ref remaining))
                 break;
         }
     }
 
-    // ============================================================
-    // STRAIGHT MOVEMENT
-    // ============================================================
-
     private bool HandleStraight(MapPosition currentCell, ref float remaining)
     {
         if (_map is null) return false;
-
         if (!_map.TryGetTrack(currentCell, out TrackCell? track) || track is null)
             return false;
-
         if (!track.HasConnection(Direction))
         {
             DebugManager.Log($"[STRAIGHT] No connection {Direction} at {currentCell} - stopping");
@@ -208,11 +169,8 @@ public sealed partial class Train
         }
 
         float distanceToBoundary = GetDistanceToBoundary();
-
         if (distanceToBoundary <= MovementEpsilon)
-        {
             return EnterNextCell();
-        }
 
         float step = MathF.Min(remaining, distanceToBoundary);
         if (step < MovementEpsilon)
@@ -228,7 +186,7 @@ public sealed partial class Train
         {
             if (!EnterNextCell())
             {
-                DebugManager.Log($"[STRAIGHT] Cannot enter next cell after boundary - stopping");
+                DebugManager.Log("[STRAIGHT] Cannot enter next cell after boundary - stopping");
                 _speed = 0;
                 return false;
             }
@@ -256,7 +214,6 @@ public sealed partial class Train
         }
 
         Position = newPos;
-
         DebugManager.Log(
             $"[STRAIGHT] Dir:{Direction} Dist:{distance:F6} " +
             $"Old:({oldPos.X:F4},{oldPos.Y:F4}) New:({Position.X:F4},{Position.Y:F4})");
@@ -266,16 +223,10 @@ public sealed partial class Train
         AddTrajectoryPoint(Position, distance);
     }
 
-    // ============================================================
-    // JUNCTION HANDLING
-    // ============================================================
-
     private bool HandleJunction(TrackCell track, MapPosition currentCell, TrackConnections entrySide, ref float remaining)
     {
         DebugManager.Log($"[JUNCTION] Entering {currentCell}, Dir: {Direction}, Entry: {entrySide}");
-
         TrackConnections exitSide = track.GetExitDirection(entrySide);
-
         if (exitSide == TrackConnections.None)
         {
             DebugManager.Log($"[JUNCTION] No exit from {entrySide} - stopping");
@@ -284,7 +235,6 @@ public sealed partial class Train
         }
 
         DebugManager.Log($"[JUNCTION] Exit: {exitSide}, Switch: {track.CurrentSwitchPosition}");
-
         bool isTurning = IsPerpendicular(entrySide, exitSide);
 
         if (isTurning)
@@ -292,7 +242,7 @@ public sealed partial class Train
             DebugManager.Log($"[JUNCTION] Turning {entrySide} -> {exitSide} - entering curve");
             if (!EnterCurve(track, entrySide, exitSide))
             {
-                DebugManager.Log($"[JUNCTION] Failed to enter curve - stopping");
+                DebugManager.Log("[JUNCTION] Failed to enter curve - stopping");
                 _speed = 0;
                 return false;
             }
@@ -301,7 +251,6 @@ public sealed partial class Train
 
         Direction = exitSide;
         DebugManager.Log($"[JUNCTION] Going straight, new direction: {Direction}");
-
         Vector2 exitPos = GetPositionAtEntry(currentCell, exitSide);
         float transitionDist = Vector2.Distance(Position, exitPos);
 
@@ -314,18 +263,12 @@ public sealed partial class Train
 
         Position = exitPos;
         remaining -= transitionDist;
-
         return EnterNextCell();
     }
-
-    // ============================================================
-    // CURVE ENTRY
-    // ============================================================
 
     private bool EnterCurve(TrackCell track)
     {
         TrackConnections entrySide = GetOppositeDirection(Direction);
-
         if (!track.HasConnection(entrySide))
             return false;
 
@@ -333,10 +276,7 @@ public sealed partial class Train
             ? track.GetExitDirection(entrySide)
             : GetCurveExitDirection(track.Connections, entrySide);
 
-        if (exitSide == TrackConnections.None)
-            return false;
-
-        if (!IsPerpendicular(entrySide, exitSide))
+        if (exitSide == TrackConnections.None || !IsPerpendicular(entrySide, exitSide))
             return false;
 
         return EnterCurve(track, entrySide, exitSide);
@@ -346,13 +286,10 @@ public sealed partial class Train
     {
         MapPosition cell = track.Position;
         Direction = exitSide;
-
         _curveCell = cell;
         _curveEntrySide = entrySide;
         _curveExitSide = exitSide;
-
         SetupArcParams(cell, entrySide, exitSide);
-
         _curveLength = DefaultCurveLength;
         _curveDistance = 0.0f;
         _isOnCurve = true;
@@ -360,20 +297,13 @@ public sealed partial class Train
         DebugManager.Log(
             $"[CURVE] Enter cell:{cell} Entry:{entrySide} Exit:{exitSide} " +
             $"Center:{_arcCenter} Start:{_arcStartAngle:F4} Sweep:{_arcSweepAngle:F4} Length:{_curveLength:F4}");
-
         return true;
     }
-
-    // ============================================================
-    // CURVE MOVEMENT
-    // ============================================================
 
     private void MoveOnCurve(ref float remaining)
     {
         if (!_isOnCurve) return;
-
         float remainingOnCurve = _curveLength - _curveDistance;
-
         if (remainingOnCurve <= MovementEpsilon)
         {
             FinishCurve();
@@ -381,7 +311,6 @@ public sealed partial class Train
         }
 
         float step = MathF.Min(remaining, remainingOnCurve);
-
         if (step <= MovementEpsilon)
         {
             FinishCurve();
@@ -390,10 +319,8 @@ public sealed partial class Train
 
         _curveDistance += step;
         remaining -= step;
-
         float progress = MathHelper.Clamp(_curveDistance / _curveLength, 0.0f, 1.0f);
         Position = GetArcPosition(progress);
-
         TotalDistance += step;
         DistanceAlongTrack += step;
         AddTrajectoryPoint(Position, step);
@@ -406,10 +333,6 @@ public sealed partial class Train
         }
     }
 
-    // ============================================================
-    // FINISH CURVE
-    // ============================================================
-
     private void FinishCurve()
     {
         if (!_isOnCurve) return;
@@ -417,7 +340,6 @@ public sealed partial class Train
         MapPosition savedCurveCell = _curveCell;
         TrackConnections savedExitSide = _curveExitSide;
         float savedCurveDistance = _curveDistance;
-
         Position = GetArcPosition(1.0f);
         Direction = _curveExitSide;
 
@@ -426,30 +348,24 @@ public sealed partial class Train
             $"Exit:{savedExitSide} CurveDistance:{savedCurveDistance:F6}");
 
         ResetCurveState();
-
         if (_map is null) return;
 
         MapPosition nextCell = GetNextCell(savedCurveCell, savedExitSide);
-
         if (_map.TryGetTrack(nextCell, out TrackCell? nextTrack) && nextTrack != null)
         {
             TrackConnections entrySide = GetOppositeDirection(savedExitSide);
-
             if (nextTrack.HasConnection(entrySide))
             {
                 Vector2 oldPos = Position;
                 Vector2 entryPos = GetPositionAtEntry(nextCell, savedExitSide);
                 float transitionDistance = Vector2.Distance(oldPos, entryPos);
-
                 if (transitionDistance > MovementEpsilon)
                 {
                     AddTrajectoryPoint(entryPos, transitionDistance);
                     TotalDistance += transitionDistance;
                     DistanceAlongTrack += transitionDistance;
                 }
-
                 Position = entryPos;
-
                 DebugManager.Log(
                     $"[FINISH CURVE] Entered {nextCell}, " +
                     $"curve distance: {savedCurveDistance:F6}, " +
@@ -458,22 +374,13 @@ public sealed partial class Train
         }
     }
 
-    // ============================================================
-    // GRID TRANSITIONS
-    // ============================================================
-
     private bool EnterNextCell()
     {
         if (_map is null) return false;
-
         MapPosition currentCell = GetCurrentCell();
         MapPosition nextCell = GetNextCell(currentCell, Direction);
-
-        DebugManager.Log(
-            $"[ENTER] Current:{currentCell} Next:{nextCell} Dir:{Direction} Pos:{Position}");
-
+        DebugManager.Log($"[ENTER] Current:{currentCell} Next:{nextCell} Dir:{Direction} Pos:{Position}");
         if (currentCell == nextCell) return false;
-
         if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
         {
             DebugManager.Log($"[ENTER] No track at {nextCell}");
@@ -481,7 +388,6 @@ public sealed partial class Train
         }
 
         TrackConnections entrySide = GetOppositeDirection(Direction);
-
         if (!nextTrack.HasConnection(entrySide))
         {
             DebugManager.Log($"[ENTER] No connection {entrySide} at {nextCell}");
@@ -489,7 +395,6 @@ public sealed partial class Train
         }
 
         TrackConnections exitSide = nextTrack.GetExitDirection(entrySide);
-
         if (exitSide == TrackConnections.None)
         {
             DebugManager.Log($"[ENTER] No exit path available from {entrySide} at {nextCell}");
@@ -497,17 +402,12 @@ public sealed partial class Train
         }
 
         if (IsPerpendicular(entrySide, exitSide))
-        {
             return EnterCurve(nextTrack, entrySide, exitSide);
-        }
 
         Direction = exitSide;
-
         Vector2 entryPos = GetPositionAtEntry(nextCell, Direction);
-
         Vector2 oldPos = Position;
         float actualDistance = Vector2.Distance(oldPos, entryPos);
-
         DebugManager.Log($"[ENTER] OldPos:{oldPos} NewPos:{entryPos} Distance:{actualDistance:F6}");
 
         if (actualDistance > MovementEpsilon)
