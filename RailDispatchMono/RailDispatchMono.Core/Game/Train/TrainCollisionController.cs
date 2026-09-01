@@ -9,11 +9,11 @@ namespace RailDispatchMono.Core.Game.Train;
 /// Minimal first-generation train collision protection.
 /// A train is protected by its next matching signal when that signal is reached
 /// before the other train on the currently selected track path. Without such a
-/// signal, another train inside the two-cell safety distance causes RadioStop.
+/// signal, another train inside the three-cell safety distance causes RadioStop.
 /// </summary>
 public sealed class TrainCollisionController
 {
-    private const float SafetyDistanceCells = 2f;
+    private const float SafetyDistanceCells = 3f;
     private readonly GameMap _map;
     private readonly TrainManager _trains;
 
@@ -39,7 +39,7 @@ public sealed class TrainCollisionController
         if (ContainsAnotherTrain(current, train))
             return true;
 
-        for (int step = 0; step < 4; step++)
+        for (int step = 0; step < 5; step++)
         {
             if (!visited.Add(current))
                 return false;
