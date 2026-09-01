@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4b] — Simulation scale and simulation clock
+**Data:** 2026-09-01
+
+- Added centralized `SimulationScale` with `1 grid cell = 10 metres`.
+- Train physical speeds remain in m/s; movement converts metres to grid cells through the central scale.
+- Train vehicle positions and rendered vehicle lengths use the same spatial scale.
+- Signal braking distances are converted from route cells to metres before physical braking calculations.
+- Block metre lengths now use the centralized spatial scale.
+- `GameClock.Update()` now returns simulation elapsed time rather than raw real elapsed time.
+- Gameplay systems consume the authoritative simulation delta, so train acceleration, braking and movement follow the same x1/x2/x5 time scale as the simulation clock.
+- Detailed notes: `docs/changelog/0.1.4b.md`.
+
 ## [0.1.4a] — Train and semaphore mechanics
 **Data:** 2026-09-01
 
