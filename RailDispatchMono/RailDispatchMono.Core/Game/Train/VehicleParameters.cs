@@ -27,8 +27,11 @@ public class VehicleParameters
     /// <summary>Original braking coefficient d before the mass/condition model.</summary>
     public float BrakingCoefficient { get; }
 
-    // 0.1.4c: soften both acceleration and braking so train reactions are less abrupt.
-    private const float DynamicResponseScale = 0.5f;
+    // 0.1.4c: acceleration remains at the previously accepted 50% response.
+    private const float AccelerationResponseScale = 0.5f;
+
+    // 0.1.4c: braking reduced by another 30% from the previous 50% response.
+    private const float BrakingResponseScale = 0.35f;
 
     public VehicleParameters(
         float maxSpeed,
@@ -49,8 +52,8 @@ public class VehicleParameters
         AccelerationCoefficient = Math.Max(0f, acceleration);
         BrakingCoefficient = Math.Max(0f, (braking > 10f ? braking / 100f : braking) * 20.0f);
 
-        Acceleration = CalculateRate(AccelerationCoefficient) * DynamicResponseScale;
-        Braking = CalculateRate(BrakingCoefficient) * DynamicResponseScale;
+        Acceleration = CalculateRate(AccelerationCoefficient) * AccelerationResponseScale;
+        Braking = CalculateRate(BrakingCoefficient) * BrakingResponseScale;
     }
 
     /// <summary>
