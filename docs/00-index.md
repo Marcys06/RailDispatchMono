@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.4e`**  
+**Documentation baseline: `0.1.4f`**  
 **Status: current documentation set**
 
 This directory contains the authoritative project documentation. Historical release changes belong in `docs/changelog/` and are not duplicated in current-state snapshots.
@@ -34,7 +34,7 @@ This directory contains the authoritative project documentation. Historical rele
 - `0.1.2pre` is the authoritative stabilization snapshot for the 0.1.2 series.
 - `0.1.3a`–`0.1.3e` are immutable historical development stages.
 - `0.1.3pre` is the authoritative snapshot for the 0.1.3 series.
-- `0.1.4a`–`0.1.4e` are immutable lettered development stages recorded in changelogs.
+- `0.1.4a`–`0.1.4f` are immutable lettered development stages recorded in changelogs.
 - Lettered development stages do not receive separate current-state files.
 - Historical changes are documented in `CHANGELOG.md` and `docs/changelog/`.
 - If a historical commit has no reliable functional description, document it as `bugfix` rather than inventing behavior.
