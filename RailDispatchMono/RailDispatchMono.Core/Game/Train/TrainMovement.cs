@@ -8,6 +8,8 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
+    private const float MassResistanceExponent = 1.30f;
+
     public void Update(float deltaTime)
     {
         if (deltaTime <= 0.0f || !CanMove || _map is null)
@@ -27,26 +29,38 @@ public sealed partial class Train
         _targetSpeed = _lastSignalSpeed;
 
         float maxSpeed = float.MaxValue;
-        float maxAcceleration = 0f;
-        float maxBraking = 0f;
+        float baseAcceleration = 0f;
+        float baseBraking = 0f;
 
         foreach (var vehicle in Composition.Vehicles)
         {
             var p = vehicle.Parameters;
             if (p.MaxSpeed < maxSpeed)
                 maxSpeed = p.MaxSpeed;
-            if (p.Acceleration > maxAcceleration)
-                maxAcceleration = p.Acceleration;
-            if (p.Braking > maxBraking)
-                maxBraking = p.Braking;
         }
 
-        float decelerationRate = maxBraking > 0 ? maxBraking : 20.0f;
+        // Traction/braking capability comes from the locomotive. Additional mass
+        // reduces both rates using a non-linear 1.30 power law. This is deliberately
+        // stronger than a linear inverse-mass relationship while preserving the
+        // locomotive-only baseline.
+        var locomotive = Composition.Locomotive;
+        if (locomotive != null)
+        {
+            baseAcceleration = locomotive.Parameters.Acceleration;
+            baseBraking = locomotive.Parameters.Braking;
+        }
+
+        float massFactor = GetMassPerformanceFactor();
+        float accelerationRate = baseAcceleration * massFactor;
+        float decelerationRate = baseBraking * massFactor;
+
+        if (decelerationRate <= 0f)
+            decelerationRate = 20.0f;
 
         if (Speed < _targetSpeed)
         {
             Speed = Math.Min(
-                Speed + maxAcceleration * deltaTime,
+                Speed + accelerationRate * deltaTime,
                 Math.Min(_targetSpeed, maxSpeed)
             );
         }
@@ -63,6 +77,22 @@ public sealed partial class Train
         float distance = SimulationScale.MetersToGrid(Speed * deltaTime);
         if (distance > MovementEpsilon)
             Move(distance);
+    }
+
+    private float GetMassPerformanceFactor()
+    {
+        var locomotive = Composition.Locomotive;
+        if (locomotive == null)
+            return 0f;
+
+        float locomotiveMass = MathF.Max(0.001f, locomotive.Parameters.MassTons);
+        float totalMass = MathF.Max(locomotiveMass, Composition.TotalMass);
+        float massRatio = totalMass / locomotiveMass;
+
+        // Linear inverse-mass scaling would use 1 / massRatio. Raising the ratio
+        // to 1.30 makes added mass have approximately 30% stronger sensitivity
+        // without making the relationship linear.
+        return 1f / MathF.Pow(massRatio, MassResistanceExponent);
     }
 
     private void Move(float distance)
