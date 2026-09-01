@@ -1,34 +1,26 @@
 # Screens and UI inventory
 
-The Core screen area contains both reusable screen infrastructure and concrete UI/game screens.
+The Core screen area contains reusable screen infrastructure and concrete UI/game screens. Myra is now the standard presentation layer for the migrated Main Menu and Pause Menu surfaces.
 
 ## Confirmed concrete screens
 
 - `GameplayScreen` — primary gameplay screen created by `RailDispatchMonoGame` during initialization.
-- `MenuScreen` — menu-oriented screen.
-- `MenuEntry` — menu item/support object used by menu UI.
-- `PauseScreen` — pause overlay/screen.
-- `SettingsScreen` — settings UI.
-- `AboutScreen` — about/information UI.
+- `MenuScreen` — menu-oriented screen and legacy lifecycle/input abstraction.
+- `MenuEntry` — menu item/support object retained for compatibility and keyboard/controller routing.
+- `PauseScreen` — pause overlay/screen; its visible menu is presented by Myra.
+- `SettingsScreen` — settings UI, not yet migrated to Myra.
+- `AboutScreen` — about/information UI, not yet migrated to Myra.
 - `LoadingScreen` — loading-stage screen.
 - `BackgroundScreen` — background presentation layer.
-- `MessageBoxScreen` — message/dialog overlay.
+- `MessageBoxScreen` — message/dialog overlay; still legacy.
 
-## Supporting screen types
+## Myra surfaces
 
-- `ScreenState` — screen lifecycle state type.
-- `PlayerIndexEventArgs` — event argument carrying a player index.
-- `EndOfLevelMessageState` — state associated with end-of-level messaging.
-- `GameScreen` — base lifecycle abstraction.
+- `MyraMainMenuView` — centered startup menu containing New Game, Settings, About and Quit.
+- `MyraPauseView` — centered pause menu containing Resume, Save, Load and Quit.
+- `MyraUIManager` — owns the shared Myra `Desktop` and active root widget.
 
-## UI input
-
-`Screens/UI/InputManager.cs` exists in addition to the lower-level `Inputs/InputState.cs` abstraction. Treat these as different layers until call-site analysis proves otherwise:
-
-- `InputState` owns device snapshots and general semantic actions.
-- `Screens/UI/InputManager` is UI-specific infrastructure.
-
-Do not collapse them into one class without an explicit refactoring requirement.
+The startup Main Menu no longer exposes Load Game. Save/load actions are intentionally grouped with gameplay pause controls.
 
 ## Screen layering model
 
@@ -42,14 +34,20 @@ BackgroundScreen
                  +--> Popup / MessageBox / Pause
 ```
 
-The exact combinations are controlled by runtime registration and `IsPopup` behavior; the diagram is conceptual, not a fixed startup stack.
+For migrated menus, the visible Myra root is rendered by `RailDispatchMonoGame` after the `ScreenManager` stack. The active screen remains the lifecycle owner and installs/clears the root through `MyraUIManager`.
+
+## Input ownership
+
+- Myra Desktop handles pointer interaction for migrated menu widgets.
+- Existing `MenuScreen` handling remains available for keyboard/controller semantics, including `ESC` on pause.
+- A migrated surface must not create a second visible legacy menu for the same actions.
 
 ## AI rule for UI changes
 
 Before adding a button, menu, dialog or overlay:
 
-1. inspect existing `MenuEntry`, `MenuScreen`, `MessageBoxScreen` and related UI code;
-2. inspect how the screen is registered;
-3. reuse the existing input and transition system;
-4. preserve logical 800x480 presentation coordinates;
-5. avoid introducing a second UI framework unless explicitly required.
+1. inspect existing screen lifecycle and persistence contracts;
+2. inspect the current Myra view pattern before creating another widget tree;
+3. reuse the existing `ScreenManager` and input architecture;
+4. preserve logical 800x480 presentation semantics where legacy UI still depends on them;
+5. keep one clear owner for each visible UI action.
