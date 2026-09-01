@@ -2,6 +2,17 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.2i] — Full Myra pause surface and UI consolidation
+**Data:** 2026-09-01
+
+- Usunięto zależność `PauseScreen` od legacy `MenuScreen`/`MenuEntry`; pauza ma teraz jedną widoczną powierzchnię UI — standardowe widgety Myra.
+- Zachowano `ESC`/controller cancel jako wejście do wznowienia gry, ale bez drugiego legacy menu.
+- `ZAPISZ GRĘ` i `WCZYTAJ GRĘ` pozostają wyłącznie w `MyraPauseView` i nadal wywołują logiczne callbacki `GameplayScreen`.
+- Zapis/wczytanie korzystają ze wspólnego `MapSaveService`, który obejmuje mapę/infrastrukturę oraz runtime persistence aktywnego slotu.
+- Uporządkowano kontrakt `MyraUIManager`: jeden `Desktop`, jeden aktywny root, renderowanie Myra po stacku `ScreenManager`; `Desktop.Render()` pozostaje miejscem obsługi inputu widgetów.
+- Przeprowadzono audyt migracji UI: brak drugiej widocznej powierzchni Save/Load w `GameplayScreen`; HUD gameplay pozostaje świadomie poza Myra.
+- Zaktualizowano indeks dokumentacji, kontekst AI, inventory UI i snapshot stanu do `0.1.2i`.
+
 ## [0.1.2g] — Myra menu migration and persistence UI consolidation
 **Data:** 2026-09-01
 
