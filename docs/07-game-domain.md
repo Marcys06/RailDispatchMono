@@ -12,6 +12,16 @@ The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Veh
 
 `TrainManager` is the authoritative train lifecycle owner. `CreateTrainFromComposition()` is the single creation path used by the Depot builder for player-created consists.
 
+### Mass-dependent performance
+
+Train acceleration and braking are calculated from the locomotive's own acceleration/braking capability and the total physical consist mass. Added wagon mass therefore reduces both acceleration and deceleration; wagons do not contribute their own propulsion/braking rates.
+
+The mass penalty is deliberately non-linear. For a locomotive mass `M_loco` and total consist mass `M_total`, the performance factor is:
+
+`factor = 1 / (M_total / M_loco)^1.30`
+
+The exponent `1.30` makes mass sensitivity approximately 30% stronger than a simple linear inverse-mass relationship while preserving the locomotive-only baseline (`factor = 1`). The same factor is applied to acceleration and braking. This is a gameplay model, not a full traction/brake-force simulation.
+
 ## Rolling stock catalog
 
 `Game/RollingStock` contains reusable rolling-stock definitions:
