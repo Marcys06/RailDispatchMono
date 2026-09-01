@@ -2,6 +2,35 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4e] — Rolling stock and Depot train builder
+**Data:** 2026-09-01
+
+- Added reusable rolling-stock catalogue with EP07, EU200 — Newag Griffin E4ACP and SU42.
+- Added three passenger coach definitions.
+- Added physical rolling-stock metadata in tonnes/metres while keeping internal speed in m/s and established visual grid geometry.
+- Extended `TrainComposition` with total mass, total physical length, effective Vmax and wagon management.
+- Added full-screen Myra `DepotScreen` / `MyraDepotView` train builder.
+- Depot-created consists are routed through `TrainManager.CreateTrainFromComposition()`.
+- A locomotive-only consist is valid; one locomotive plus zero or more wagons is supported.
+- Removed the hard-coded test train from `GameplayScreen`; the development test track remains.
+- No changes to RadioStop or semaphore mechanics.
+- Detailed notes: `docs/changelog/0.1.4e.md`.
+
+## [0.1.4d] — RadioStop safety distance
+**Data:** 2026-09-01
+
+- RadioStop safety distance increased from 2 to 3 cells.
+- RadioStop continues to inspect all vehicles of the other train.
+- Detailed notes: `docs/changelog/0.1.4d.md`.
+
+## [0.1.4c] — Train speed display and stop distance
+**Data:** 2026-09-01
+
+- User-facing train speeds are displayed in km/h while internal simulation remains in m/s.
+- Stop braking target was moved to the accepted 0.8-cell front clearance before the signal.
+- Train acceleration/braking response was softened.
+- Detailed notes: `docs/changelog/0.1.4c.md`.
+
 ## [0.1.4b] — Simulation scale and simulation clock
 **Data:** 2026-09-01
 
