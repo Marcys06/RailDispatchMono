@@ -1,4 +1,5 @@
-using XnaGame = Microsoft.Xna.Framework.Game;
+using System;
+using Microsoft.Xna.Framework;
 using Myra;
 using Myra.Graphics2D.UI;
 
@@ -16,19 +17,38 @@ public sealed class MyraUIManager
 
     public bool IsInitialized => _initialized;
 
-    public void Initialize(XnaGame game)
+    public void Initialize(Game game)
     {
         if (_initialized)
             return;
 
         MyraEnvironment.Game = game;
-        Desktop = new Desktop();
+        Desktop = new Desktop
+        {
+            BoundsFetcher = () => new Rectangle(0, 0, game.GraphicsDevice.Viewport.Width, game.GraphicsDevice.Viewport.Height)
+        };
         _initialized = true;
+    }
+
+    public void SetRoot(Widget root)
+    {
+        if (!_initialized)
+            throw new InvalidOperationException("MyraUIManager must be initialized before setting a root widget.");
+
+        Desktop.Root = root;
+    }
+
+    public void Clear()
+    {
+        if (!_initialized)
+            return;
+
+        Desktop.Root = null;
     }
 
     public void Render()
     {
-        if (!_initialized)
+        if (!_initialized || Desktop.Root == null)
             return;
 
         Desktop.Render();
