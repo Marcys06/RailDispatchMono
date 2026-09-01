@@ -2,6 +2,17 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.2g] — Myra menu migration and persistence UI consolidation
+**Data:** 2026-09-01
+
+- Migrated `SettingsScreen` to Myra.
+- Migrated `AboutScreen` to Myra.
+- Added `MyraSettingsView` and `MyraAboutView`.
+- Settings and About keep their existing logical ownership in the screen layer while Myra owns the visible widgets.
+- Pause remains the functional location for gameplay Save/Load.
+- Main Menu continues without a separate Load Game entry.
+- The developer-side `Enabled` correction is part of the current baseline.
+
 ## [0.1.2f] — Myra pause menu and main-menu layout
 **Data:** 2026-09-01
 
@@ -10,60 +21,39 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Dodano `MyraPauseView` i przeniesiono widoczne menu pauzy na standardowe widgety Myra.
 - Zachowano `PauseScreen` jako właściciela stanu pauzy oraz callbacków zapisu, odczytu i wyjścia.
 - Zachowano obsługę `ESC` i istniejący kontrakt `ScreenManager`/`MenuScreen`.
-- Usunięto stare renderowanie overlay/menu pauzy z `PauseScreen`; współdzielony `MyraUIManager` renderuje aktywny root.
 
 ## [0.1.2e] — Myra initialization-order fix
 **Data:** 2026-09-01
 
 - Naprawiono crash przy starcie wynikający z `MyraEnvironment.Game == null`.
-- `MyraUIManager.Initialize(this)` jest teraz wykonywane w `RailDispatchMonoGame.Initialize()` przed utworzeniem i inicjalizacją `ScreenManager`.
-- Zachowano drugie, idempotentne wywołanie w `LoadContent()` jako bezpieczny punkt zgodny z cyklem MonoGame.
-- Nie zmieniono publicznego API istniejących ekranów ani kontraktu `ScreenManager`.
-- Przyspieszono integrację Myra bez tworzenia drugiego systemu UI.
+- `MyraUIManager.Initialize(this)` jest wykonywane przed utworzeniem ekranów Myra.
 
 ## [0.1.2c] — Myra main menu migration
 **Data:** 2026-09-01
 
-- Rozszerzono `MyraUIManager` o współdzielony root widget, czyszczenie desktopu i dynamiczne granice viewportu.
-- Dodano standardowy widok `MyraMainMenuView` oparty o widgety Myra.
-- Przeniesiono wizualną warstwę i obsługę myszy/klawiatury głównego menu do Myra.
-- Zachowano istniejący `MenuEntry` i `MenuScreen` jako kontrakt kompatybilności oraz właściciela lifecycle.
-- Wprowadzono jeden wspólny render Myra po renderowaniu stosu `ScreenManager`.
-- Load Game, Settings, About i Pause pozostają jeszcze na dotychczasowym UI.
+- Dodano `MyraMainMenuView`.
+- Przeniesiono wizualną warstwę głównego menu do Myra.
 
 ## [0.1.2b] — Myra namespace compatibility fix
 **Data:** 2026-09-01
 
-- Poprawiono konflikt `Game` namespace/type w `MyraUIManager` przez jawny typ `Microsoft.Xna.Framework.Game`.
-- Build `RailDispatchMono.Core` został przywrócony do stanu kompilowalnego.
+- Poprawiono konflikt `Game` namespace/type w `MyraUIManager`.
 
 ## [0.1.2a] — Myra UI integration foundation
 **Data:** 2026-09-01
 
-- Dodano standardową bibliotekę `Myra` w wersji `1.6.5` do `RailDispatchMono.Core`.
-- Dodano `MyraUIManager` jako wspólną granicę integracji Myra.
-- Utworzono współdzielony Myra `Desktop`.
-- Nie migrowano jeszcze istniejących ekranów; `ScreenManager` pozostaje właścicielem lifecycle ekranów i routingu wejścia.
+- Dodano bibliotekę `Myra` 1.6.5.
+- Dodano współdzielony `MyraUIManager`.
 
 ## [0.1.1] — Przebudowa dokumentacji
 **Data:** 2026-08-31
 
 - Zredukowano aktywny zestaw `docs/` do 20 dokumentów autorytatywnych.
-- Usunięto przestarzałe snapshoty i jednorazowe dokumenty audytowe z aktywnego zestawu.
-- Usunięto redundantny `architecture.json`.
-- Dodano `19-current-state-0.1.1.md` jako snapshot aktualnego stanu.
-- Utrzymano szczegółową historię w `docs/changelog/` i `CHANGELOG.md`.
+- Uporządkowano dokumentację i historię zmian.
 
 ## [0.0.16] — Save slots, Main Menu i runtime persistence
 **Data:** 2026-08-31
 
-- Dodano katalogi zapisów z `metadata.json`.
-- Save składa się z rozdzielonych plików `map.json`, `trains.json`, `schedules.json`, `passengers.json` i `economy.json`.
-- Dodano wersjonowanie danych save (`schemaVersion`).
-- Zapis obejmuje pociągi, składy, parametry pojazdów, pozycje, trasy wagonów, pasażerów znajdujących się w wagonach oraz `GameDay`/`GameTime`.
-- Dodano Main Menu: `NOWA GRA`, `WCZYTAJ GRĘ`, `USTAWIENIA`, `O GRZE`, `WYJDŹ`.
-- Nowa gra tworzy pusty slot; Load wybiera zapis bez dodatkowego potwierdzenia.
-- Niepoprawny lub niekompletny zapis jest odrzucany komunikatem zamiast cichego ładowania.
+- Dodano save slots i wersjonowanie danych zapisu.
+- Dodano Main Menu i runtime persistence.
 - Zapis rozkładów został przeniesiony do aktywnego slotu.
-- Auto-save nie jest jeszcze włączony.
-- Istniejący `DepotTrainMenu` pozostaje punktem tworzenia wielu pociągów z jednego depot.
