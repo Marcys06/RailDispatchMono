@@ -66,7 +66,10 @@ internal sealed class PauseScreen : GameScreen
     }
 
     private void SaveFromMyra()
-        => OnSave?.Invoke(this, EventArgs.Empty);
+    {
+        OnSave?.Invoke(this, EventArgs.Empty);
+        _myraView?.SetLoadEnabled(true);
+    }
 
     private void LoadFromMyra()
         => OnLoad?.Invoke(this, EventArgs.Empty);
