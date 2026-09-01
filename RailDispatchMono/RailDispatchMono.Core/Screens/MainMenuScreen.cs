@@ -71,7 +71,6 @@ internal sealed class MainMenuScreen : MenuScreen
         try
         {
             string slot = RailDispatchMono.Core.Game.Save.SaveSlotService.CreateSlot();
-            ExitScreen();
             _startGame("NEW:" + slot);
         }
         catch (Exception ex)
