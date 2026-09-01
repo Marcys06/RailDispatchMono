@@ -49,21 +49,9 @@ public sealed class GameplayScreen : GameScreen
     private MouseState _previousMouse;
     private KeyboardState _previousKeyboard;
     private Inputs.InputState? _inputState;
-    private bool _showTrains = true;
-    private bool _depotOpen;
-    private bool _spawnArmed;
     private readonly Dictionary<(Guid TrainId, int WagonIndex), int> _wagonPassengerSnapshot = new();
 
-    // The train/station object panel is now owned exclusively by MyraGameplayView.
-    // Keep the legacy bounds outside the viewport so the old SpriteBatch panel cannot be drawn or receive input.
     private const int PanelWidth = 0;
-    private const float PanelTextScale = 0.75f;
-
-    private Rectangle PanelBounds => new(
-        _graphicsDevice.Viewport.Width + 1,
-        0,
-        PanelWidth,
-        _graphicsDevice.Viewport.Height);
 
     public GameplayScreen(GraphicsDevice graphicsDevice, ScreenManager screenManager)
         : this(graphicsDevice, screenManager, false)
@@ -101,18 +89,21 @@ public sealed class GameplayScreen : GameScreen
         _inputManager.DepotSelected += OnDepotSelected;
 
         if (!loadExisting)
-        {
             CreateTestTrack();
-            CreateTestTrain();
-        }
     }
 
     private void OnDepotSelected(Depot depot)
     {
-        _depotOpen = true;
-        _spawnArmed = false;
         _builder.Mode = TrackBuildMode.None;
+        _spawnArmed = false;
+        if (ScreenManager?.Game is RailDispatchMonoGame game)
+        {
+            var depotScreen = new DepotScreen(_trainManager, _signalController, _blockController, depot, game.MyraUI);
+            ScreenManager.AddScreen(depotScreen, null);
+        }
     }
+
+    private bool _spawnArmed;
 
     public void LoadContent(ContentManager content)
     {
@@ -155,13 +146,11 @@ public sealed class GameplayScreen : GameScreen
         if (IsKeyPressed(keyboard, Keys.D9) || IsKeyPressed(keyboard, Keys.NumPad9))
         {
             _builder.Mode = TrackBuildMode.Depot;
-            _depotOpen = false;
             _spawnArmed = false;
         }
 
         float deltaTime = _clock.Update(realDelta);
         bool hudHandled = HandleHudInput();
-
         if (!hudHandled)
         {
             _trainManager.Update(deltaTime);
@@ -210,38 +199,15 @@ public sealed class GameplayScreen : GameScreen
             game.MyraUI.Clear();
     }
 
-    private bool HandleHudInput()
-    {
-        // Train/station HUD interaction is fully owned by MyraGameplayView.
-        // The legacy SpriteBatch panel intentionally has no hit area.
-        return false;
-    }
+    private bool HandleHudInput() => false;
 
     private bool IsKeyPressed(KeyboardState keyboard, Keys key)
         => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
 
     private void CreateTestTrack()
     {
-        for (int x = 8; x <= 32; x++) _builder.BuildStraight(new MapPosition(x, 20), true);
-    }
-
-    private void CreateTestTrain() => SpawnDefaultTrain(new MapPosition(12, 20), TrackConnections.East);
-
-    private void SpawnDefaultTrain(MapPosition cell, TrackConnections direction)
-    {
-        if (direction == TrackConnections.None) direction = TrackConnections.East;
-        VehicleParameters locomotiveParameters = new(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
-        VehicleParameters wagonParameters = new(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
-        List<Vehicle> vehicles = new()
-        {
-            new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters),
-            new Wagon(wagonParameters), new Wagon(wagonParameters)
-        };
-        Train train = new(new Vector2(cell.X + 0.5f, cell.Y + 0.5f), direction, 0f, vehicles);
-        train.SetMap(_map);
-        train.SetSignalController(_signalController);
-        train.SetBlockController(_blockController);
-        _trainManager.Add(train);
+        for (int x = 8; x <= 32; x++)
+            _builder.BuildStraight(new MapPosition(x, 20), true);
     }
 
     private void SnapshotWagonPassengers()
@@ -293,7 +259,6 @@ public sealed class GameplayScreen : GameScreen
             _blockController.Initialize(_map, _trainManager, _signalController);
             _trainManager.Initialize(_blockController);
             _builder.Mode = TrackBuildMode.None;
-            _depotOpen = false;
             _spawnArmed = false;
             _floatingText.Add("WCZYTANO", _camera.Position);
             SnapshotWagonPassengers();
@@ -323,24 +288,12 @@ public sealed class GameplayScreen : GameScreen
 
     private void DrawHud()
     {
-        // Legacy train/station HUD rendering was removed. Train/station presentation is Myra-only.
-        if (_depotOpen)
-        {
-            if (_tooltipFont == null || _pixel == null) return;
-            _spriteBatch.Begin();
-            DrawRect(new Rectangle(50, 95, 310, 185), new Color(20, 20, 20, 245));
-            _spriteBatch.DrawString(_tooltipFont, "DEPOT", new Vector2(80, 110), Color.Yellow);
-            _spriteBatch.DrawString(_tooltipFont, "Lokomotywa + 2 wagony", new Vector2(80, 130), Color.White);
-            DrawButton(new Rectangle(80, 150, 250, 50), "WYBIERZ I USTAW", false);
-            DrawButton(new Rectangle(80, 215, 250, 42), "ZAMKNIJ", false);
-            _spriteBatch.End();
-        }
-        else if (_builder.Mode == TrackBuildMode.Depot)
+        if (_builder.Mode == TrackBuildMode.Depot)
         {
             if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 380, 50), new Color(20, 20, 20, 230));
-            _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawic budynek", new Vector2(20, 85),
+            _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawić budynek", new Vector2(20, 85),
                 Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             _spriteBatch.End();
         }
@@ -349,7 +302,7 @@ public sealed class GameplayScreen : GameScreen
             if (_tooltipFont == null || _pixel == null) return;
             _spriteBatch.Begin();
             DrawRect(new Rectangle(10, 75, 370, 50), new Color(20, 20, 20, 230));
-            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejacy tor, aby ustawic pociag", new Vector2(20, 85),
+            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejący tor, aby ustawić pociąg", new Vector2(20, 85),
                 Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
             _spriteBatch.End();
         }
@@ -371,24 +324,24 @@ public sealed class GameplayScreen : GameScreen
         List<string> linesList = new()
         {
             isLoco ? "LOKOMOTYWA" : "WAGON",
-            "ID pociagu: " + train.Id.ToString()[..8],
+            "ID pociągu: " + train.Id.ToString()[..8],
             "Pojazd: " + (vehicleIndex + 1) + "/" + train.Composition.Vehicles.Count,
-            "Predkosc: " + (train.Speed * 3.6f).ToString("F1") + " km/h",
+            "Prędkość: " + (train.Speed * 3.6f).ToString("F1") + " km/h",
             "Docelowa: " + (train.EffectiveTargetSpeed * 3.6f).ToString("F1") + " km/h",
-            "Vmax skladu: " + (train.MaxSpeed * 3.6f).ToString("F1") + " km/h",
-            "Masa: " + vehicle.Parameters.Mass.ToString("F0") + " kg",
-            "Dlugosc: " + vehicle.Parameters.Length.ToString("F1") + " m",
+            "Vmax składu: " + (train.MaxSpeed * 3.6f).ToString("F1") + " km/h",
+            "Masa: " + vehicle.Parameters.MassTons.ToString("F1") + " t",
+            "Długość: " + vehicle.Parameters.LengthMeters.ToString("F1") + " m",
             "Kierunek: " + train.Direction
         };
         if (vehicle is Wagon wagon)
         {
             linesList.Add("Typ wagonu: " + wagon.WagonType);
-            linesList.Add("Pasazerowie: " + wagon.PassengerCount + "/" + wagon.PassengerCapacity);
+            linesList.Add("Pasażerowie: " + wagon.PassengerCount + "/" + wagon.PassengerCapacity);
             linesList.Add("Wolne miejsca: " + wagon.AvailablePassengerCapacity);
             var destinationGroups = wagon.Passengers.GroupBy(p => p.DestinationStation.Id)
                 .Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() })
                 .OrderByDescending(x => x.Count).Take(5).ToList();
-            linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasazerow:");
+            linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasażerów:");
             foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
 
@@ -412,11 +365,4 @@ public sealed class GameplayScreen : GameScreen
     }
 
     private void DrawRect(Rectangle rectangle, Color color) => _spriteBatch.Draw(_pixel!, rectangle, color);
-    private void DrawButton(Rectangle rectangle, string text, bool selected, float scale = 1f)
-    {
-        DrawRect(rectangle, selected ? new Color(70, 70, 70, 255) : new Color(40, 40, 40, 255));
-        Vector2 size = _tooltipFont!.MeasureString(text) * scale;
-        Vector2 position = new(rectangle.Center.X - size.X / 2f, rectangle.Center.Y - size.Y / 2f);
-        _spriteBatch.DrawString(_tooltipFont, text, position, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-    }
 }
