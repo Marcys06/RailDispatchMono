@@ -2,11 +2,11 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.2a`** is the first infrastructure stage of the Myra UI integration series. The `0.1.0` gameplay baseline and `0.1.1` documentation restructuring remain historical baselines.
+**RailDispatchMono `0.1.2c`** is the accelerated Myra UI integration stage. The `0.1.0` gameplay baseline and `0.1.1` documentation restructuring remain historical baselines.
 
 ## One-paragraph context
 
-RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` configures the game and delegates screen lifecycle/update/draw work to `ScreenManager`. `MyraUIManager` is now the shared boundary for the standard Myra UI library: it assigns `MyraEnvironment.Game` and owns a shared Myra `Desktop`. Existing screens have not yet been migrated to Myra at `0.1.2a`.
+RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` configures the game and delegates screen lifecycle/update/draw work to `ScreenManager`. `MyraUIManager` is the shared boundary for the standard Myra UI library: it assigns `MyraEnvironment.Game`, owns one shared `Desktop`, and manages the active root widget. The Main Menu now uses a standard Myra widget surface while Load Game, Settings, About, Pause and gameplay UI remain on the legacy screen UI.
 
 ## Mental model
 
@@ -19,6 +19,7 @@ APPLICATION HOST
             +--> MyraUIManager
             |      +--> MyraEnvironment.Game
             |      +--> Desktop
+            |      +--> active Root widget tree
             +--> ScreenManager
                     |
                     +--> InputState
@@ -33,14 +34,16 @@ APPLICATION HOST
 - Initialization: once from `RailDispatchMonoGame.LoadContent()`.
 - Shared desktop owner: `MyraUIManager`.
 - Screen lifecycle owner: `ScreenManager`.
-- Input owner: existing `InputState`/screen routing architecture.
-- `0.1.2a` does not globally render the Myra desktop and does not migrate existing screens.
+- Migrated surface: Main Menu.
+- Main Menu installs and clears the shared root during its screen content lifecycle.
+- The host renders the shared Myra desktop once after the ScreenManager stack.
+- Load Game, Settings, About, Pause and gameplay UI are not yet migrated.
 
 ## Hard constraints
 
 - Do not invent missing classes or APIs.
 - Do not create a parallel screen manager.
-- Do not bypass the established input architecture.
+- A migrated Myra screen must not also process the same UI action through the legacy surface.
 - Do not move shared gameplay into a platform host.
 - Do not store authoritative simulation state only in a screen.
 - Do not change existing shared APIs without searching all usages.
