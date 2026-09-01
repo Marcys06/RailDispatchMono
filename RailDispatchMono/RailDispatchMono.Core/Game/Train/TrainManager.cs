@@ -48,10 +48,7 @@ public sealed class TrainManager
         }
         train.SetMap(_map);
         _trainsToAdd.Add(train);
-        _signalSpeedStates[train.Id] = new SignalSpeedState
-        {
-            CurrentLimit = GetPhysicalMaxSpeed(train)
-        };
+        _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = GetPhysicalMaxSpeed(train) };
         train.SetEffectiveSignalSpeed(GetPhysicalMaxSpeed(train));
     }
 
@@ -65,6 +62,26 @@ public sealed class TrainManager
 
     public Train CreateTrain(MapPosition cell, TrackConnections direction, float speed) =>
         CreateTrain(new Vector2(cell.X + 0.5f, cell.Y + 0.5f), direction, speed);
+
+    public Train CreateTrainFromComposition(
+        TrainComposition composition,
+        MapPosition startPosition,
+        TrackConnections direction = TrackConnections.East,
+        float speed = 0f)
+    {
+        if (composition == null) throw new ArgumentNullException(nameof(composition));
+        if (!composition.CanMove) throw new InvalidOperationException("A train composition must contain a locomotive.");
+
+        var vehicles = composition.Vehicles.ToList();
+        var train = new Train(
+            new Vector2(startPosition.X + 0.5f, startPosition.Y + 0.5f),
+            direction == TrackConnections.None ? TrackConnections.East : direction,
+            speed,
+            vehicles);
+        train.SetMap(_map);
+        Add(train);
+        return train;
+    }
 
     public bool Remove(Train train)
     {
@@ -124,7 +141,7 @@ public sealed class TrainManager
             if (CollisionController.ShouldRadioStop(train))
             {
                 train.RadioStop();
-                DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {2f:F0} cells without a protecting signal.");
+                DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {3f:F0} cells without a protecting signal.");
                 continue;
             }
 
@@ -146,10 +163,6 @@ public sealed class TrainManager
         }
 
         Signal? nextSignal = train.GetNextSignal();
-
-        // A changed next-signal identity means that the previous signal was
-        // passed. The identity is the Signal object/ID, not its grid cell, so
-        // two directional signals sharing one cell remain independent.
         if (state.ApproachingSignal != null && state.ApproachingSignal != nextSignal)
         {
             state.CurrentLimit = GetSignalSpeedLimit(train, state.ApproachingSignal);
@@ -169,10 +182,6 @@ public sealed class TrainManager
             state.ApproachingSignal = null;
         }
 
-        // This is the persistent limit from the last passed signal. Train's
-        // existing braking code remains responsible for approaching the next
-        // signal; this value prevents a future Clear from raising speed before
-        // that Clear has actually been passed.
         train.SetEffectiveSignalSpeed(state.CurrentLimit);
     }
 
@@ -269,19 +278,14 @@ public sealed class TrainManager
             if (train.Id == candidate.Id) continue;
             foreach (var position in train.GetVehiclePositions())
             {
-                occupiedCells.Add(new MapPosition(
-                    (int)MathF.Floor(position.X),
-                    (int)MathF.Floor(position.Y)));
+                occupiedCells.Add(new MapPosition((int)MathF.Floor(position.X), (int)MathF.Floor(position.Y)));
             }
         }
 
         foreach (var position in candidate.GetVehiclePositions())
         {
-            var cell = new MapPosition(
-                (int)MathF.Floor(position.X),
-                (int)MathF.Floor(position.Y));
-            if (occupiedCells.Contains(cell))
-                return true;
+            var cell = new MapPosition((int)MathF.Floor(position.X), (int)MathF.Floor(position.Y));
+            if (occupiedCells.Contains(cell)) return true;
         }
         return false;
     }
