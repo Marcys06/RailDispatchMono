@@ -2,7 +2,7 @@
 
 ## Core rule
 
-`RailDispatchMono.Core` is the shared application/game layer. Platform projects host the application. The dependency direction should therefore point from platform hosts toward Core, not from Core toward a concrete platform host.
+`RailDispatchMono.Core` is the shared application/game layer. Platform projects host the application. Dependency direction points from platform hosts toward Core.
 
 ## Main runtime components
 
@@ -10,69 +10,47 @@
 Platform host
     |
     v
-RailDispatchMonoGame : Microsoft.Xna.Framework.Game
+RailDispatchMonoGame
     |
     +--> GraphicsDeviceManager
     +--> MyraUIManager
-    |       |
     |       +--> MyraEnvironment.Game
-    |       +--> Myra Desktop
+    |       +--> one shared Desktop
+    |       +--> one active Root
     |
     v
-ScreenManager : DrawableGameComponent
+ScreenManager
     |
     +--> GameScreen instances
-    |       +--> Update
-    |       +--> HandleInput
-    |       +--> Draw
-    |
     +--> InputState
-    +--> SpriteBatch / SpriteFont
-    +--> presentation scaling
+    +--> SpriteBatch / shared resources
 ```
 
-Myra is intentionally below the application/game root and beside the screen infrastructure. `ScreenManager` remains the authoritative owner of screen lifecycle and input routing.
+Myra is a UI/presentation layer inside this architecture. It does not replace `ScreenManager`, gameplay/domain ownership or the legacy MonoGame renderer where that renderer is still authoritative.
 
-## `RailDispatchMonoGame`
+## MyraUIManager
 
-Responsibilities currently visible in source:
+`MyraUIManager` is the single Myra integration boundary. It initializes `MyraEnvironment.Game`, owns the shared `Desktop` and manages the active Myra root. Migrated views must use this boundary and must not create independent desktops.
 
-1. Construct `GraphicsDeviceManager`.
-2. Construct the shared `MyraUIManager`.
-3. Configure the Content root and mouse visibility.
-4. Configure the preferred 1600x900 backbuffer.
-5. Enable vertical synchronization.
-6. Configure a fixed timestep of 1/60 second.
-7. During `Initialize`, construct `ScreenManager` and register the Main Menu.
-8. During `LoadContent`, initialize `MyraUIManager` with the current MonoGame `Game` instance.
-9. During `Update`, delegate to `ScreenManager` through the registered game component.
-10. During `Draw`, delegate screen rendering through `ScreenManager`.
+At `0.1.3pre`, Myra surfaces include Main Menu, Settings, About, Pause and the gameplay HUD. The gameplay HUD includes the clock, `GameDay`, speed controls, build tools and the train/station information panel.
 
-Do not duplicate this lifecycle in individual screens.
+## ScreenManager
 
-## `MyraUIManager`
+`ScreenManager` remains the authoritative owner of registered screen lifecycle, update, input routing and drawing. Pause is no longer a popup screen: `GameplayScreen` owns pause state and activates `MyraPauseView` through `MyraUIManager`.
 
-`MyraUIManager` is the current integration boundary for the Myra library. It:
+## Ownership
 
-- assigns the active MonoGame `Game` to `MyraEnvironment.Game`;
-- creates one shared Myra `Desktop`;
-- exposes initialization state;
-- provides the common Myra render entry point for future UI screens.
-
-At `0.1.2a`, no existing screen has been migrated to Myra yet. This stage only establishes the dependency and runtime integration boundary.
-
-## `ScreenManager`
-
-`ScreenManager` remains the central coordinator for screen instances. It owns the active screen collection, shared input state and drawing resources. Myra must not introduce a parallel screen stack or bypass this lifecycle.
+- simulation/domain state belongs to `Game/` subsystems;
+- camera state belongs to the rendering/camera subsystem;
+- screen lifecycle belongs to `ScreenManager`/`GameScreen`;
+- Myra presentation belongs to Myra views and `MyraUIManager`;
+- persistence remains behind `MapSaveService` and gameplay-owned actions.
 
 ## Dependency discipline
 
-When implementing a feature:
-
-1. Find the existing owner of the relevant state.
-2. Reuse the existing manager/model rather than creating a parallel global mechanism.
-3. Keep platform APIs out of Core unless the existing architecture already abstracts them.
-4. Keep screen-specific presentation in the screen layer.
-5. Keep simulation/domain behavior in the relevant `Game` subsystem.
-6. Keep shared input transformation in `InputState`/`ScreenManager` instead of performing ad-hoc coordinate conversion in every control.
-7. Use `MyraUIManager` as the Myra integration boundary instead of initializing `MyraEnvironment` independently from multiple screens.
+1. Find the existing owner of state.
+2. Reuse existing managers/models rather than parallel globals.
+3. Keep platform APIs out of Core unless already abstracted.
+4. Keep presentation in the UI/screen layer.
+5. Keep simulation/domain behavior in game subsystems.
+6. Use the shared input and Myra boundaries rather than creating parallel routing systems.
