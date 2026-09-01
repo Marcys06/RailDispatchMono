@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 1;
-    public string GameVersion { get; set; } = "0.0.16";
+    public string GameVersion { get; set; } = "0.1.4e";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -40,6 +40,10 @@ public sealed class VehicleSaveData
     public float MaxSpeed { get; set; }
     public float Mass { get; set; }
     public float Length { get; set; }
+    public float MassTons { get; set; }
+    public float LengthMeters { get; set; }
+    public float Acceleration { get; set; }
+    public float Braking { get; set; }
     public float MassCoefficient { get; set; }
     public float TechnicalCondition { get; set; }
     public float AccelerationCoefficient { get; set; }
@@ -99,6 +103,10 @@ public static class RuntimeSaveService
                     MaxSpeed = p.MaxSpeed,
                     Mass = p.Mass,
                     Length = p.Length,
+                    MassTons = p.MassTons,
+                    LengthMeters = p.LengthMeters,
+                    Acceleration = p.Acceleration,
+                    Braking = p.Braking,
                     MassCoefficient = p.MassCoefficient,
                     TechnicalCondition = p.TechnicalCondition,
                     AccelerationCoefficient = p.AccelerationCoefficient,
@@ -148,9 +156,32 @@ public static class RuntimeSaveService
             var vehicles = new List<Vehicle>();
             foreach (VehicleSaveData savedVehicle in savedTrain.Vehicles)
             {
-                var p = new VehicleParameters(savedVehicle.MaxSpeed, savedVehicle.AccelerationCoefficient,
-                    savedVehicle.BrakingCoefficient, savedVehicle.Mass, savedVehicle.Length,
-                    savedVehicle.MassCoefficient, savedVehicle.TechnicalCondition);
+                VehicleParameters p;
+                if (savedVehicle.MassTons > 0f && savedVehicle.LengthMeters > 0f)
+                {
+                    p = VehicleParameters.CreatePhysical(
+                        savedVehicle.MaxSpeed * 3.6f,
+                        savedVehicle.Acceleration,
+                        savedVehicle.Braking,
+                        savedVehicle.MassTons,
+                        savedVehicle.LengthMeters,
+                        savedVehicle.Length,
+                        savedVehicle.MassCoefficient,
+                        savedVehicle.TechnicalCondition);
+                }
+                else
+                {
+                    // Backward compatibility with pre-0.1.4e saves.
+                    p = new VehicleParameters(
+                        savedVehicle.MaxSpeed,
+                        savedVehicle.AccelerationCoefficient,
+                        savedVehicle.BrakingCoefficient,
+                        savedVehicle.Mass,
+                        savedVehicle.Length,
+                        savedVehicle.MassCoefficient,
+                        savedVehicle.TechnicalCondition);
+                }
+
                 Vehicle vehicle = string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase)
                     ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p)
                     : new Wagon(p, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
@@ -170,8 +201,7 @@ public static class RuntimeSaveService
 
         foreach (TrainSaveData savedTrain in data.Trains)
         {
-            TrainModel? train = trainManager.Trains.FirstOrDefault(x =>
-                x.Position == new Vector2(savedTrain.X, savedTrain.Y));
+            TrainModel? train = trainManager.Trains.FirstOrDefault(x => x.Position == new Vector2(savedTrain.X, savedTrain.Y));
             if (train == null) continue;
             for (int i = 0; i < savedTrain.Vehicles.Count && i < train.Composition.Vehicles.Count; i++)
             {
