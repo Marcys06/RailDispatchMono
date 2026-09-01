@@ -2,75 +2,52 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.2pre`** is the current Myra UI stabilization preview following the immutable `0.1.2a`–`0.1.2k` stages. The `0.1.0` gameplay baseline and `0.1.1` documentation restructuring remain historical baselines.
+**RailDispatchMono `0.1.3pre`** is the current consolidated Myra gameplay UI pre-release after the immutable `0.1.3a`–`0.1.3e` development stages. `0.1.2pre` is the previous stabilization snapshot.
 
 ## One-paragraph context
 
-RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` configures the game and delegates screen lifecycle/update/draw work to `ScreenManager`. `MyraUIManager` is the single integration boundary for standard Myra UI: it assigns `MyraEnvironment.Game`, owns one shared `Desktop`, and manages one active root widget tree. Main Menu, Settings, About and Pause Menu use standard Myra widgets. Save/Load are gameplay actions exposed only by the Myra pause surface. The gameplay HUD and gameplay-specific radial menus remain non-Myra rendering/input surfaces by design.
-
-## Mental model
-
-```text
-APPLICATION HOST
-    |
-    +--> RailDispatchMonoGame
-            |
-            +--> GraphicsDeviceManager
-            +--> MyraUIManager
-            |      +--> MyraEnvironment.Game
-            |      +--> one Desktop
-            |      +--> one active Root
-            +--> ScreenManager
-                    |
-                    +--> InputState
-                    +--> GameScreen(s)
-                    +--> SpriteBatch / shared resources
-                    +--> logical-to-physical presentation transform
-```
+RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` owns the game loop and delegates screen lifecycle/update/draw to `ScreenManager`. `MyraUIManager` is the single Myra integration boundary and owns one shared `Desktop` and active root. Main Menu, Settings, About, Pause and the gameplay HUD use Myra. The gameplay HUD contains the clock, GameDay, speed controls, collapsible build tools and train/station information. Train/station selection centers the camera. Pause is gameplay state owned by `GameplayScreen`; `MyraPauseView` is its presentation/action surface. Remaining world-specific radial/tooltip UI is not yet fully migrated.
 
 ## Myra contract
 
-- Package: `Myra` 1.6.5.
-- Initialization is idempotent and happens before any Myra widget is constructed.
-- `MyraUIManager` owns exactly one shared `Desktop`.
-- Only one Myra root is active at a time.
-- `Desktop` is the widget input/render boundary.
-- Migrated surfaces: Main Menu, Settings, About and Pause Menu.
-- `MyraPauseView` contains Resume, Save, Load and Quit.
-- Startup Main Menu does not expose Load Game.
-- Gameplay HUD has no second visible Save/Load surface.
-- `ScreenManager` remains the lifecycle owner for registered screens.
+- Package: Myra 1.6.5.
+- One shared `Desktop` owned by `MyraUIManager`.
+- One active Myra root at a time.
+- Migrated surfaces: Main Menu, Settings, About, Pause and gameplay HUD.
+- No duplicate legacy train/station HUD.
+- No duplicate legacy clock/speed HUD.
+- `ScreenManager` remains lifecycle owner.
+- Myra does not replace gameplay simulation or railway rendering.
 
-## Pause lifecycle — current architecture
+## Pause lifecycle
 
-Pause is a **gameplay state**, not a popup screen.
+Pause is a gameplay state, not a popup screen. `GameplayScreen` owns the pause state and activates `MyraPauseView`. While paused, simulation progression stops while Myra remains interactive. Resume clears the pause state and Myra root. Save/Load are gameplay-owned operations behind `MapSaveService`.
 
-`GameplayScreen` owns `_isPaused` and is the only authoritative owner of entering/leaving pause. Entering pause activates `MyraPauseView` as the shared Myra root. While paused, gameplay simulation updates are skipped but the Myra desktop remains interactive. Resuming clears `_isPaused` and clears the Myra root.
+## Current gameplay UI
 
-There is no runtime `PauseScreen` in the current architecture. Do not reintroduce one merely to host the UI. `MyraPauseView` is presentation and action dispatch; `GameplayScreen` owns the actual state transition and persistence operations.
+- `GameDay` and `GameTime` represent simulation time.
+- x1/x2/x5 control simulation speed.
+- Build tools are available in a collapsible Myra panel.
+- Train/station lists are Myra-only and support camera focus.
+- Station entries show waiting passenger counts.
 
-Myra callbacks that change gameplay/screen state must execute through the normal game update boundary, not by mutating the screen stack from `Desktop.Render()`.
+## Remaining UI migration
 
-## Persistence placement
-
-Save and Load are owned logically by `GameplayScreen` and exposed through `MyraPauseView`. `MapSaveService` is the persistence boundary. The UI does not perform file I/O directly.
+- junction interaction/radial menu;
+- signal interaction/radial menu;
+- legacy floating/tooltips where still used;
+- dedicated train/station detail windows;
+- dedicated wagon-route detail/editor window;
+- depot-specific interaction UI where applicable;
+- richer configurable train/station state visualization.
 
 ## Hard constraints
 
-- Do not invent missing classes or APIs.
-- Do not create a parallel screen manager.
-- Do not create a second Myra `Desktop`.
-- Do not add a second visible UI surface for an existing action.
-- Do not use a popup `GameScreen` for pause unless a future release explicitly changes the pause architecture.
-- Do not move shared gameplay into a platform host.
-- Do not store authoritative simulation state only in a screen.
-- Do not change existing shared APIs without searching all usages.
-- Do not treat stale comments as executable behavior.
-- Historical `0.1.2a`–`0.1.2k` stages are immutable.
-- If a historical commit has no reliable release description, document it as `bugfix` rather than inventing details.
-- Keep Myra initialization before any Myra widget construction.
-- Keep gameplay rendering/UI concerns separate: Myra is for standard application/menu UI, not an automatic replacement for railway rendering or radial gameplay tools.
-
-## Debugging rule
-
-Repeated or duplicated logs do not by themselves prove duplicated simulation updates. Inspect logger subscriptions/call sites and the screen/update traversal before changing game-loop logic.
+- Do not create a parallel screen manager or Myra desktop.
+- Do not duplicate a migrated UI surface.
+- Do not reintroduce popup `PauseScreen` as the pause architecture.
+- Preserve authoritative domain ownership.
+- Search all usages before changing shared APIs.
+- Keep platform-specific behavior in platform hosts.
+- Treat source and current call sites as authoritative over stale documentation/comments.
+- Only `0.1.2pre` and `0.1.3pre` have current-state snapshots; lettered stages belong in changelogs.
