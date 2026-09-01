@@ -266,10 +266,6 @@ public sealed partial class Train
 
     public float GetVehicleDistance(int vehicleIndex) => GetDistanceToVehicle(vehicleIndex);
 
-    // ============================================================
-    // SIGNAL CONTROL
-    // ============================================================
-
     private SignalController? _signalController;
     private float _targetSpeed;
     private float _maxSpeed = 160f / 3.6f;
@@ -386,9 +382,9 @@ public sealed partial class Train
 
         if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
         {
-            const float safetyDistance = 1.4f;
             const float reactionTime = 0.15f;
-            float availableDistance = MathF.Max(0f, distance - safetyDistance - Speed * reactionTime);
+            float stopOffsetMeters = SimulationScale.GridToMeters(0.3f);
+            float availableDistance = MathF.Max(0f, distance - stopOffsetMeters - Speed * reactionTime);
             return MathF.Min(_maxSpeed, MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
         }
 
