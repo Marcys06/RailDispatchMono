@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Myra.Graphics2D.UI;
 using RailDispatchMono.Core.Game.Building;
@@ -125,6 +124,7 @@ internal sealed class MyraGameplayView
         }
 
         _trainList.Widgets.Clear();
+        _trainList.RowsProportions.Clear();
         if (TrainManager.Current != null)
         {
             int row = 0;
@@ -145,6 +145,7 @@ internal sealed class MyraGameplayView
         }
 
         _stationList.Widgets.Clear();
+        _stationList.RowsProportions.Clear();
         if (TrainManager.Current != null)
         {
             int row = 0;
@@ -166,6 +167,7 @@ internal sealed class MyraGameplayView
         }
 
         _toolList.Widgets.Clear();
+        _toolList.RowsProportions.Clear();
         AddToolButton("Tor prosty", TrackBuildMode.Straight);
         AddToolButton("Zakręt", TrackBuildMode.Curve);
         AddToolButton("Rozjazd", TrackBuildMode.Junction);
