@@ -6,7 +6,7 @@ The Core screen area contains reusable screen infrastructure and concrete game/a
 
 - `GameplayScreen` — primary gameplay screen and authoritative pause/persistence owner.
 - `DepotScreen` — full-screen Depot train builder; not a popup.
-- `MenuScreen` — legacy menu abstraction retained for compatibility.
+- `MenuScreen` — legacy menu abstraction retained for compatibility with older application screens.
 - `MenuEntry` — legacy menu support retained where older screens require it.
 - `SettingsScreen` — settings logic owner with Myra presentation.
 - `AboutScreen` — about logic owner with Myra presentation.
@@ -28,26 +28,30 @@ The Core screen area contains reusable screen infrastructure and concrete game/a
 
 Depot does not create another Myra manager or Desktop. When `DepotScreen` becomes active it temporarily replaces the gameplay Myra root; `MyraUIManager.Clear()` restores the previous gameplay root when the screen closes.
 
-## Depot interaction
+## Depot interaction — 0.1.4f
 
-Clicking an existing Depot through `InputManager.DepotSelected` opens `DepotScreen`.
+Clicking an existing Depot through `InputManager.DepotSelected` opens `DepotScreen` directly. The old `DepotTrainMenu` SpriteBatch preset menu has been removed.
 
-The builder provides:
+There are no longer three hardcoded train presets such as short/standard/long. Depot train creation is entirely owned by `DepotScreen` + `MyraDepotView`.
+
+The Myra builder provides:
 
 - locomotive selection: EP07, EU200 — Newag Griffin E4ACP, SU42;
 - wagon selection: three passenger coach definitions;
-- add wagon to the end of the consist;
+- add any number of wagons to the end of the consist;
 - remove individual wagons;
 - clear all wagons;
 - live Vmax, total mass, total length and wagon count;
 - create a locomotive-only or locomotive-plus-wagons train;
 - cancel without creating a train.
 
-The created train is placed on an adjacent free track cell through `TrainManager.CreateTrainFromComposition()`.
+The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` no longer contains the former preset-based train spawn path or its hardcoded EU06-style `VehicleParameters`.
 
 ## Pause lifecycle
 
 `GameplayScreen` owns pause state. Entering pause activates `MyraPauseView`; simulation updates stop while Myra input remains active. Resume clears the gameplay pause state and restores the gameplay Myra root. No pause popup is added to `ScreenManager`.
+
+Opening `DepotScreen` also covers `GameplayScreen`, so the ScreenManager lifecycle prevents gameplay simulation updates while the Depot builder is active. Closing the screen restores the gameplay Myra root and normal simulation/HUD operation.
 
 ## Gameplay HUD interaction
 
@@ -55,7 +59,7 @@ The Myra gameplay panel provides build-tool selection, simulation-speed controls
 
 ## Remaining non-Myra UI
 
-Junction/signal radial interaction menus and some legacy floating/tooltips remain outside the Myra HUD. Depot-specific train creation is no longer a legacy SpriteBatch panel.
+Junction/signal radial interaction menus and some legacy floating/tooltips remain outside the Myra HUD. These are separate world-interaction surfaces and are not used for Depot train creation.
 
 Railway/world rendering itself is not a Myra UI concern.
 
@@ -64,6 +68,7 @@ Railway/world rendering itself is not a Myra UI concern.
 - Myra Desktop handles migrated widget interaction.
 - `GameplayScreen` owns authoritative pause behavior.
 - `DepotScreen` owns temporary builder state only; train ownership remains in `TrainManager`.
+- `InputManager` handles world input and raises `DepotSelected`; it does not create Depot trains.
 - `ScreenManager` owns registered screen lifecycle.
 - Each visible action must have one presentation/interaction owner.
 
