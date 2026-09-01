@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Save;
+using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.UI.Myra;
@@ -15,6 +16,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     private ScreenManager _screenManager;
     private MainMenuScreen? _mainMenu;
     private GameplayScreen? _gameplay;
+    private MyraGameplayView? _gameplayView;
+    private double _gameplayUiRefreshTimer;
 
     public static bool IsMobile => false;
     public static bool IsDesktop => true;
@@ -66,6 +69,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         if (loadExisting)
             _gameplay.LoadSavedGame();
 
+        _gameplayView = new MyraGameplayView(
+            speed => _myraUI.QueueAction(() => GameClock.Current?.SetSpeed(speed)),
+            _ => { },
+            _ => { },
+            _ => { });
+        _myraUI.SetRoot(_gameplayView.Root);
+        _gameplayUiRefreshTimer = 0d;
+
         if (_mainMenu != null)
         {
             _screenManager.RemoveScreen(_mainMenu);
@@ -80,11 +91,18 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Update(GameTime gameTime)
     {
-        // Myra raises Button.Click from Desktop.Render(). Process actions queued
-        // by the previous frame before ScreenManager updates its screens. This
-        // keeps pause actions out of the render phase and lets Resume remove the
-        // PauseScreen before the next screen update pass.
         _myraUI.Update(gameTime);
+
+        if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
+        {
+            _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
+            if (_gameplayUiRefreshTimer >= 0.5d)
+            {
+                _gameplayUiRefreshTimer = 0d;
+                _gameplayView.Refresh();
+            }
+        }
+
         base.Update(gameTime);
     }
 
