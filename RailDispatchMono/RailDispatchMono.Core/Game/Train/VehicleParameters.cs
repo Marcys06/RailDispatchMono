@@ -1,6 +1,6 @@
 namespace RailDispatchMono.Core.Game.Train;
 
-using System;  // Required for Math
+using System;
 
 public class VehicleParameters
 {
@@ -27,6 +27,9 @@ public class VehicleParameters
     /// <summary>Original braking coefficient d before the mass/condition model.</summary>
     public float BrakingCoefficient { get; }
 
+    // 0.1.4c: soften both acceleration and braking so train reactions are less abrupt.
+    private const float DynamicResponseScale = 0.5f;
+
     public VehicleParameters(
         float maxSpeed,
         float acceleration,
@@ -37,17 +40,17 @@ public class VehicleParameters
         float technicalCondition = 1.0f)
     {
         MaxSpeed = maxSpeed;
-        Mass = Math.Max(0.001f, mass);           // MathF -> Math
+        Mass = Math.Max(0.001f, mass);
         Length = length;
 
-        MassCoefficient = Math.Max(0.000001f, massCoefficient);  // MathF -> Math
-        TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));  // MathF -> Math
+        MassCoefficient = Math.Max(0.000001f, massCoefficient);
+        TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));
 
-        AccelerationCoefficient = Math.Max(0f, acceleration);    // MathF -> Math
+        AccelerationCoefficient = Math.Max(0f, acceleration);
         BrakingCoefficient = Math.Max(0f, (braking > 10f ? braking / 100f : braking) * 20.0f);
 
-        Acceleration = CalculateRate(AccelerationCoefficient);
-        Braking = CalculateRate(BrakingCoefficient);
+        Acceleration = CalculateRate(AccelerationCoefficient) * DynamicResponseScale;
+        Braking = CalculateRate(BrakingCoefficient) * DynamicResponseScale;
     }
 
     /// <summary>
