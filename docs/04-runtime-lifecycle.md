@@ -4,36 +4,66 @@
 
 The platform host starts the MonoGame application and constructs the shared `RailDispatchMonoGame` instance.
 
-`RailDispatchMonoGame` constructs its `GraphicsDeviceManager` and shared `MyraUIManager`, then configures basic graphics/game-loop settings in its constructor.
+`RailDispatchMonoGame` owns the game loop, graphics setup, shared `MyraUIManager` and `ScreenManager`.
 
 ## Initialization
 
-`RailDispatchMonoGame.Initialize()` creates:
-
-1. a `ScreenManager` associated with the game;
-2. the Main Menu screen;
-3. registration of the Main Menu through `ScreenManager.AddScreen`.
-
-The base MonoGame initialization is then invoked.
+`RailDispatchMonoGame.Initialize()` creates the `ScreenManager` and registers the initial application screen. Myra initialization is performed from the top-level game lifecycle before any Myra widget tree is constructed.
 
 ## Content loading
 
-`RailDispatchMonoGame.LoadContent()` initializes `MyraUIManager`. This assigns `MyraEnvironment.Game` and creates the shared Myra `Desktop` after MonoGame has a graphics context.
+`RailDispatchMonoGame.LoadContent()` initializes the shared `MyraUIManager`. This assigns `MyraEnvironment.Game` and creates the shared Myra `Desktop` after MonoGame has a graphics context.
 
-`ScreenManager` has its own MonoGame content-loading override for shared drawing resources and registered screens. Myra initialization is deliberately kept in the top-level game lifecycle and must not be repeated by individual screens.
+Individual Myra-backed views create their widget trees when their owning screen/game state activates them. The shared desktop is not recreated for each menu.
 
 ## Update order
 
-The top-level game delegates to `ScreenManager.Update(gameTime)` through the registered game component.
+The normal game update is authoritative for gameplay state. `ScreenManager.Update(gameTime)` handles registered screens and shared input state.
 
-`ScreenManager.Update` first updates `InputState`, then processes screens from the topmost screen toward the bottom. Myra does not change this traversal at `0.1.2a`.
+The gameplay pause state is owned by `GameplayScreen` through `_isPaused`. When paused, simulation updates are skipped while the pause UI remains interactive through the shared Myra desktop.
+
+Myra button callbacks must not mutate the screen stack from inside the render pass. Actions that affect gameplay lifecycle are dispatched through the established Myra action/update boundary and executed during the normal game update lifecycle.
+
+## Pause lifecycle
+
+The current pause model deliberately does **not** insert a second pause `GameScreen` into `ScreenManager`.
+
+```text
+ESC / pause command
+        |
+        v
+GameplayScreen.TogglePause()
+        |
+        +--> _isPaused = true
+        |       |
+        |       +--> MyraPauseView becomes active root
+        |
+        +<-- ResumeGame()
+                |
+                +--> _isPaused = false
+                +--> Myra root cleared
+```
+
+`GameplayScreen` is the single owner of pause state. `MyraPauseView` is presentation only. Resume, Save and Load are gameplay operations owned by `GameplayScreen`; the UI does not own simulation or file persistence state.
+
+While paused, `GameplayScreen` does not run train/simulation updates. It still allows the UI integration to receive pointer/keyboard input. ESC uses the same authoritative resume path as the Resume button.
 
 ## Draw order
 
-`ScreenManager.Draw` iterates the registered screen collection and invokes `Draw` for visible screens. Myra's shared `Desktop` is available through `MyraUIManager` for later screen integration; it is not rendered globally in `0.1.2a`.
+`ScreenManager.Draw` renders the active game/screen content. The shared Myra desktop is rendered by the game host after the screen stack so the active application menu is visually on top.
 
-This avoids adding a second global UI draw pass before the first Myra-backed screen defines the required layering semantics.
+Gameplay-specific rendering remains separate from Myra: railway tracks, trains, HUD elements, radial gameplay menus and floating gameplay text use their existing MonoGame rendering paths.
+
+## Save/Load lifecycle
+
+Pause Save/Load actions reach `GameplayScreen.SaveMap()` and `GameplayScreen.LoadMap()`. `MapSaveService` remains the persistence boundary.
+
+Save does not leave pause. After a successful save, the Load action may become enabled immediately in the existing pause view. Load updates the active map/runtime state and refreshes dependent gameplay controllers without recreating the pause UI.
+
+## Main Menu versus Pause
+
+The startup Main Menu and the pause menu share the same `MyraUIManager`/`Desktop` infrastructure, but only one root is active at a time. The pause state is not represented as a competing `ScreenManager` popup.
 
 ## Resize/scaling lifecycle
 
-The existing `ScreenManager` presentation scaling remains authoritative. Future Myra desktops/widgets must use the established logical presentation/input model rather than introducing a separate coordinate transform.
+The established presentation scaling remains authoritative. Myra uses the current host viewport and must not introduce a second independent logical coordinate system.
