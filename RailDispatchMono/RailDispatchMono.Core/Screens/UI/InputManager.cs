@@ -10,8 +10,8 @@ using RailDispatchMono.Core.Game.Train;
 using RailDispatchMono.Core.ScreenManagers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Screens.UI
 {
@@ -37,7 +37,6 @@ namespace RailDispatchMono.Core.Screens.UI
         private readonly DepotRenderer _depotRenderer;
         private readonly SignalRenderer _signalRenderer;
         private readonly WagonRouteMenu _wagonRouteMenu;
-        private readonly DepotTrainMenu _depotTrainMenu;
 
         private SpriteFont? _tooltipFont;
         private Texture2D? _tooltipPixel;
@@ -45,9 +44,7 @@ namespace RailDispatchMono.Core.Screens.UI
         private KeyboardState _previousKeyboard;
         private int _previousScrollWheelValue;
         private bool _wagonRouteEditMode;
-        private bool _spawnArmed;
 
-        private int _selectedPassengerWagons = 2;
         private int _stationWidth = 1, _stationHeight = 1;
         private static readonly (int Width, int Height)[] StationSizes = { (1, 1), (2, 2), (3, 3), (4, 4) };
         private int _stationSizeIndex;
@@ -106,43 +103,21 @@ namespace RailDispatchMono.Core.Screens.UI
             _wagonRouteMenu = new WagonRouteMenu(_graphicsDevice);
             _wagonRouteMenu.LoadContent();
             _wagonRouteMenu.RouteChanged += OnWagonRouteChanged;
-
-            _depotTrainMenu = new DepotTrainMenu(_graphicsDevice);
-            _depotTrainMenu.LoadContent();
-            _depotTrainMenu.ConsistSelected += OnConsistSelected;
         }
 
         private void OnDirectionSelected(object? sender, SignalDirectionMenu.SignalDirectionSelectedEventArgs e)
             => _signalController.AddSignal(e.Position, e.Direction);
 
-        private void OnConsistSelected(int passengerWagons)
-        {
-            _selectedPassengerWagons = Math.Clamp(passengerWagons, 1, 8);
-            _spawnArmed = true;
-            _builder.Mode = TrackBuildMode.None;
-        }
-
         public void SetFont(SpriteFont font)
         {
             _tooltipFont = font;
             _wagonRouteMenu.SetFont(font);
-            _depotTrainMenu.SetFont(font);
         }
 
         public void Update(GameTime gameTime)
         {
             var mouse = Mouse.GetState();
             var keyboard = Keyboard.GetState();
-
-            // Obsługa otwartych menu
-            if (_depotTrainMenu.IsOpen)
-            {
-                _depotTrainMenu.Update(mouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _depotTrainMenu.Close();
-                RememberInput(mouse, keyboard);
-                return;
-            }
 
             if (_wagonRouteMenu.IsOpen)
             {
@@ -189,7 +164,6 @@ namespace RailDispatchMono.Core.Screens.UI
                 return;
             }
 
-            // Kamera – przesuwanie
             if (mouse.MiddleButton == ButtonState.Pressed && _previousMouse.MiddleButton == ButtonState.Pressed)
             {
                 Vector2 delta = new(mouse.X - _previousMouse.X, mouse.Y - _previousMouse.Y);
@@ -197,7 +171,6 @@ namespace RailDispatchMono.Core.Screens.UI
                     _camera.Move(-delta / _camera.Zoom);
             }
 
-            // Kamera – zoom
             int scroll = mouse.ScrollWheelValue;
             if (scroll != _previousScrollWheelValue)
                 _camera.ZoomAt(new Vector2(mouse.X, mouse.Y), scroll > _previousScrollWheelValue ? 2f : -2f);
@@ -210,7 +183,6 @@ namespace RailDispatchMono.Core.Screens.UI
 
         private void HandleKeyboardInput(KeyboardState keyboard)
         {
-            // Tryby budowania
             if (IsKeyPressed(keyboard, Keys.D1) || IsKeyPressed(keyboard, Keys.NumPad1))
                 _builder.Mode = TrackBuildMode.Straight;
             if (IsKeyPressed(keyboard, Keys.D2) || IsKeyPressed(keyboard, Keys.NumPad2))
@@ -224,17 +196,14 @@ namespace RailDispatchMono.Core.Screens.UI
             if (IsKeyPressed(keyboard, Keys.D9) || IsKeyPressed(keyboard, Keys.NumPad9))
                 _builder.Mode = TrackBuildMode.Depot;
 
-            // Tryb edycji tras wagonów
             if (IsKeyPressed(keyboard, Keys.S))
             {
                 _wagonRouteEditMode = !_wagonRouteEditMode;
                 _builder.Mode = TrackBuildMode.None;
-                _spawnArmed = false;
                 if (!_wagonRouteEditMode)
                     _wagonRouteMenu.Close();
             }
 
-            // Debug – F1-F5, F12
             if (IsKeyPressed(keyboard, Keys.F1))
                 DebugManager.ToggleCategory(DebugManager.DebugCategory.Block);
             if (IsKeyPressed(keyboard, Keys.F2))
@@ -251,22 +220,12 @@ namespace RailDispatchMono.Core.Screens.UI
                 DebugManager.SaveLogToFile(file);
             }
 
-            // ESC – zamyka menu i tryby, NIE otwiera pauzy (pauza jest w GameplayScreen)
-            if (IsKeyPressed(keyboard, Keys.Escape))
+            if (IsKeyPressed(keyboard, Keys.Escape) && _wagonRouteEditMode)
             {
-                if (_wagonRouteEditMode)
-                {
-                    _wagonRouteEditMode = false;
-                    _wagonRouteMenu.Close();
-                }
-                else if (_spawnArmed)
-                {
-                    _spawnArmed = false;
-                }
-                // Pauza jest teraz zarządzana przez GameplayScreen, nie przez InputManager
+                _wagonRouteEditMode = false;
+                _wagonRouteMenu.Close();
             }
 
-            // R – rotacja/zmiana
             if (IsKeyPressed(keyboard, Keys.R))
             {
                 if (_builder.Mode == TrackBuildMode.Straight)
@@ -282,7 +241,6 @@ namespace RailDispatchMono.Core.Screens.UI
                 }
             }
 
-            // J – przełącz semafor/rozjazd
             if (IsKeyPressed(keyboard, Keys.J))
                 ToggleSignalOrSwitch();
         }
@@ -310,7 +268,6 @@ namespace RailDispatchMono.Core.Screens.UI
         {
             var mouse = Mouse.GetState();
             var pos = ToMapPosition(new Vector2(mouse.X, mouse.Y));
-
             var signals = _signalController.GetSignalsAt(pos);
             if (signals.Count > 0)
             {
@@ -329,10 +286,8 @@ namespace RailDispatchMono.Core.Screens.UI
             MapPosition pos = ToMapPosition(screen);
             bool shift = keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift);
 
-            // LEWY PRZYCISK
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
             {
-                // Tryb edycji tras wagonów
                 if (_wagonRouteEditMode)
                 {
                     var vehicle = _trainRenderer.GetVehicleAtPosition(_trainManager, _camera.ScreenToWorld(screen));
@@ -344,27 +299,13 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Tryb spawnu
-                if (_spawnArmed)
-                {
-                    if (_map.TryGetTrack(pos, out var spawnTrack) && spawnTrack != null)
-                    {
-                        var direction = spawnTrack.GetAvailableDirections().FirstOrDefault();
-                        SpawnTrain(pos, direction, _selectedPassengerWagons);
-                        _spawnArmed = false;
-                    }
-                    return;
-                }
-
-                // Kliknięcie na depot
                 var depot = _depotController.GetDepotAt(pos);
                 if (depot != null && _builder.Mode != TrackBuildMode.Depot)
                 {
-                    _depotTrainMenu.Open(screen);
+                    DepotSelected?.Invoke(depot);
                     return;
                 }
 
-                // Budowanie
                 if (_builder.Mode == TrackBuildMode.Signal)
                     PlaceSignal(pos, screen);
                 else if (_builder.Mode == TrackBuildMode.Station)
@@ -375,10 +316,8 @@ namespace RailDispatchMono.Core.Screens.UI
                     _builder.BuildAt(pos);
             }
 
-            // PRAWY PRZYCISK
             if (mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released)
             {
-                // Depot – usuwanie
                 var depot = _depotController.GetDepotAt(pos);
                 if (depot != null)
                 {
@@ -387,7 +326,6 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Sygnały
                 var signals = _signalController.GetSignalsAt(pos);
                 if (signals.Count > 0)
                 {
@@ -400,7 +338,6 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Stacja – usuwanie
                 var station = _stationController.GetStationAt(pos);
                 if (station != null)
                 {
@@ -409,7 +346,6 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Rozjazd – menu lub usuwanie
                 if (_map.TryGetTrack(pos, out var track) && track != null && track.IsJunction)
                 {
                     if (shift)
@@ -419,7 +355,6 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                // Usuwanie toru
                 if (_map.TryGetTrack(pos, out var existing) && existing != null)
                     _builder.Remove(pos);
             }
@@ -453,7 +388,6 @@ namespace RailDispatchMono.Core.Screens.UI
                 pos.X - (_stationWidth - 1) / 2,
                 pos.Y - (_stationHeight - 1) / 2);
 
-            // Sprawdź, czy wszystkie pola mają tor
             for (int y = 0; y < _stationHeight; y++)
             {
                 for (int x = 0; x < _stationWidth; x++)
@@ -468,41 +402,6 @@ namespace RailDispatchMono.Core.Screens.UI
 
             var station = new Station($"Stacja {_stationController.Stations.Count + 1}", origin, _stationWidth, _stationHeight);
             _stationController.AddStation(station);
-        }
-
-        private void SpawnTrain(MapPosition cell, TrackConnections direction, int passengerWagons)
-        {
-            if (direction == TrackConnections.None)
-                direction = TrackConnections.East;
-
-            var locomotiveParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 80000f, 1.0f);
-            var wagonParameters = new VehicleParameters(25.4f, 0.8f, 100.0f, 40000f, 1.0f);
-
-            var vehicles = new List<Vehicle>
-            {
-                new Locomotive(LocomotiveType.ElectricDC, locomotiveParameters)
-            };
-
-            for (int i = 0; i < passengerWagons; i++)
-                vehicles.Add(new Wagon(wagonParameters));
-
-            var train = new Train(
-                new Vector2(cell.X + 0.5f, cell.Y + 0.5f),
-                direction,
-                0f,
-                vehicles);
-
-            train.SetMap(_map);
-            train.SetSignalController(_signalController);
-            train.SetBlockController(GetBlockController());
-
-            _trainManager.Add(train);
-            SaveSchedule(train);
-        }
-
-        private BlockController GetBlockController()
-        {
-            return _trainManager.BlockController ?? new BlockController();
         }
 
         private void OnWagonRouteChanged(Wagon wagon)
@@ -539,7 +438,6 @@ namespace RailDispatchMono.Core.Screens.UI
             }
             catch (IOException)
             {
-                // Ignoruj błędy zapisu
             }
         }
 
@@ -564,7 +462,6 @@ namespace RailDispatchMono.Core.Screens.UI
             Vector2 screen = new(mouse.X, mouse.Y);
             MapPosition pos = _camera.ScreenToMap(screen);
 
-            // Rysowanie świata
             _spriteBatch.Begin(transformMatrix: _camera.Transform, samplerState: SamplerState.PointClamp);
 
             _renderer.Draw(_spriteBatch, _camera);
@@ -573,7 +470,6 @@ namespace RailDispatchMono.Core.Screens.UI
             _depotRenderer.Draw(_spriteBatch);
             _trainRenderer.Draw(_spriteBatch, _trainManager);
 
-            // Podgląd budowania
             _renderer.DrawPreview(_spriteBatch, pos, _builder.Mode, _builder.StraightHorizontal, _builder.Curve, _builder.Junction);
 
             if (_builder.Mode == TrackBuildMode.Station)
@@ -583,11 +479,9 @@ namespace RailDispatchMono.Core.Screens.UI
 
             _spriteBatch.End();
 
-            // Tooltipy
             DrawStationTooltip(screen, pos);
             DrawWagonTooltip(screen);
 
-            // Menu radialne
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
 
             if (_junctionRadialMenu.IsOpen)
@@ -601,18 +495,12 @@ namespace RailDispatchMono.Core.Screens.UI
 
             _spriteBatch.End();
 
-            // Menu tras i depot
             var font = GetTooltipFont();
             if (font != null)
-            {
                 _wagonRouteMenu.SetFont(font);
-                _depotTrainMenu.SetFont(font);
-            }
 
             if (_wagonRouteMenu.IsOpen)
                 _wagonRouteMenu.Draw(_spriteBatch);
-            if (_depotTrainMenu.IsOpen)
-                _depotTrainMenu.Draw(_spriteBatch);
         }
 
         private void DrawWagonTooltip(Vector2 mouse)
@@ -622,13 +510,11 @@ namespace RailDispatchMono.Core.Screens.UI
 
             var world = _camera.ScreenToWorld(mouse);
             var hit = _trainRenderer.GetVehicleAtPosition(_trainManager, world);
-
             if (!hit.HasValue)
                 return;
 
             var result = hit.Value;
             var vehicle = result.train.Composition.Vehicles[result.vehicleIndex];
-
             if (vehicle is not Wagon wagon)
                 return;
 
@@ -667,7 +553,6 @@ namespace RailDispatchMono.Core.Screens.UI
                 return;
 
             var waiting = _stationController.Passengers.GetWaitingAt(station).ToList();
-
             string[] lines = {
                 "STACJA",
                 station.Name,
