@@ -2,6 +2,7 @@ using Myra.Graphics2D;
 using Myra.Graphics2D.UI;
 using RailDispatchMono.Core.Game.RollingStock;
 using RailDispatchMono.Core.Game.Train;
+using RailDispatchMono.Core.Screens;
 
 namespace RailDispatchMono.Core.UI.Myra;
 
@@ -20,7 +21,6 @@ internal sealed class MyraDepotView
         _screen = screen;
         var root = new VerticalStackPanel { Width = 1180, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Spacing = 8 };
         root.Widgets.Add(new Label { Text = "KREATOR POCIĄGU — DEPOT", HorizontalAlignment = HorizontalAlignment.Center });
-
         var columns = new Grid { Width = 1180, Height = 390, ColumnSpacing = 10 };
         columns.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
         columns.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1.15f));
