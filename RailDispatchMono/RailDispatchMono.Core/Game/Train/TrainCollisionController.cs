@@ -39,7 +39,7 @@ public sealed class TrainCollisionController
         if (ContainsAnotherTrain(current, train))
             return true;
 
-        for (int step = 0; step < 5; step++)
+        for (int step = 0; step < 4; step++)
         {
             if (!visited.Add(current))
                 return false;
