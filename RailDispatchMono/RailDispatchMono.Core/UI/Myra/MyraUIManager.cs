@@ -47,7 +47,8 @@ public sealed class MyraUIManager
         if (!_initialized || Desktop.Root == null)
             return;
 
-        Desktop.Update(gameTime);
+        // Myra Desktop nie ma Update() – to jest puste, ale zachowuje API
+        // na wypadek, gdyby przyszła wersja Myra wprowadziła Update
     }
 
     public void Render()
