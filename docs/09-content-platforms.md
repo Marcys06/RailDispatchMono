@@ -4,7 +4,7 @@
 
 `RailDispatchMonoGame` sets `Content.RootDirectory = "Content"`.
 
-The Core project contains a `Content` directory with game assets. The source tree currently includes a sprite font (`Arial24.spritefont`) and background assets, among other content.
+The Core project contains a `Content` directory with game assets. Myra 1.6.5 is consumed as a NuGet dependency and does not require a copied project-local Myra asset tree for the standard integration used by this stage.
 
 `ScreenManager` loads shared rendering resources from the content system, including:
 
@@ -15,31 +15,14 @@ These asset names are part of the current runtime contract. Renaming an asset re
 
 ## Platform projects
 
-The repository includes platform-specific hosts. Android contains:
-
-- `MainActivity.cs`
-- `AndroidManifest.xml`
-- Android resource XML files
-- density-specific launcher/splash images
-- `RailDispatchMono.Android.csproj`
-
-Other platform projects exist in the solution tree. Their purpose is to provide platform bootstrap/configuration around the shared Core implementation.
-
-## Platform flags
-
-The current `RailDispatchMonoGame` implementation exposes static flags:
-
-- `IsMobile => false`
-- `IsDesktop => true`
-
-These flags are consumed by input initialization. If a platform host requires different values, the shared implementation must be reviewed carefully because the current properties are hard-coded in Core.
+The repository includes platform-specific hosts. Android contains its platform bootstrap and resources, while desktop hosts provide the desktop MonoGame configuration. Myra is referenced by the shared Core project so UI screens can remain in shared code.
 
 ## Content ownership
 
 Shared game assets belong under Core's content area when they are required by shared gameplay/screens. Platform-only assets should stay with the platform project.
 
-Do not duplicate a shared asset into each platform project without a concrete platform requirement.
+Myra itself is a library dependency rather than a duplicated content subtree. Do not copy Myra's source or binaries into the repository unless a later platform-specific requirement explicitly justifies it.
 
 ## Content-loading caution
 
-There are two relevant mechanisms in the current source: the game class explicitly calls `_gameplay.LoadContent(Content)`, while `ScreenManager` has a component-level `LoadContent()` implementation that initializes shared drawing resources and invokes `LoadContent()` on registered screens. Changes to content loading must account for both paths to avoid duplicate loading or lifecycle regressions.
+The existing screen/content lifecycle remains authoritative. Myra initialization occurs once in `RailDispatchMonoGame.LoadContent()`. Do not add independent Myra initialization calls to every screen.

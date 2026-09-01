@@ -2,6 +2,25 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.2a] — Myra UI integration foundation
+**Data:** 2026-09-01
+
+- Dodano standardową bibliotekę `Myra` w wersji `1.6.5` do `RailDispatchMono.Core`.
+- Dodano `MyraUIManager` jako wspólną granicę integracji Myra.
+- `MyraEnvironment.Game` jest inicjalizowane jednokrotnie podczas `RailDispatchMonoGame.LoadContent()`.
+- Utworzono współdzielony Myra `Desktop`.
+- Nie migrowano jeszcze istniejących ekranów; `ScreenManager` pozostaje właścicielem lifecycle ekranów i routingu wejścia.
+- Aktualizowano dokumentację architektury i reguły dla AI.
+
+## [0.1.1] — Przebudowa dokumentacji
+**Data:** 2026-08-31
+
+- Zredukowano aktywny zestaw `docs/` do 20 dokumentów autorytatywnych.
+- Usunięto przestarzałe snapshoty i jednorazowe dokumenty audytowe z aktywnego zestawu.
+- Usunięto redundantny `architecture.json`.
+- Dodano `19-current-state-0.1.1.md` jako snapshot aktualnego stanu.
+- Utrzymano szczegółową historię w `docs/changelog/` i `CHANGELOG.md`.
+
 ## [0.0.16] — Save slots, Main Menu i runtime persistence
 **Data:** 2026-08-31
 
@@ -269,6 +288,4 @@ This file is the high-level release history. Detailed release notes are kept in 
 
 ## [0.0.0] — Fundament projektu
 
-- Utworzono repozytorium i strukturę projektu.
-- Skonfigurowano rozwiązanie .NET/MonoGame.
-- Utworzono podstawową strukturę domeny, symulacji, UI i dokumentacji.
+- Utworzono repozytorium i podstawową strukturę projektu.

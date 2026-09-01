@@ -7,7 +7,8 @@ This index is a navigation aid. It is intentionally based on files confirmed in 
 | Path | Role |
 |---|---|
 | `RailDispatchMono/RailDispatchMono.Core/RailDispatchMonoGame.cs` | Main shared MonoGame `Game` implementation and game-loop delegation. |
-| `RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj` | Shared Core project configuration; currently `net9.0` with MonoGame dependency. |
+| `RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj` | Shared Core project configuration; currently `net9.0` with MonoGame and Myra dependencies. |
+| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraUIManager.cs` | Shared Myra initialization boundary and Desktop owner. |
 
 ## Screen architecture
 
@@ -32,31 +33,9 @@ This index is a navigation aid. It is intentionally based on files confirmed in 
 | `RailDispatchMono/RailDispatchMono.Core/Settings/MobileSettingsStorage.cs` | Mobile settings persistence implementation. |
 | `RailDispatchMono/RailDispatchMono.Core/Settings/ConsoleSettingsStorage.cs` | Console-oriented settings persistence implementation. |
 
-## Railway domain
+## Railway and train domain
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Railway/BlockController.cs` | Railway block control/domain component. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Railway/Junction.cs` | Railway junction domain component. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Railway/TrackRoute.cs` | Track route domain component. |
-
-## Train domain
-
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train domain object. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Train coordination/management component. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Vehicle domain base/component. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Vehicle parameter data. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive domain type. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Wagon.cs` | Wagon domain type. |
-
-## Rendering/effects
-
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/Camera.cs` | Camera/rendering support. |
-| `RailDispatchMono/RailDispatchMono.Core/Effects/ParticleManager.cs` | Particle effect management. |
+Use the existing `Game/Railway/`, `Game/Train/` and passenger/station subsystems. Before changing types, search their usages; `Train` is also a namespace in the codebase.
 
 ## Android host
 

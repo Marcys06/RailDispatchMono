@@ -12,6 +12,12 @@ Platform host
     v
 RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     |
+    +--> GraphicsDeviceManager
+    +--> MyraUIManager
+    |       |
+    |       +--> MyraEnvironment.Game
+    |       +--> Myra Desktop
+    |
     v
 ScreenManager : DrawableGameComponent
     |
@@ -25,54 +31,39 @@ ScreenManager : DrawableGameComponent
     +--> presentation scaling
 ```
 
-This diagram describes the current central flow. Individual gameplay classes can participate below a screen without becoming part of the screen-management contract.
+Myra is intentionally below the application/game root and beside the screen infrastructure. `ScreenManager` remains the authoritative owner of screen lifecycle and input routing.
 
 ## `RailDispatchMonoGame`
 
 Responsibilities currently visible in source:
 
 1. Construct `GraphicsDeviceManager`.
-2. Configure the Content root and mouse visibility.
-3. Configure the preferred 1280x720 backbuffer.
-4. Enable vertical synchronization.
-5. Configure a fixed timestep of 1/60 second.
-6. During `Initialize`, construct `ScreenManager` and `GameplayScreen` and add the gameplay screen.
-7. During `LoadContent`, load the gameplay screen's content.
-8. During `Update`, delegate to `ScreenManager.Update`.
-9. During `Draw`, delegate to `ScreenManager.Draw`.
+2. Construct the shared `MyraUIManager`.
+3. Configure the Content root and mouse visibility.
+4. Configure the preferred 1600x900 backbuffer.
+5. Enable vertical synchronization.
+6. Configure a fixed timestep of 1/60 second.
+7. During `Initialize`, construct `ScreenManager` and register the Main Menu.
+8. During `LoadContent`, initialize `MyraUIManager` with the current MonoGame `Game` instance.
+9. During `Update`, delegate to `ScreenManager` through the registered game component.
+10. During `Draw`, delegate screen rendering through `ScreenManager`.
 
 Do not duplicate this lifecycle in individual screens.
 
+## `MyraUIManager`
+
+`MyraUIManager` is the current integration boundary for the Myra library. It:
+
+- assigns the active MonoGame `Game` to `MyraEnvironment.Game`;
+- creates one shared Myra `Desktop`;
+- exposes initialization state;
+- provides the common Myra render entry point for future UI screens.
+
+At `0.1.2a`, no existing screen has been migrated to Myra yet. This stage only establishes the dependency and runtime integration boundary.
+
 ## `ScreenManager`
 
-`ScreenManager` is the central coordinator for screen instances. It owns two screen lists: the active collection and a temporary collection used while updating from top to bottom.
-
-It also owns the shared `InputState` and drawing resources (`SpriteBatch`, `SpriteFont`, and a blank texture).
-
-The manager controls:
-
-- screen registration/removal;
-- content loading/unloading;
-- input routing;
-- screen coverage semantics;
-- screen drawing order;
-- presentation scaling;
-- touch gesture configuration;
-- optional screen tracing.
-
-## `GameScreen`
-
-`GameScreen` is the base lifecycle contract for a screen. A screen exposes state such as popup status, transition timings, transition position, active/hidden/transition states, controlling player and enabled touch gestures.
-
-A screen has four principal overridable operations:
-
-- `LoadContent()`
-- `UnloadContent()`
-- `Update(...)`
-- `HandleInput(...)`
-- `Draw(...)`
-
-`HandleInput` is deliberately separate from `Update`: the manager decides which screen receives user input.
+`ScreenManager` remains the central coordinator for screen instances. It owns the active screen collection, shared input state and drawing resources. Myra must not introduce a parallel screen stack or bypass this lifecycle.
 
 ## Dependency discipline
 
@@ -84,7 +75,4 @@ When implementing a feature:
 4. Keep screen-specific presentation in the screen layer.
 5. Keep simulation/domain behavior in the relevant `Game` subsystem.
 6. Keep shared input transformation in `InputState`/`ScreenManager` instead of performing ad-hoc coordinate conversion in every control.
-
-## Architectural caution
-
-The repository is an evolving codebase. Some implementation details are transitional (for example, comments in source contain migration notes). Documentation describes actual current behavior and should not be interpreted as proof that every subsystem is already cleanly separated.
+7. Use `MyraUIManager` as the Myra integration boundary instead of initializing `MyraEnvironment` independently from multiple screens.

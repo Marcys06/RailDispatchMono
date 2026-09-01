@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.0`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.2a`.
 
 ## 1. Never invent architecture
 
@@ -12,7 +12,7 @@ The source code is authoritative. Do not infer a subsystem contract from a direc
 
 ## 3. Do not bypass `ScreenManager`
 
-Screens are registered, updated, drawn and removed through `ScreenManager`. Do not create a parallel global screen stack or dispatch input independently.
+Screens are registered, updated, drawn and removed through `ScreenManager`. Do not create a parallel global screen stack or dispatch input independently. Myra does not replace `ScreenManager`.
 
 ## 4. Respect screen lifecycle
 
@@ -20,7 +20,7 @@ Understand `GameScreen`, `TransitionOn`, `Active`, `TransitionOff`, `Hidden`, po
 
 ## 5. Input has one shared source
 
-Use the existing `InputState`/input routing architecture for shared input semantics. Do not compare raw physical mouse coordinates with logical game coordinates without applying the established presentation transformation.
+Use the existing `InputState`/input routing architecture for shared input semantics. Do not compare raw physical mouse coordinates with logical game coordinates without applying the established presentation transformation. Myra controls must integrate with this model rather than inventing a second input coordinate system.
 
 ## 6. Preserve state ownership
 
@@ -32,7 +32,7 @@ Authoritative game/domain state belongs to the relevant game subsystem, not to a
 
 ## 8. Do not duplicate content infrastructure
 
-Reuse existing Content loading and asset paths. Search current load sites before adding or renaming assets.
+Reuse existing Content loading and asset paths. Search current load sites before adding or renaming assets. Do not copy Myra source or library assets into Core when the NuGet integration is sufficient.
 
 ## 9. Search before changing APIs
 
@@ -50,7 +50,7 @@ Documentation and implementation cleanup must not delete unrelated repository fi
 
 ## 12. Prefer small changes
 
-Do not combine unrelated refactors with a feature implementation. At `0.1.0`, the feature scope is frozen; prefer targeted bug fixes over new architecture.
+`0.1.2` is being implemented as lettered incremental stages. Do not rewrite an earlier stage after it has been committed. If a stage has a defect, document the failure and implement the correction in the next lettered stage.
 
 ## 13. Validate assumptions against code
 
@@ -62,19 +62,11 @@ If a code change modifies lifecycle, ownership, dependencies, input, settings, c
 
 ## 15. Save-system contract
 
-The current save system uses **separate JSON files inside each save directory**. Do not collapse it into a single JSON document unless a future task explicitly changes the format.
-
-The save system is versioned. `metadata.json` identifies the save. Runtime state is distributed among the established save files, including map/infrastructure, trains/vehicles, schedules/routes, passengers and simulation time where supported by the current implementation.
-
-Auto-save is intentionally disabled at `0.1.0`.
-
-Invalid or incomplete saves must be surfaced to the user as a notification. Do not silently load partial state.
+The current save system uses separate JSON files inside each save directory. Do not collapse it into a single JSON document unless a future task explicitly changes the format.
 
 ## 16. Startup contract
 
-The application enters through the Main Menu. The current menu flow includes New Game, Load Game, Settings, About and Quit.
-
-New Game intentionally creates a new empty game state immediately without an additional confirmation step.
+The application enters through the Main Menu. New Game intentionally creates a new empty game state immediately without an additional confirmation step.
 
 ## 17. Current gameplay contract
 
@@ -82,18 +74,21 @@ New Game intentionally creates a new empty game state immediately without an add
 - x1/x2/x5 are simulation-speed controls.
 - Pause stops simulation progression and is toggled with `ESC`.
 - Depots are world objects and the entry point for train creation.
-- A depot can be used to create multiple trains through the existing depot workflow.
 - Wagon routes describe passenger-service destinations; they do not directly control locomotive movement.
 - Passenger exchange is wagon-specific and may emit floating `+X` / `-X` notifications.
 
-## 18. Current release contract
+## 18. Myra integration contract
 
-`0.1.0` is a stabilization release. Do not introduce a new feature milestone under the `0.1.0` label. New features should be planned for the next version and implemented separately unless the task explicitly states otherwise.
+- Myra is consumed through the standard `Myra` NuGet package.
+- `MyraUIManager` is the single Core integration boundary for `MyraEnvironment.Game` and the shared `Desktop`.
+- `ScreenManager` remains the screen/lifecycle owner.
+- At `0.1.2a`, existing screens are not migrated; later stages may migrate them one at a time.
+- Do not initialize separate Myra desktops from unrelated screens without an explicit architectural decision.
 
-## 19. Comments are not necessarily current
+## 19. Release contract
 
-The source contains migration notes and comments written during implementation changes. Always trust the actual signature and executable code over a stale comment.
+`0.1.2x` stages are incremental commits. A failed stage is not amended or rewritten; its correction belongs to the next lettered stage.
 
 ## 20. Documentation version discipline
 
-Current-state documents must describe `0.1.0`. Historical documents and changelog entries retain their original version identifiers. Do not rewrite historical release notes to pretend that older versions contained features added later.
+Current-state documents must describe the latest committed `0.1.2x` stage. Historical documents and changelog entries retain their original version identifiers.

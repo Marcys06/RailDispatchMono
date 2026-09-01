@@ -1,8 +1,16 @@
 # Known issues and cautions
 
-## Current baseline: `0.1.0`
+## Current baseline: `0.1.2a`
 
-The `0.0.16` feature series is considered complete for the current scope. `0.1.0` is a stabilization/bugfix baseline. The game is considered operational within the current prototype scope; remaining minor defects are not release blockers unless they prevent the core gameplay loop.
+`0.1.2a` is the first infrastructure stage of the Myra UI integration series. It adds the standard Myra dependency and a shared initialization boundary but does not migrate existing screens yet.
+
+### Myra integration
+
+- Myra is currently referenced from `RailDispatchMono.Core.csproj` as version `1.6.5`.
+- `MyraUIManager` initializes `MyraEnvironment.Game` and creates the shared `Desktop` during `RailDispatchMonoGame.LoadContent()`.
+- The shared Myra desktop is not rendered globally at this stage.
+- Existing menu, settings and pause screens continue using the established screen/UI implementation.
+- A later stage must integrate Myra with the existing input and presentation-scaling contracts rather than introducing an independent input stack.
 
 ### Persistence
 
@@ -11,30 +19,13 @@ The `0.0.16` feature series is considered complete for the current scope. `0.1.0
 - Save schema is versioned through `schemaVersion`.
 - Auto-save is intentionally disabled.
 - Invalid/incomplete save data must result in a user-facing notification rather than silent partial loading.
-- Do not assume that a future unified single-JSON save format exists; the current contract is deliberately multi-file.
 
 ### Startup and screen lifecycle
 
 - Main Menu is the application entry point.
 - New Game creates a new empty game state immediately; no confirmation is required by design.
-- Load Game operates on save directories.
 - Pause is a `ScreenManager`-managed overlay and `ESC` toggles it.
-- Do not bypass `ScreenManager` when changing menu/pause behavior.
-
-### Simulation timing
-
-- `GameDay` and `GameTime` are authoritative simulation-time values.
-- x1/x2/x5 are simulation speed multipliers.
-- Pause stops simulation progression.
-- The presentation/game-time scale must not be accidentally applied as an additional multiplier to physical train velocity, acceleration, braking or travelled distance.
-
-### Gameplay
-
-- Depots are world buildings and the train-creation entry point.
-- A depot may be used to create multiple trains through the existing depot workflow.
-- Wagon routes describe passenger-service destinations and do not directly drive locomotive movement.
-- Passenger exchange is wagon-specific. Floating `+X` and `-X` notifications are generated when the passenger count changes during an exchange.
-- Signal protection remains part of train movement and has priority over the simpler collision safety rule.
+- Do not bypass `ScreenManager` when migrating UI to Myra.
 
 ### Diagnostics
 
@@ -43,4 +34,4 @@ The `0.0.16` feature series is considered complete for the current scope. `0.1.0
 
 ## Rule for future agents
 
-When a reported bug contradicts this document, inspect the current source and call sites first. Update the documentation only after the executable behavior has been verified. Do not restore obsolete behavior merely because it is described in an older changelog.
+When a reported bug contradicts this document, inspect the current source and call sites first. If `0.1.2a` has a defect, do not modify this stage after commit; implement the correction as `0.1.2b`.

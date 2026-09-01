@@ -6,9 +6,9 @@ The `docs/` directory is part of the development infrastructure. Its purpose is 
 
 ## Current baseline
 
-The current release baseline is `0.1.0`. It is a stabilization/bugfix release following the completed `0.0.16` feature series.
+The current release baseline is `0.1.2a`, the first infrastructure stage of the Myra UI integration series.
 
-Current-state documentation must describe the executable `0.1.0` behavior. Historical documents and versioned changelogs retain their original version identifiers and must not be rewritten as current-state documentation.
+Current-state documentation must describe the executable latest lettered stage. Historical documents and versioned changelogs retain their original version identifiers and must not be rewritten as current-state documentation.
 
 ## Documentation locations
 
@@ -20,42 +20,15 @@ There is one canonical documentation tree. Do not create another `Docs` director
 
 ## When to update documentation
 
-Update documentation whenever a change affects:
+Update documentation whenever a change affects project structure, dependency direction, application lifecycle, screen lifecycle or routing, input semantics, coordinate systems, settings or persistence, localization, content loading/assets, platform bootstrapping, domain ownership, public APIs used across subsystems, save format or release scope.
 
-- project structure;
-- dependency direction;
-- application lifecycle;
-- screen lifecycle or routing;
-- input semantics;
-- coordinate systems;
-- settings or persistence;
-- localization;
-- content loading/assets;
-- platform bootstrapping;
-- domain ownership;
-- public APIs used across subsystems;
-- save format or save compatibility;
-- release scope.
-
-## What not to document as fact
-
-Do not document:
-
-- intended future architecture as if it already exists;
-- behavior inferred only from a class name;
-- behavior contradicted by current code;
-- obsolete implementation details without marking them obsolete;
-- speculative bug explanations as confirmed causes.
-
-## Source references
-
-Documentation should prefer repository-relative paths and exact class/member names. This makes the material useful to an AI even when the repository is checked out at a different location.
+For `0.1.2`, every lettered stage must update the relevant current-state documentation when its architecture or dependency boundary changes.
 
 ## Change discipline
 
 Documentation changes must preserve historical release information. Do not delete old changelog files merely because the current baseline has advanced.
 
-When updating current-state documents, replace stale current-version statements rather than duplicating several competing baselines.
+A `0.1.2x` stage is immutable after commit. If a stage needs correction, create the next lettered stage and document the correction there.
 
 ## Audit procedure
 

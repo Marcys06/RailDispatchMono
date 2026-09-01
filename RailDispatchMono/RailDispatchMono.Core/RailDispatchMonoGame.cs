@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Screens;
 using RailDispatchMono.Core.ScreenManagers;
+using RailDispatchMono.Core.UI.Myra;
 using System;
 
 namespace RailDispatchMono.Core;
@@ -10,6 +11,7 @@ namespace RailDispatchMono.Core;
 public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 {
     private readonly GraphicsDeviceManager _graphics;
+    private readonly MyraUIManager _myraUI;
     private ScreenManager _screenManager;
     private MainMenuScreen? _mainMenu;
     private GameplayScreen? _gameplay;
@@ -22,6 +24,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         DebugManager.LogInfo("RailDispatchMonoGame constructor started.");
         DebugManager.LogInfo($"Runtime: {Environment.OSVersion} | .NET: {Environment.Version}");
         _graphics = new GraphicsDeviceManager(this);
+        _myraUI = new MyraUIManager();
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         _graphics.PreferredBackBufferWidth = 1600;
@@ -32,6 +35,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         Window.AllowUserResizing = true;
         Window.ClientSizeChanged += OnWindowClientSizeChanged;
     }
+
+    public MyraUIManager MyraUI => _myraUI;
 
     private void OnWindowClientSizeChanged(object? sender, EventArgs e)
         => DebugManager.LogInfo($"Window resized: {Window.ClientBounds.Width}x{Window.ClientBounds.Height}");
@@ -70,6 +75,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void LoadContent()
     {
+        _myraUI.Initialize(this);
         // ScreenManager owns screen content loading.
     }
 
