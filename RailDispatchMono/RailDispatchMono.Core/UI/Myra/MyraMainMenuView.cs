@@ -11,23 +11,35 @@ internal sealed class MyraMainMenuView
 {
     public Widget Root { get; }
 
-    public MyraMainMenuView(Action newGame, Action loadGame, Action settings, Action about, Action quit)
+    public MyraMainMenuView(Action newGame, Action settings, Action about, Action quit)
     {
         var grid = new Grid
         {
+            Width = 420,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             RowSpacing = 10,
             ColumnSpacing = 10
         };
 
-        for (int i = 0; i < 6; i++)
-            grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
 
-        grid.Widgets.Add(new Label { Text = "RAIL DISPATCHER" });
+        var title = new Label
+        {
+            Text = "RAIL DISPATCHER",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        Grid.SetRow(title, 0);
+        grid.Widgets.Add(title);
+
         AddButton(grid, 1, "NOWA GRA", newGame);
-        AddButton(grid, 2, "WCZYTAJ GRĘ", loadGame);
-        AddButton(grid, 3, "USTAWIENIA", settings);
-        AddButton(grid, 4, "O GRZE", about);
-        AddButton(grid, 5, "WYJDŹ", quit);
+        AddButton(grid, 2, "USTAWIENIA", settings);
+        AddButton(grid, 3, "O GRZE", about);
+        AddButton(grid, 4, "WYJDŹ", quit);
 
         Root = grid;
     }
@@ -37,7 +49,8 @@ internal sealed class MyraMainMenuView
         var button = new Button
         {
             Content = new Label { Text = text },
-            Width = 320
+            Width = 320,
+            HorizontalAlignment = HorizontalAlignment.Center
         };
 
         button.Click += (_, _) => action();
