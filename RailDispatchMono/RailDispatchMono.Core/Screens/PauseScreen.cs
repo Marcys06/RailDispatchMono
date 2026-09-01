@@ -16,6 +16,9 @@ internal sealed class PauseScreen : GameScreen
 
     private readonly bool _canLoad;
     private MyraPauseView? _myraView;
+    private bool _resumeRequested;
+    private bool _saveRequested;
+    private bool _loadRequested;
 
     public PauseScreen(bool canLoad = true)
     {
@@ -51,6 +54,32 @@ internal sealed class PauseScreen : GameScreen
         base.UnloadContent();
     }
 
+    public override void Update(GameTime gameTime, bool otherScreenHasFocus, bool coveredByOtherScreen)
+    {
+        base.Update(gameTime, otherScreenHasFocus, coveredByOtherScreen);
+
+        // Myra dispatches Button.Click while Desktop.Render() is running. Do not
+        // mutate ScreenManager or game state from that render callback. Queue the
+        // action and execute it from the normal screen update phase instead.
+        if (_resumeRequested)
+        {
+            _resumeRequested = false;
+            OnResume?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (_saveRequested)
+        {
+            _saveRequested = false;
+            OnSave?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (_loadRequested)
+        {
+            _loadRequested = false;
+            OnLoad?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     public override void HandleInput(GameTime gameTime, InputState inputState)
     {
         base.HandleInput(gameTime, inputState);
@@ -60,22 +89,16 @@ internal sealed class PauseScreen : GameScreen
     }
 
     private void ResumeFromMyra()
-    {
-        // GameplayScreen owns removal of the pause screen. Do not call ExitScreen()
-        // here: Resume is also invoked from a Myra callback while the shared Desktop
-        // is rendering, and changing the GameScreen lifecycle twice leaves gameplay
-        // in a paused lifecycle state.
-        OnResume?.Invoke(this, EventArgs.Empty);
-    }
+        => _resumeRequested = true;
 
     private void SaveFromMyra()
     {
-        OnSave?.Invoke(this, EventArgs.Empty);
+        _saveRequested = true;
         _myraView?.SetLoadEnabled(true);
     }
 
     private void LoadFromMyra()
-        => OnLoad?.Invoke(this, EventArgs.Empty);
+        => _loadRequested = true;
 
     private void QuitFromMyra()
         => ShowQuitConfirmation();
