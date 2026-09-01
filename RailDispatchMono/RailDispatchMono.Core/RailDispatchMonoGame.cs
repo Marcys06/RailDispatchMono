@@ -80,8 +80,12 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
     protected override void Update(GameTime gameTime)
     {
-        base.Update(gameTime);
+        // Myra raises Button.Click from Desktop.Render(). Process actions queued
+        // by the previous frame before ScreenManager updates its screens. This
+        // keeps pause actions out of the render phase and lets Resume remove the
+        // PauseScreen before the next screen update pass.
         _myraUI.Update(gameTime);
+        base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
