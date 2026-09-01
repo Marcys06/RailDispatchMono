@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.2c`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. These rules describe the current repository contract at `0.1.2i`.
 
 ## 1. Never invent architecture
 
@@ -81,10 +81,13 @@ The application enters through the Main Menu. New Game creates a new empty game 
 - `MyraUIManager` is the single Core integration boundary for `MyraEnvironment.Game` and the shared `Desktop`.
 - The desktop bounds follow the current graphics viewport.
 - `ScreenManager` remains the lifecycle owner.
-- The shared desktop is rendered once by the game host after the ScreenManager stack.
-- At `0.1.2c`, the Main Menu surface is migrated to Myra. Load Game, Settings, About, Pause and other screens remain legacy until explicitly migrated.
+- The shared desktop is rendered once by the game host after the ScreenManager stack; `Desktop.Render()` also performs Myra widget input processing.
+- Main Menu, Settings, About and Pause are Myra presentation surfaces.
+- `PauseScreen` is a `GameScreen`, not a legacy `MenuScreen`, and contains no `MenuEntry` instances.
+- Save/Load are exposed only by `MyraPauseView`; Gameplay HUD must not provide a second visible Save/Load surface.
 - A migrated screen must clear the shared desktop when it leaves ownership.
 - Do not create separate Myra desktops from unrelated screens.
+- Myra is not a blanket replacement for railway rendering, gameplay HUD or radial gameplay tools.
 
 ## 19. Release contract
 
