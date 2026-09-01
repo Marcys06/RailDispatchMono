@@ -52,7 +52,7 @@ internal sealed class MyraPauseView
             Content = new Label { Text = text },
             Width = 320,
             HorizontalAlignment = HorizontalAlignment.Center,
-            IsEnabled = enabled
+            Enabled = enabled   
         };
 
         button.Click += (_, _) => action();
