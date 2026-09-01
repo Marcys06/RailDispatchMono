@@ -64,11 +64,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     {
         bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
         string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal) ? request[4..] : request;
-
         SaveSlotService.Activate(slotDirectory);
 
-        // MainMenuScreen.UnloadContent() clears the shared Myra desktop.
-        // Remove it before installing the gameplay root.
         if (_mainMenu != null)
         {
             _screenManager.RemoveScreen(_mainMenu);
@@ -77,9 +74,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
 
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
         _screenManager.AddScreen(_gameplay, null);
-
-        if (loadExisting)
-            _gameplay.LoadSavedGame();
+        if (loadExisting) _gameplay.LoadSavedGame();
 
         _gameplayView = new MyraGameplayView(
             speed => _myraUI.QueueAction(() => GameClock.Current?.SetSpeed(speed)),
@@ -95,57 +90,51 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     {
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
-            camera.Position = train.Position;
+            camera.Position = train.Position - new Vector2(
+                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
+                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
     }
 
     private void FocusStation(Station station)
     {
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
-            camera.Position = new Vector2(
+        {
+            Vector2 center = new(
                 station.Position.X + station.Width / 2f,
                 station.Position.Y + station.Height / 2f);
+            camera.Position = center - new Vector2(
+                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
+                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
+        }
     }
 
     private void SetBuildMode(TrackBuildMode mode)
     {
         TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
-        if (builder != null)
-            builder.Mode = mode;
+        if (builder != null) builder.Mode = mode;
     }
 
     private void ToggleRouteEditMode()
     {
         InputManager? input = GetGameplayField<InputManager>("_inputManager");
-        if (input == null)
-            return;
-
-        FieldInfo? modeField = typeof(InputManager).GetField(
-            "_wagonRouteEditMode",
-            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (input == null) return;
+        FieldInfo? modeField = typeof(InputManager).GetField("_wagonRouteEditMode", BindingFlags.Instance | BindingFlags.NonPublic);
         modeField?.SetValue(input, !(bool)(modeField.GetValue(input) ?? false));
     }
 
     private T? GetGameplayField<T>(string fieldName) where T : class
     {
-        if (_gameplay == null)
-            return null;
-
-        FieldInfo? field = typeof(GameplayScreen).GetField(
-            fieldName,
-            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (_gameplay == null) return null;
+        FieldInfo? field = typeof(GameplayScreen).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         return field?.GetValue(_gameplay) as T;
     }
 
-    protected override void LoadContent()
-    {
-        _myraUI.Initialize(this);
-    }
+    protected override void LoadContent() => _myraUI.Initialize(this);
 
     protected override void Update(GameTime gameTime)
     {
         _myraUI.Update(gameTime);
-
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
@@ -155,7 +144,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
                 _gameplayView.Refresh();
             }
         }
-
         base.Update(gameTime);
     }
 
