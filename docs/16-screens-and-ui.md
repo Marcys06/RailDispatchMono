@@ -47,6 +47,14 @@ The Myra builder provides:
 
 The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` no longer contains the former preset-based train spawn path or its hardcoded EU06-style `VehicleParameters`.
 
+## Train physics note — 0.1.4f
+
+Consist acceleration and braking are mass-dependent. The locomotive supplies the base acceleration/braking capability; total consist mass reduces both rates using a non-linear exponent of `1.30`:
+
+`factor = 1 / (totalMass / locomotiveMass)^1.30`
+
+This makes the mass effect approximately 30% stronger than linear inverse-mass scaling. A locomotive-only consist remains at the base rate. This is intentionally a gameplay approximation rather than a traction/brake-force simulation.
+
 ## Pause lifecycle
 
 `GameplayScreen` owns pause state. Entering pause activates `MyraPauseView`; simulation updates stop while Myra input remains active. Resume clears the gameplay pause state and restores the gameplay Myra root. No pause popup is added to `ScreenManager`.
