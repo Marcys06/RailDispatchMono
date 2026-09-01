@@ -1,5 +1,7 @@
+using RailDispatchMono.Core.Game.RollingStock;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -7,87 +9,86 @@ public sealed class TrainComposition
 {
     private readonly List<Vehicle> _vehicles = new();
 
-    public IReadOnlyList<Vehicle> Vehicles =>
-        _vehicles;
+    public IReadOnlyList<Vehicle> Vehicles => _vehicles;
 
     public float Length
     {
         get
         {
             float length = 0f;
-
             foreach (var vehicle in _vehicles)
-            {
                 length += vehicle.Parameters.Length;
-            }
-
             return length;
         }
     }
+
+    public float TotalLengthMeters => _vehicles.Sum(v => v.Parameters.LengthMeters);
+    public float TotalMass => _vehicles.Sum(v => v.Parameters.MassTons);
+    public float EffectiveMaxSpeed => _vehicles.Count == 0 ? 0f : _vehicles.Min(v => v.Parameters.MaxSpeed);
+    public float EffectiveMaxSpeedKmh => EffectiveMaxSpeed * 3.6f;
+    public int WagonCount => _vehicles.Count(v => v is Wagon);
+    public Locomotive? Locomotive => _vehicles.OfType<Locomotive>().FirstOrDefault();
 
     public bool CanMove
     {
         get
         {
             foreach (var vehicle in _vehicles)
-            {
                 if (vehicle is Locomotive)
                     return true;
-            }
-
             return false;
         }
     }
 
-    public void AddVehicle(
-        Vehicle vehicle)
+    public void AddVehicle(Vehicle vehicle)
     {
+        if (vehicle == null) throw new ArgumentNullException(nameof(vehicle));
         _vehicles.Add(vehicle);
     }
 
-    public bool RemoveVehicle(
-        Vehicle vehicle)
+    public void SetLocomotive(LocomotiveDefinition definition)
     {
-        return _vehicles.Remove(vehicle);
+        if (definition == null) throw new ArgumentNullException(nameof(definition));
+        int locomotiveIndex = _vehicles.FindIndex(v => v is Locomotive);
+        var locomotive = definition.CreateVehicle();
+        if (locomotiveIndex >= 0)
+            _vehicles[locomotiveIndex] = locomotive;
+        else
+            _vehicles.Insert(0, locomotive);
     }
 
-    public void InsertVehicle(
-        int index,
-        Vehicle vehicle)
+    public void AddWagon(WagonDefinition definition)
     {
-        _vehicles.Insert(
-            index,
-            vehicle);
+        if (definition == null) throw new ArgumentNullException(nameof(definition));
+        _vehicles.Add(definition.CreateVehicle());
     }
 
-    public TrainComposition Split(
-        int index)
+    public bool RemoveVehicle(Vehicle vehicle) => _vehicles.Remove(vehicle);
+
+    public bool RemoveWagon(int index)
     {
-        if (index <= 0 ||
-            index >= _vehicles.Count)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(index));
-        }
+        if (index < 0 || index >= _vehicles.Count || _vehicles[index] is not Wagon)
+            return false;
+        _vehicles.RemoveAt(index);
+        return true;
+    }
 
-        var splitComposition =
-            new TrainComposition();
+    public void InsertVehicle(int index, Vehicle vehicle) => _vehicles.Insert(index, vehicle);
 
+    public TrainComposition Split(int index)
+    {
+        if (index <= 0 || index >= _vehicles.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        var splitComposition = new TrainComposition();
         while (_vehicles.Count > index)
         {
-            var vehicle =
-                _vehicles[index];
-
+            var vehicle = _vehicles[index];
             _vehicles.RemoveAt(index);
-
-            splitComposition.AddVehicle(
-                vehicle);
+            splitComposition.AddVehicle(vehicle);
         }
-
         return splitComposition;
     }
-    public void Clear()
-    {
-        _vehicles.Clear();
-    }
+
+    public void Clear() => _vehicles.Clear();
 }
