@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.3e] — Myra HUD consolidation and navigation
+**Data:** 2026-09-01
+
+- Fixed `x1` / `x2` / `x5` so all three Myra controls have equal fixed widths.
+- Kept speed controls directly below the simulation clock.
+- Removed the duplicate legacy SpriteBatch train/station information HUD and its hit-testing path.
+- Train and station information is now presented and interacted with through the Myra gameplay HUD only.
+- Clicking a train centers the camera on the selected train.
+- Clicking a station centers the camera on the station's actual center.
+- Added a dedicated `0.1.3e` current-state document and changelog.
+- Marked remaining legacy world-interaction UI explicitly for later migration instead of maintaining duplicate HUD implementations.
+
 ## [0.1.3d] — Myra HUD migration cleanup
 **Data:** 2026-09-01
 
