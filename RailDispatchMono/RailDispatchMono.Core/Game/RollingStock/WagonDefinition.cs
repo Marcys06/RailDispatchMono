@@ -34,11 +34,11 @@ public sealed class WagonDefinition
     {
         var parameters = VehicleParameters.CreatePhysical(
             MaxSpeedKmh,
-            accelerationMps2: 0f,
-            decelerationMps2: 0f,
+            0f,
+            0f,
             MassTons,
             LengthMeters,
-            visualLengthCells: 1.0f);
+            1.0f);
 
         return new Wagon(parameters, Type, Capacity);
     }
