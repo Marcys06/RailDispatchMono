@@ -36,6 +36,7 @@ public sealed class TrainRenderer
         if (_pixel is null)
             return;
 
+        const float vehicleWidth = 0.45f;
         var origin = new Vector2(0.5f, 0.5f);
         var positions = train.GetVehiclePositions();
 
@@ -50,7 +51,6 @@ public sealed class TrainRenderer
                 : Color.Blue;
 
             float worldLength = vehicle.Parameters.Length / SimulationScale.MetersPerGridCell;
-            float worldWidth = vehicle.Parameters.Width / SimulationScale.MetersPerGridCell;
 
             spriteBatch.Draw(
                 _pixel,
@@ -59,7 +59,7 @@ public sealed class TrainRenderer
                 color,
                 angle,
                 origin,
-                new Vector2(worldLength, worldWidth),
+                new Vector2(worldLength, vehicleWidth),
                 SpriteEffects.None,
                 0f);
         }
