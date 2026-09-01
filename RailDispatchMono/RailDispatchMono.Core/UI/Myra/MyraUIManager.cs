@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+using XnaGame = Microsoft.Xna.Framework.Game;
 using Myra;
 using Myra.Graphics2D.UI;
 
@@ -16,7 +16,7 @@ public sealed class MyraUIManager
 
     public bool IsInitialized => _initialized;
 
-    public void Initialize(Game game)
+    public void Initialize(XnaGame game)
     {
         if (_initialized)
             return;
