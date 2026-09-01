@@ -2,7 +2,7 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
-## [0.1.4f] — Depot Myra migration
+## [0.1.4f] — Depot Myra migration and consist mass performance
 **Data:** 2026-09-01
 
 - Removed the legacy `DepotTrainMenu` SpriteBatch train-preset UI.
@@ -13,7 +13,9 @@ This file is the high-level release history. Detailed release notes are kept in 
 - `TrainManager.CreateTrainFromComposition()` remains the single train-creation path for Depot consists.
 - Kept the shared single `MyraUIManager` / `Desktop`; no second Myra UI host was introduced.
 - Depot remains a full-screen `GameScreen`; gameplay is covered while the builder is active and the gameplay Myra root is restored on close.
-- Updated documentation baseline to `0.1.4f`.
+- Added non-linear consist-mass influence to acceleration and braking: `1 / (totalMass / locomotiveMass)^1.30`.
+- The mass exponent is approximately 30% stronger than a linear inverse-mass relationship; locomotive-only performance remains unchanged.
+- Updated documentation baseline and final `0.1.4f` release notes.
 - No `current-state` snapshot was created; `0.1.4f` is a lettered development stage.
 - Detailed notes: `docs/changelog/0.1.4f.md`.
 
