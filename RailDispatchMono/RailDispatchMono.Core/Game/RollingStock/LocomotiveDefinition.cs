@@ -50,7 +50,7 @@ public sealed class LocomotiveDefinition
             DecelerationMps2,
             MassTons,
             LengthMeters,
-            visualLengthCells: 1.0f,
+            1.0f,
             MassCoefficient);
 
         return new Locomotive(LocomotiveType, parameters);
