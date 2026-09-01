@@ -2,7 +2,7 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.4e`** is the current rolling-stock and Depot train-builder development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4d` are lettered development stages recorded in changelogs.
+**RailDispatchMono `0.1.4f`** is the current rolling-stock, Depot train-builder and consist-mass-performance development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4e` are lettered development stages recorded in changelogs.
 
 ## One-paragraph context
 
@@ -22,11 +22,21 @@ RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platf
 - `Game/RollingStock` contains catalogue definitions and factories.
 - `EP07`, `EU200 — Newag Griffin E4ACP` and `SU42` are the first locomotive definitions.
 - Three passenger coach definitions are available.
-- One locomotive is allowed per `0.1.4e` consist; zero or more wagons may be added.
+- One locomotive is allowed per `0.1.4f` consist; zero or more wagons may be added.
 - A locomotive-only train is valid.
 - Composition Vmax is the minimum Vmax of all vehicles.
 - Physical mass/length are displayed in tonnes/metres; internal speed remains m/s.
 - Visual vehicle proportions remain on the established map-cell geometry rather than being shrunk by the 10 m physical scale.
+
+## Consist performance contract — 0.1.4f
+
+- Locomotive acceleration and braking are the base capabilities for the consist.
+- Total consist mass reduces both acceleration and braking.
+- Mass sensitivity is non-linear and uses exponent `1.30`.
+- `factor = 1 / (totalMass / locomotiveMass)^1.30`.
+- The `1.30` exponent is approximately 30% stronger than a linear inverse-mass relationship.
+- A locomotive-only consist has factor `1.0` and therefore keeps the locomotive's base rates.
+- This is a gameplay approximation, not a full traction-curve or brake-force simulation.
 
 ## Depot lifecycle
 
@@ -48,4 +58,4 @@ Pause is a gameplay state, not a popup screen. `GameplayScreen` owns the pause s
 
 ## Documentation rule
 
-Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4e` remain lettered changelog stages and must not receive current-state snapshot files.
+Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4f` remain lettered changelog stages and must not receive current-state snapshot files.
