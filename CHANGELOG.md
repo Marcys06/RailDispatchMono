@@ -2,6 +2,24 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.3d] — Myra HUD migration cleanup
+**Data:** 2026-09-01
+
+- Kept `x1` / `x2` / `x5` as equal-width Myra controls directly below the simulation clock.
+- Completed the train/station HUD migration to Myra as the single presentation and interaction layer.
+- Removed the legacy SpriteBatch train/station panel rendering from `GameplayScreen`.
+- Removed the legacy train/station panel mouse-hit handling.
+- Preserved train camera-centering and station waiting-passenger information.
+
+## [0.1.3c] — Myra Gameplay HUD layout
+**Data:** 2026-09-01
+
+- Reorganized the gameplay HUD around a dedicated right-side information area.
+- Moved speed controls and build tools directly below the clock.
+- Made the build-tools section collapsible.
+- Added Myra train and station lists with waiting-passenger information and camera-centering actions.
+- Improved HUD widths, spacing and alignment.
+
 ## [0.1.3b] — Gameplay HUD layout polish
 **Data:** 2026-09-01
 
@@ -11,8 +29,6 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Tightened HUD spacing, widths and alignment to reduce visual drift between panels.
 - Kept the simulation clock and `GameDay` presentation unchanged because their current layout is acceptable.
 - Kept the existing train and station list functionality unchanged.
-
-`0.1.3b` is a visual/layout follow-up to `0.1.3a`; it does not introduce a new gameplay architecture.
 
 ## [0.1.3a] — Myra Gameplay UI
 **Data:** 2026-09-01
@@ -29,10 +45,6 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Kept existing keyboard shortcuts as an additional input path.
 - Preserved pause as a `GameplayScreen`-owned state while allowing the gameplay Myra root to be restored after pause.
 - Fixed the main-menu-to-game transition so `MainMenuScreen.UnloadContent()` cannot clear the newly installed gameplay Myra root.
-- Verified the gameplay transition path: Main Menu -> Gameplay now leaves the gameplay HUD as the active Myra root.
-- Added `0.1.3a` current-state and detailed changelog documentation.
-
-`0.1.3a` is intentionally a large feature milestone. Follow-up `0.1.3x` stages should focus on bugfixes, stabilization and completing the remaining object-window/radial-menu migrations.
 
 ## [0.1.2pre] — Myra UI stabilization preview
 **Data:** 2026-09-01
