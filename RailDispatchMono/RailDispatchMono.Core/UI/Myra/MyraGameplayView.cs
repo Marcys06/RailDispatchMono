@@ -27,17 +27,20 @@ internal sealed class MyraGameplayView
     private readonly Action<Train> _focusTrain;
     private readonly Action<Station> _focusStation;
     private readonly Action<TrackBuildMode> _setBuildMode;
+    private readonly Action _toggleRouteEdit;
 
     public MyraGameplayView(
         Action<float> setSpeed,
         Action<Train> focusTrain,
         Action<Station> focusStation,
-        Action<TrackBuildMode> setBuildMode)
+        Action<TrackBuildMode> setBuildMode,
+        Action toggleRouteEdit)
     {
         _setSpeed = setSpeed;
         _focusTrain = focusTrain;
         _focusStation = focusStation;
         _setBuildMode = setBuildMode;
+        _toggleRouteEdit = toggleRouteEdit;
 
         _grid = new Grid
         {
@@ -46,7 +49,6 @@ internal sealed class MyraGameplayView
             ColumnSpacing = 8,
             RowSpacing = 6
         };
-
         _grid.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
         _grid.ColumnsProportions.Add(new Proportion(ProportionType.Fill));
         _grid.ColumnsProportions.Add(new Proportion(ProportionType.Auto));
@@ -83,34 +85,29 @@ internal sealed class MyraGameplayView
         _grid.Widgets.Add(_speedLabel);
 
         _trainList = CreateListGrid(285);
-        var trainTitle = new Label { Text = "POCIĄGI" };
-        Grid.SetRow(trainTitle, 0);
-        Grid.SetColumn(trainTitle, 0);
-        _grid.Widgets.Add(trainTitle);
-        Grid.SetRow(_trainList, 1);
-        Grid.SetColumn(_trainList, 0);
-        _grid.Widgets.Add(_trainList);
-
+        AddSection(_grid, "POCIĄGI", _trainList, 0);
         _toolList = CreateListGrid(300);
-        var toolTitle = new Label { Text = "NARZĘDZIA" };
-        Grid.SetRow(toolTitle, 0);
-        Grid.SetColumn(toolTitle, 1);
-        _grid.Widgets.Add(toolTitle);
-        Grid.SetRow(_toolList, 1);
-        Grid.SetColumn(_toolList, 1);
-        _grid.Widgets.Add(_toolList);
-
+        AddSection(_grid, "NARZĘDZIA", _toolList, 1);
         _stationList = CreateListGrid(285);
-        var stationTitle = new Label { Text = "STACJE" };
-        Grid.SetRow(stationTitle, 0);
-        Grid.SetColumn(stationTitle, 2);
-        _grid.Widgets.Add(stationTitle);
-        Grid.SetRow(_stationList, 1);
-        Grid.SetColumn(_stationList, 2);
-        _grid.Widgets.Add(_stationList);
+        AddSection(_grid, "STACJE", _stationList, 2);
 
         Root = _grid;
         Refresh();
+    }
+
+    private static void AddSection(Grid parent, string title, Grid content, int column)
+    {
+        var section = new Grid { RowSpacing = 3 };
+        section.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        section.RowsProportions.Add(new Proportion(ProportionType.Fill));
+        var label = new Label { Text = title };
+        Grid.SetRow(label, 0);
+        Grid.SetRow(content, 1);
+        section.Widgets.Add(label);
+        section.Widgets.Add(content);
+        Grid.SetColumn(section, column);
+        Grid.SetRow(section, 1);
+        parent.Widgets.Add(section);
     }
 
     public void Refresh()
@@ -174,6 +171,7 @@ internal sealed class MyraGameplayView
         AddToolButton("Semafor", TrackBuildMode.Signal);
         AddToolButton("Stacja", TrackBuildMode.Station);
         AddToolButton("Depot", TrackBuildMode.Depot);
+        AddRouteButton();
     }
 
     private void AddSpeedButton(Grid panel, int column, string text, float speed)
@@ -199,10 +197,21 @@ internal sealed class MyraGameplayView
         _toolList.Widgets.Add(button);
     }
 
-    private static Grid CreateListGrid(int width)
-        => new()
+    private void AddRouteButton()
+    {
+        int row = _toolList.Widgets.Count;
+        var button = new Button
         {
-            Width = width,
+            Content = new Label { Text = "Edytuj trasę wagonu (S)" },
+            Width = 290,
             HorizontalAlignment = HorizontalAlignment.Left
         };
+        button.Click += (_, _) => _toggleRouteEdit();
+        Grid.SetRow(button, row);
+        _toolList.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        _toolList.Widgets.Add(button);
+    }
+
+    private static Grid CreateListGrid(int width)
+        => new() { Width = width, HorizontalAlignment = HorizontalAlignment.Left };
 }
