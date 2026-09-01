@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.2pre`**  
+**Documentation baseline: `0.1.3a`**  
 **Status: current documentation set**
 
 This directory is intentionally limited to a compact set of authoritative documents. Historical release details belong in `docs/changelog/` and are not duplicated here.
@@ -25,15 +25,18 @@ This directory is intentionally limited to a compact set of authoritative docume
 16. [16-screens-and-ui.md](16-screens-and-ui.md) — current UI/screen inventory.
 17. [17-game-map-and-geometry.md](17-game-map-and-geometry.md) — map and geometry rules.
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
-19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — authoritative current-state snapshot.
+19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical `0.1.2pre` snapshot.
+20. [20-current-state-0.1.3a.md](20-current-state-0.1.3a.md) — authoritative current-state snapshot.
 
 ## Version policy
 
 - `0.1.0` is the feature-complete gameplay baseline.
 - `0.1.1` restructured the documentation set.
 - `0.1.2` is the Myra UI integration series; each `0.1.2x` letter is an independent historical stage.
-- `0.1.2pre` is the current stabilization preview following the immutable `0.1.2a`–`0.1.2k` stages.
-- Failed lettered stages are not rewritten in place. Corrections belong to a later stage or preview.
+- `0.1.2pre` is the stabilization preview that closed the pause/UI stabilization work.
+- `0.1.3a` is the first large gameplay-UI migration stage.
+- `0.1.3a` intentionally contains the main feature batch; later `0.1.3x` stages should primarily contain bugfixes, stabilization and remaining UI completion.
+- Failed lettered stages are not rewritten in place. Corrections belong to a later stage.
 - If a historical commit has no reliable functional description, document it as `bugfix` rather than inferring behavior.
 - From `0.1.x` onward, preserve existing APIs and architecture unless the task explicitly requires a reviewed change.
 
