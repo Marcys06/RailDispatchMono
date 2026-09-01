@@ -2,44 +2,63 @@
 
 ## Railway subsystem
 
-The repository currently contains a `Game/Railway` area with domain classes including:
-
-- `BlockController`
-- `Junction`
-- `TrackRoute`
-
-These names indicate infrastructure/control responsibilities, but the exact behavioral contract must be derived from the implementation and call sites. Do not infer simulation rules from class names alone.
+The repository contains `Game/Railway` domain classes including `BlockController`, `Junction`, `TrackRoute`, `Depot` and `DepotController`. Railway infrastructure/control remains owned by the domain layer rather than by screens.
 
 ## Train subsystem
 
-The `Game/Train` area currently contains classes including:
+The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Vehicle`, `VehicleParameters`, `Locomotive` and `Wagon`.
 
-- `TrainManager`
-- `Train`
-- `Vehicle`
-- `VehicleParameters`
-- `Locomotive`
-- `Wagon`
+`TrainComposition` is the authoritative ordered list of vehicles in a train. It exposes total physical mass/length, effective maximum speed and wagon count. A composition may contain a locomotive without wagons; a locomotive is required for movement.
 
-A useful conceptual hierarchy is that a train is composed of railway vehicles and that locomotives/wagons are vehicle variants. This is a domain orientation, not permission to redesign the inheritance/composition model. Preserve the actual public API unless the task explicitly requires refactoring.
+`TrainManager` is the authoritative train lifecycle owner. `CreateTrainFromComposition()` is the single creation path used by the Depot builder for player-created consists.
 
-## Rendering subsystem
+## Rolling stock catalog
 
-`Game/Rendering/Camera.cs` is part of the game-side rendering infrastructure. Camera behavior should remain separate from platform hosting and should not become responsible for global application lifecycle.
+`Game/RollingStock` contains reusable rolling-stock definitions:
 
-## Effects
+- `RollingStockCatalog` — registered locomotives and wagons.
+- `LocomotiveDefinition` — catalogue data and vehicle factory for a locomotive.
+- `WagonDefinition` — catalogue data and vehicle factory for a wagon.
+- `TractionType` — electric/diesel classification.
 
-The `Effects` area contains `ParticleManager` and the settings model references `ParticleEffectType`. Effects are therefore part of the shared presentation/game layer and can be exposed through settings.
+The first `0.1.4e` locomotive set is:
 
-## Ownership rule
+- `EP07` — electric, 125 km/h, 80 t, 16.2 m.
+- `EU200 — Newag Griffin E4ACP` — electric AC, 200 km/h, 84 t, 19.9 m.
+- `SU42` — diesel, 90 km/h, 74 t, 14.4 m.
 
-Before adding a property to a domain object, determine which existing class already owns the state. For example, train collection/coordination belongs with the train-management layer rather than being silently duplicated in a screen.
+These values are gameplay-scaled around the existing EU06-level simulation response; they are not a full traction-curve simulation.
+
+The first wagon catalogue contains three passenger coach variants. Wagon technical Vmax participates in the composition's effective Vmax calculation.
+
+## Physical parameter contract
+
+`VehicleParameters` continues to expose the internal simulation values used by movement: speed is m/s, mass is retained in kg for compatibility, and vehicle visual length remains in map-cell units. `MassTons` and `LengthMeters` expose the real-world/gameplay values used by the rolling-stock catalogue and Depot summary.
+
+`VehicleParameters.CreatePhysical()` converts catalogue Vmax from km/h to internal m/s and keeps the established visual grid proportions separate from the `1 cell = 10 m` physical scale.
+
+## Depot lifecycle
+
+`DepotController` owns depot buildings. Clicking an existing depot opens the full-screen `DepotScreen`, which uses `MyraDepotView` and the existing shared `MyraUIManager`/`Desktop`.
+
+The Depot builder allows:
+
+1. selecting one locomotive;
+2. adding any number of passenger wagons;
+3. removing individual wagons;
+4. clearing all wagons;
+5. reviewing Vmax, total mass, total length and wagon count;
+6. creating the train on an adjacent free track cell.
+
+The builder may create a locomotive-only consist. It does not currently support multiple locomotives.
 
 ## Domain vs presentation
 
-Screens should request or present domain state. They should not become the authoritative owner of railway simulation state merely because they currently render it.
+Screens request or present domain state. They do not become authoritative owners of train collections, depot state or railway simulation.
 
-Conversely, domain classes should not gain dependencies on `SpriteBatch`, `GameScreen`, or platform application classes merely to display themselves.
+## Ownership rule
+
+Before adding a property to a domain object, determine which existing class already owns the state. Train collection/creation belongs to `TrainManager`; composition order and composition statistics belong to `TrainComposition`; catalogue data belongs to `Game/RollingStock`; depot buildings belong to `DepotController`.
 
 ## Safe extension sequence
 
