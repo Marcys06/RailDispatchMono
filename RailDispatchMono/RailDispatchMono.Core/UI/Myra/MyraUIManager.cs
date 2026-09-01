@@ -5,10 +5,6 @@ using Myra.Graphics2D.UI;
 
 namespace RailDispatchMono.Core.UI.Myra;
 
-/// <summary>
-/// Owns the shared Myra desktop used by RailDispatchMono UI screens.
-/// Screen lifecycle remains owned by <see cref="ScreenManagers.ScreenManager"/>.
-/// </summary>
 public sealed class MyraUIManager
 {
     private bool _initialized;
@@ -17,7 +13,7 @@ public sealed class MyraUIManager
 
     public bool IsInitialized => _initialized;
 
-    public void Initialize(Game game)
+    public void Initialize(Microsoft.Xna.Framework.Game game)
     {
         if (_initialized)
             return;
