@@ -2,6 +2,15 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.2e] — Myra initialization-order fix
+**Data:** 2026-09-01
+
+- Naprawiono crash przy starcie wynikający z `MyraEnvironment.Game == null`.
+- `MyraUIManager.Initialize(this)` jest teraz wykonywane w `RailDispatchMonoGame.Initialize()` przed utworzeniem i inicjalizacją `ScreenManager`.
+- Zachowano drugie, idempotentne wywołanie w `LoadContent()` jako bezpieczny punkt zgodny z cyklem MonoGame.
+- Nie zmieniono publicznego API istniejących ekranów ani kontraktu `ScreenManager`.
+- Przyspieszono integrację Myra bez tworzenia drugiego systemu UI.
+
 ## [0.1.2c] — Myra main menu migration
 **Data:** 2026-09-01
 
@@ -15,7 +24,7 @@ This file is the high-level release history. Detailed release notes are kept in 
 ## [0.1.2b] — Myra namespace compatibility fix
 **Data:** 2026-09-01
 
-- Poprawiono konflikt `Game` namespace/type w `MyraUIManager` przez jawny alias typu MonoGame.
+- Poprawiono konflikt `Game` namespace/type w `MyraUIManager` przez jawny typ `Microsoft.Xna.Framework.Game`.
 - Build `RailDispatchMono.Core` został przywrócony do stanu kompilowalnego.
 
 ## [0.1.2a] — Myra UI integration foundation
@@ -23,10 +32,8 @@ This file is the high-level release history. Detailed release notes are kept in 
 
 - Dodano standardową bibliotekę `Myra` w wersji `1.6.5` do `RailDispatchMono.Core`.
 - Dodano `MyraUIManager` jako wspólną granicę integracji Myra.
-- `MyraEnvironment.Game` jest inicjalizowane jednokrotnie podczas `RailDispatchMonoGame.LoadContent()`.
 - Utworzono współdzielony Myra `Desktop`.
 - Nie migrowano jeszcze istniejących ekranów; `ScreenManager` pozostaje właścicielem lifecycle ekranów i routingu wejścia.
-- Aktualizowano dokumentację architektury i reguły dla AI.
 
 ## [0.1.1] — Przebudowa dokumentacji
 **Data:** 2026-08-31
