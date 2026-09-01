@@ -2,11 +2,11 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.2i`** is the current Myra UI integration stage. The `0.1.0` gameplay baseline and `0.1.1` documentation restructuring remain historical baselines.
+**RailDispatchMono `0.1.2j`** is the final Myra UI integration stage of the `0.1.2x` series. The `0.1.0` gameplay baseline and `0.1.1` documentation restructuring remain historical baselines.
 
 ## One-paragraph context
 
-RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` configures the game and delegates screen lifecycle/update/draw work to `ScreenManager`. `MyraUIManager` is the single integration boundary for the standard Myra UI library: it assigns `MyraEnvironment.Game`, owns one shared `Desktop`, and manages one active root widget tree. Main Menu and Pause Menu use standard Myra widgets. Save/Load are gameplay actions exposed only by the Myra pause surface. The gameplay HUD and gameplay-specific radial menus remain legacy rendering/input surfaces by design.
+RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platform hosts. `RailDispatchMonoGame` configures the game and delegates screen lifecycle/update/draw work to `ScreenManager`. `MyraUIManager` is the single integration boundary for the standard Myra UI library: it assigns `MyraEnvironment.Game`, owns one shared `Desktop`, and manages one active root widget tree. Main Menu, Settings, About and Pause Menu use standard Myra widgets. Save/Load are gameplay actions exposed only by the Myra pause surface. The gameplay HUD and gameplay-specific radial menus remain non-Myra rendering/input surfaces by design.
 
 ## Mental model
 
@@ -28,17 +28,23 @@ APPLICATION HOST
                     +--> logical-to-physical presentation transform
 ```
 
-## Myra contract
+## Myra contract — frozen after 0.1.2j
 
 - Package: `Myra` 1.6.5.
 - Initialization is idempotent and happens before any Myra widget is constructed.
 - `MyraUIManager` owns exactly one shared `Desktop`.
 - The active screen owns installation and cleanup of the Myra root.
-- `Desktop.Render()` is the Myra input/render pass; `MyraUIManager.Update()` intentionally does not duplicate input processing.
+- `Desktop.Render()` is the Myra input/render pass; `MyraUIManager.Update()` does not duplicate widget input processing.
 - Migrated surfaces: Main Menu, Settings, About and Pause Menu.
 - `MyraPauseView` is centered and contains Resume, Save, Load and Quit.
 - The startup Main Menu does not expose Load Game.
-- There must not be a second visible legacy Save/Load surface in Gameplay HUD.
+- There is no second visible Save/Load surface in the Gameplay HUD.
+- `ScreenManager` remains the lifecycle owner; Myra does not replace the screen stack.
+- No further Myra migration is planned as part of `0.1.2x`. Future UI work requires an explicit new release goal.
+
+## Pause lifecycle
+
+`GameplayScreen` owns `_isPaused` and the `PauseScreen` instance. Resume always calls the explicit `ResumeGame()` path, which clears the pause state and removes the exact popup from `ScreenManager`. `PauseScreen` only raises `OnResume`; it does not additionally call `ExitScreen()`. This prevents double lifecycle transitions from a Myra callback.
 
 ## Persistence placement
 
