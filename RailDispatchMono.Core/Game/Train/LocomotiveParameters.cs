@@ -1,3 +1,5 @@
+using System;
+
 namespace RailDispatchMono.Core.Game.Train;
 
 /// <summary>
