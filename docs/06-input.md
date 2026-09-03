@@ -25,13 +25,16 @@
 
 The current rigid coupling command path is:
 
-- `C` — couple the nearest valid outer-boundary candidate;
-- `X` — decouple the last coupling created by `C`, with fallback to the first remaining runtime connection;
-- `F6` — select a `3 km/h` shunting/coupling speed limit;
-- `F7` — select a `4 km/h` shunting/coupling speed limit;
-- `F8` — select a `5 km/h` shunting/coupling speed limit (default).
+- `C` — couple the nearest valid outer-boundary candidate using a fixed `6 km/h` shunting limit;
+- `X` — decouple the wagon currently under the cursor; the target train must be moving below `6 km/h`;
+- `F6` — while held with the cursor over a train, manually shunt that train toward `3 km/h` and bypass the automatic RadioStop/collision stop path;
+- `F7` / `F8` — no longer have coupling-speed functionality.
 
-`C` executes only when the selected candidate passes the authoritative `CouplingService` validation and both participating trains are at or below the selected shunting limit. `X` delegates decoupling to the same domain service.
+`C` executes only when the selected candidate passes the authoritative `CouplingService` validation and both participating trains are at or below `6 km/h`. `X` delegates decoupling to the same domain service, which independently enforces the `< 6 km/h` limit.
+
+`X` is cursor-targeted and does not fall back to the last `C` coupling or an arbitrary/oldest runtime connection. It requires a wagon to be under the cursor. If that wagon has both front and rear runtime connections, the rear connection is preferred; otherwise its available connection is used.
+
+`F6` manual shunting is also cursor-targeted. Only the train under the cursor receives the manual movement update. While held, the selected train accelerates toward `3 km/h`, clears RadioStop and skips the automatic station/collision stop path for that update. Normal signal-driven movement remains the standard path when `F6` is not held.
 
 These commands are currently implemented in `TrainManager` as the temporary `0.1.5` command path. Do not add a second coupling/decoupling command implementation to `InputManager`, Myra or a screen until the planned vehicle/end selection UI replaces the temporary command path.
 
@@ -66,6 +69,8 @@ Depot mode is activated with `9`. A depot is a world building and does not requi
 ## Coordinate transformation
 
 World clicks are converted through `Camera.ScreenToMap`. Do not compare raw mouse coordinates with map cells.
+
+For train control, `GameplayScreen` converts the current mouse screen position through `Camera.ScreenToWorld` and passes the world position into `TrainManager.Update()` so `F6` and `X` can target the train/wagon under the cursor.
 
 ## Window resizing
 
