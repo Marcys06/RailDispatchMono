@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Debug;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,10 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class TrainManager
 {
+    private KeyboardState _previousCouplingKeyboard;
+    private Vehicle? _lastCoupledVehicle;
+    private VehicleEnd _lastCoupledEnd;
+
     public CouplingService CouplingService { get; } = new();
 
     public CouplingCheckResult CanCouple(
@@ -21,6 +26,140 @@ public sealed partial class TrainManager
 
     public CouplingOperationResult Decouple(Train train, Vehicle vehicle, VehicleEnd end) =>
         CouplingService.Decouple(this, train, vehicle, end);
+
+    public const float CouplingSpeed3Kmh = 3f;
+    public const float CouplingSpeed4Kmh = 4f;
+    public const float CouplingSpeed5Kmh = 5f;
+    public const SignalAspect CouplingSignalAspect = SignalAspect.Reserve3;
+
+    public float CouplingCommandSpeedKmh { get; private set; } = CouplingSpeed5Kmh;
+
+    public void HandleCouplingHotkeys()
+    {
+        KeyboardState keyboard = Keyboard.GetState();
+
+        if (IsNewCouplingKey(keyboard, Keys.F6)) CouplingCommandSpeedKmh = CouplingSpeed3Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.F7)) CouplingCommandSpeedKmh = CouplingSpeed4Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.F8)) CouplingCommandSpeedKmh = CouplingSpeed5Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.C)) ExecuteCouplingCommand();
+        if (IsNewCouplingKey(keyboard, Keys.X)) ExecuteDecouplingCommand();
+
+        _previousCouplingKeyboard = keyboard;
+    }
+
+    private bool IsNewCouplingKey(KeyboardState keyboard, Keys key) =>
+        keyboard.IsKeyDown(key) && _previousCouplingKeyboard.IsKeyUp(key);
+
+    private void ExecuteCouplingCommand()
+    {
+        CouplingCandidate? selected = null;
+        float limitMps = CouplingCommandSpeedKmh / 3.6f;
+
+        foreach (var train in _trains)
+        {
+            foreach (var candidate in GetCouplingCandidates(train))
+            {
+                if (!candidate.Check.Allowed ||
+                    candidate.FirstTrain.Speed > limitMps ||
+                    candidate.SecondTrain.Speed > limitMps)
+                    continue;
+
+                if (selected == null || candidate.Distance < selected.Value.Distance)
+                    selected = candidate;
+            }
+        }
+
+        if (!selected.HasValue)
+        {
+            DebugManager.Log($"[COUPLING] Command C rejected: no valid candidate at <= {CouplingCommandSpeedKmh:F0} km/h (S14 Rezerwowy 3).");
+            return;
+        }
+
+        var candidateValue = selected.Value;
+        var result = Couple(
+            candidateValue.FirstTrain,
+            candidateValue.FirstVehicleIndex,
+            candidateValue.FirstEnd,
+            candidateValue.SecondTrain,
+            candidateValue.SecondVehicleIndex,
+            candidateValue.SecondEnd);
+
+        if (!result.Success)
+        {
+            DebugManager.Log($"[COUPLING] Command C failed: {result.Reason}.");
+            return;
+        }
+
+        Vehicle firstVehicle = candidateValue.FirstTrain.Composition.Vehicles[candidateValue.FirstVehicleIndex];
+        var connection = firstVehicle.CouplingState.Get(candidateValue.FirstEnd);
+        if (connection != null)
+        {
+            if (ContainsVehicle(connection.VehicleA))
+            {
+                _lastCoupledVehicle = connection.VehicleA;
+                _lastCoupledEnd = connection.EndA;
+            }
+            else
+            {
+                _lastCoupledVehicle = connection.VehicleB;
+                _lastCoupledEnd = connection.EndB;
+            }
+        }
+
+        DebugManager.Log($"[COUPLING] Command C executed at {CouplingCommandSpeedKmh:F0} km/h shunting limit / S14 Rezerwowy 3.");
+    }
+
+    private void ExecuteDecouplingCommand()
+    {
+        if (_lastCoupledVehicle != null)
+        {
+            Train? owner = FindTrainContaining(_lastCoupledVehicle);
+            if (owner != null)
+            {
+                var result = Decouple(owner, _lastCoupledVehicle, _lastCoupledEnd);
+                if (result.Success)
+                {
+                    _lastCoupledVehicle = null;
+                    DebugManager.Log("[COUPLING] Command X decoupled the last coupling.");
+                    return;
+                }
+            }
+        }
+
+        foreach (var train in _trains)
+        {
+            for (int i = 0; i < train.Composition.Vehicles.Count; i++)
+            {
+                var vehicle = train.Composition.Vehicles[i];
+                foreach (var connection in vehicle.CouplingState.Connections())
+                {
+                    VehicleEnd end = ReferenceEquals(connection.VehicleA, vehicle) ? connection.EndA : connection.EndB;
+                    var result = Decouple(train, vehicle, end);
+                    if (result.Success)
+                    {
+                        DebugManager.Log("[COUPLING] Command X decoupled the first available runtime coupling.");
+                        return;
+                    }
+                }
+            }
+        }
+
+        DebugManager.Log("[COUPLING] Command X rejected: no runtime coupling found.");
+    }
+
+    private bool ContainsVehicle(Vehicle vehicle)
+    {
+        foreach (var train in _trains)
+            if (train.Composition.Vehicles.Contains(vehicle)) return true;
+        return false;
+    }
+
+    private Train? FindTrainContaining(Vehicle vehicle)
+    {
+        foreach (var train in _trains)
+            if (train.Composition.Vehicles.Contains(vehicle)) return train;
+        return null;
+    }
 
     /// <summary>
     /// Returns all boundary-end pairs near the supplied train. The coupling service
