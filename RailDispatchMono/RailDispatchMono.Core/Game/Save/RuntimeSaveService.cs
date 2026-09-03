@@ -30,6 +30,7 @@ public sealed class TrainSaveData
     public float Speed { get; set; }
     public float DistanceAlongTrack { get; set; }
     public TrackConnections Direction { get; set; }
+    public bool IsReversed { get; set; }
     public List<VehicleSaveData> Vehicles { get; set; } = new();
 }
 
@@ -91,7 +92,8 @@ public static class RuntimeSaveService
                 Y = train.Position.Y,
                 Speed = train.Speed,
                 DistanceAlongTrack = train.DistanceAlongTrack,
-                Direction = train.Direction
+                Direction = train.Direction,
+                IsReversed = train.IsReversed
             };
 
             foreach (Vehicle vehicle in train.Composition.Vehicles)
@@ -175,7 +177,6 @@ public static class RuntimeSaveService
                 }
                 else
                 {
-                    // Backward compatibility with pre-0.1.4e saves.
                     p = new VehicleParameters(
                         savedVehicle.MaxSpeed,
                         savedVehicle.AccelerationCoefficient,
@@ -206,6 +207,7 @@ public static class RuntimeSaveService
             train.SetSignalController(signals);
             train.SetBlockController(blocks);
             train.DistanceAlongTrack = savedTrain.DistanceAlongTrack;
+            train.RestoreTravelDirection(savedTrain.IsReversed);
             trainManager.Add(train);
         }
 
