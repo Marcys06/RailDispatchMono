@@ -93,6 +93,22 @@ The wagon catalogue contains three passenger coach variants. Their visual labels
 - passenger coaches use `1KL`, `2KL`, `3KL` with distinct blue shades;
 - labels are normalized to remain readable in both travel directions.
 
+## Coupling data boundary — prepared for 0.1.5
+
+Coupling is intentionally prepared as a data boundary only. `Vehicle` exposes a `CouplingSpecification` containing the static interface type at the front and rear of the vehicle. The current default is a screw coupler on both ends.
+
+The following are explicitly **not** implemented in 0.1.4:
+
+- coupled/uncoupled runtime state;
+- coupling distance detection;
+- coupling/decoupling commands;
+- consist merge/split as a coupling action;
+- coupler compatibility checks;
+- coupling forces, slack or longitudinal dynamics;
+- persistence of individual coupler connections.
+
+The planned 0.1.5 boundary is: static rolling-stock coupling data belongs to `Vehicle`; runtime connection state and consist mutations belong to `Train`/`TrainComposition`/`TrainManager`; UI/input should request those operations rather than mutate vehicle lists directly.
+
 ## Depot lifecycle
 
 `DepotController` owns depot buildings. Clicking an existing depot opens the full-screen `DepotScreen`, which uses `MyraDepotView` and the existing shared `MyraUIManager`/`Desktop`.
