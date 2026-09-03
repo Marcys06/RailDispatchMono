@@ -12,8 +12,10 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Added a visible 1x1-cell Depot building with outline/entrance details and placement preview.
 - Added static coupling metadata: `CouplerType`, `CouplingSpecification` and `Vehicle.Coupling`.
 - Default rolling stock exposes screw couplers at both ends.
+- Fixed `RuntimeSaveService` to save/load rolling-stock `ShortName` values and to use the current `Locomotive` and `Wagon` constructor signatures.
+- Kept runtime save schema version at 1; older saves without `ShortName` remain deserializable.
 - Runtime coupling/decoupling, compatibility, connection state, forces and persistence remain explicitly deferred to 0.1.5.
-- Updated game-domain, screen/UI and AI-context documentation and added `docs/changelog/0.1.4i.md`.
+- Updated game-domain, screen/UI and AI-context documentation and detailed `docs/changelog/0.1.4i.md`.
 - No `current-state` snapshot was created; `0.1.4i` remains a lettered development stage.
 
 ## [0.1.4h] — Speed-dependent braking and RadioStop safety
