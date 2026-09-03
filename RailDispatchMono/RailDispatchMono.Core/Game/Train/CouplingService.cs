@@ -58,6 +58,13 @@ public sealed class CouplingService
                 out Train leadingTrain, out Train trailingTrain))
             return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
+        // Coupling is a shunting operation: stop the maneuvering consist through
+        // the existing train stop mechanism before changing runtime composition.
+        firstTrain.Speed = 0f;
+        secondTrain.Speed = 0f;
+        firstTrain.RadioStop();
+        secondTrain.RadioStop();
+
         var connection = new CouplingConnection(
             firstTrain.Composition.Vehicles[firstVehicleIndex], firstEnd,
             secondTrain.Composition.Vehicles[secondVehicleIndex], secondEnd);
@@ -80,9 +87,11 @@ public sealed class CouplingService
                 leadingTrain.Composition.AddVehicle(vehicle);
         }
 
-        leadingTrain.Speed = MathF.Min(firstTrain.Speed, secondTrain.Speed);
+        // The newly coupled train starts from rest. Signal logic may release it
+        // on a later TrainManager.Update; it must not inherit shunting momentum.
+        leadingTrain.Speed = 0f;
         manager.Remove(trailingTrain);
-        DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled.");
+        DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
         return CouplingOperationResult.Ok;
     }
 
@@ -112,17 +121,19 @@ public sealed class CouplingService
 
         var newHeadTransform = train.GetVehicleTransform(splitIndex);
         TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
-        float newSpeed = train.Speed;
+        train.Speed = 0f;
+        train.RadioStop();
         var splitComposition = train.Composition.Split(splitIndex);
 
         connection.VehicleA.CouplingState.Set(connection.EndA, null);
         connection.VehicleB.CouplingState.Set(connection.EndB, null);
 
-        var detached = new Train(newHeadTransform.Position, newDirection, newSpeed, splitComposition.Vehicles);
+        var detached = new Train(newHeadTransform.Position, newDirection, 0f, splitComposition.Vehicles);
         detached.SetMap(manager.Map);
+        detached.RadioStop();
         manager.RegisterCouplingTrain(detached);
 
-        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]}.");
+        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped.");
         return CouplingOperationResult.Ok;
     }
 
