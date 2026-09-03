@@ -66,19 +66,19 @@ public sealed partial class TrainManager
             return;
         }
 
-        // F7 reverses the locomotive itself, but never changes the composition
-        // order. For A-B-B, the consist remains A-B-B while its travel direction
-        // changes from ---> to <---.
+        // F7 changes only the locomotive's physical orientation and the train's
+        // travel direction. Composition order is immutable here: A-B-B remains
+        // A-B-B, only ---> becomes <---.
         train.SetDirection(GetOppositeDirection(train.Direction));
         locomotive.Orientation = locomotive.Orientation == VehicleOrientation.Forward
             ? VehicleOrientation.Reverse
             : VehicleOrientation.Forward;
-        ResetSignalStateAfterDirectionChange(train);
+        ResetSignalStateAfterChange(train);
 
         DebugManager.Log($"[TRAIN] Command F7: locomotive reversed for train {train.Id.ToString()[..8]}; composition order unchanged, direction={train.Direction}, locomotive orientation={locomotive.Orientation}.");
     }
 
-    private void ResetSignalStateAfterDirectionChange(Train train)
+    internal void ResetSignalStateAfterChange(Train train)
     {
         _signalSpeedStates[train.Id] = new SignalSpeedState
         {
