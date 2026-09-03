@@ -88,10 +88,10 @@ public sealed class CouplingService
 
         leadingTrain.Speed = 0f;
 
-        // Coupling changes the consist boundary and therefore the signal context.
-        // Drop both the train-local and manager-level cached signal state so the
-        // newly coupled AB/ABB consist immediately evaluates the semaphore ahead
-        // of its current direction instead of inheriting the old train state.
+        // Coupling changes the consist boundary. Rebuild both manager-level and
+        // train-local signal context from the signal that is actually ahead of
+        // the resulting train, rather than inheriting stale state from either
+        // source train.
         manager.ResetSignalStateAfterChange(leadingTrain);
 
         manager.Remove(trailingTrain);
@@ -158,6 +158,19 @@ public sealed class CouplingService
         Train secondTrain, int secondIndex, VehicleEnd secondEnd,
         out Train leading, out Train trailing)
     {
+        // A locomotive is always kept first in the logical consist when coupling
+        // a locomotive train with a wagon-only train. Previously the result
+        // depended on which train happened to be enumerated first by C, so the
+        // same physical A+B operation could produce A-B or B-A.
+        bool firstHasLocomotive = firstTrain.Composition.Locomotive != null;
+        bool secondHasLocomotive = secondTrain.Composition.Locomotive != null;
+        if (firstHasLocomotive != secondHasLocomotive)
+        {
+            leading = firstHasLocomotive ? firstTrain : secondTrain;
+            trailing = firstHasLocomotive ? secondTrain : firstTrain;
+            return true;
+        }
+
         if (firstIndex == firstTrain.Composition.Vehicles.Count - 1 && firstEnd == VehicleEnd.Rear &&
             secondIndex == 0 && secondEnd == VehicleEnd.Front)
         {
