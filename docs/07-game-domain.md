@@ -6,13 +6,13 @@ The repository contains `Game/Railway` domain classes including `BlockController
 
 ## Train subsystem
 
-The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Vehicle`, `VehicleParameters`, `Locomotive` and `Wagon`.
+The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Vehicle`, `VehicleParameters`, `LocomotiveParameters`, `Locomotive` and `Wagon`.
 
 `TrainComposition` is the authoritative ordered list of vehicles in a train. It exposes total physical mass/length, effective maximum speed and wagon count. A composition may contain a locomotive without wagons; a locomotive is required for movement.
 
 `TrainManager` is the authoritative train lifecycle owner. `CreateTrainFromComposition()` is the single creation path used by the Depot builder for player-created consists.
 
-### Mass-dependent performance
+### Mass-dependent acceleration/braking
 
 Train acceleration and braking are calculated from the locomotive's own acceleration/braking capability and the total physical consist mass. Added wagon mass therefore reduces both acceleration and deceleration; wagons do not contribute their own propulsion/braking rates.
 
@@ -22,30 +22,56 @@ The mass penalty is deliberately non-linear. For a locomotive mass `M_loco` and 
 
 The exponent `1.30` makes mass sensitivity approximately 30% stronger than a simple linear inverse-mass relationship while preserving the locomotive-only baseline (`factor = 1`). The same factor is applied to acceleration and braking. This is a gameplay model, not a full traction/brake-force simulation.
 
+### Power-dependent Vmax
+
+Locomotives have a dedicated `LocomotiveParameters` type with `PowerMW`. Power determines how much total consist mass can be carried at the locomotive's base Vmax.
+
+The current gameplay calibration uses:
+
+- `PowerToMassThresholdMWPerTon = 0.006 MW/t`;
+- `PowerLoadExponent = 0.55`;
+- supported mass = `PowerMW / 0.006`;
+- if total mass is within supported mass, the power multiplier is `1.0`;
+- above the supported mass, `multiplier = (supportedMass / totalMass)^0.55`;
+- effective Vmax is `base locomotive Vmax * multiplier`, additionally limited by wagon Vmax.
+
+This produces the intended calibration with 40 t passenger wagons: `EU200` (5.5 MW, 84 t) with 10 wagons (484 t total) keeps 200 km/h, while `SU42` (1.2 MW, 74 t) with 5 wagons (274 t total) is approximately 75 km/h and with 10 wagons (474 t total) approximately 55 km/h.
+
 ## Rolling stock catalog
 
 `Game/RollingStock` contains reusable rolling-stock definitions:
 
 - `RollingStockCatalog` — registered locomotives and wagons.
-- `LocomotiveDefinition` — catalogue data and vehicle factory for a locomotive.
-- `WagonDefinition` — catalogue data and vehicle factory for a wagon.
+- `LocomotiveDefinition` — catalogue data, power, short label and vehicle factory for a locomotive.
+- `WagonDefinition` — catalogue data, short label and vehicle factory for a wagon.
 - `TractionType` — electric/diesel classification.
 
-The first `0.1.4e` locomotive set is:
+The locomotive catalogue currently contains:
 
-- `EP07` — electric, 125 km/h, 80 t, 16.2 m.
-- `EU200 — Newag Griffin E4ACP` — electric AC, 200 km/h, 84 t, 19.9 m.
-- `SU42` — diesel, 90 km/h, 74 t, 14.4 m.
+- `EP07` — electric, 125 km/h, 80 t, 2.0 MW, label `EP07`.
+- `EU200 — Newag Griffin E4ACP` — electric AC, 200 km/h, 84 t, 5.5 MW, label `EU200`.
+- `SU42` — diesel, 90 km/h, 74 t, 1.2 MW, label `SU42`.
 
-These values are gameplay-scaled around the existing EU06-level simulation response; they are not a full traction-curve simulation.
-
-The first wagon catalogue contains three passenger coach variants. Wagon technical Vmax participates in the composition's effective Vmax calculation.
+The wagon catalogue contains three passenger coach variants. Their visual labels are `1KL`, `2KL` and `3KL`; each currently permits 200 km/h so a compliant EU200 consist is not artificially capped by the coach catalogue Vmax.
 
 ## Physical parameter contract
 
 `VehicleParameters` continues to expose the internal simulation values used by movement: speed is m/s, mass is retained in kg for compatibility, and vehicle visual length remains in map-cell units. `MassTons` and `LengthMeters` expose the real-world/gameplay values used by the rolling-stock catalogue and Depot summary.
 
+`LocomotiveParameters` extends `VehicleParameters` with `PowerMW` and is created by `LocomotiveDefinition`.
+
 `VehicleParameters.CreatePhysical()` converts catalogue Vmax from km/h to internal m/s and keeps the established visual grid proportions separate from the `1 cell = 10 m` physical scale.
+
+## Rolling stock presentation
+
+`TrainRenderer` draws rolling stock as differentiated top-down vehicles:
+
+- electric locomotives are red;
+- diesel locomotives are black;
+- all rolling-stock labels are white and centered;
+- locomotive labels use their short class names (`EP07`, `EU200`, `SU42`);
+- passenger coaches use `1KL`, `2KL`, `3KL` with distinct blue shades;
+- labels are normalized to remain readable in both travel directions.
 
 ## Depot lifecycle
 
