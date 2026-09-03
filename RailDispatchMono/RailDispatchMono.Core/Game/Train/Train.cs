@@ -84,7 +84,7 @@ public sealed partial class Train
         foreach (var vehicle in vehicles)
             Composition.AddVehicle(vehicle);
 
-        InitializeVehicleOffsets();
+        RebuildVehicleOffsets();
 
         _maxSpeed = float.MaxValue;
         foreach (var vehicle in Composition.Vehicles)
@@ -170,6 +170,9 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
+        if (_vehicleOffsets.Length != Composition.Vehicles.Count)
+            RebuildVehicleOffsets();
+
         Vector2 position = Position + _vehicleOffsets[vehicleIndex];
         return (position, GetDirectionAngle(Direction));
     }
@@ -187,7 +190,7 @@ public sealed partial class Train
     public (Vector2 Position, float Distance)? GetLastTrajectoryPoint()
     {
         if (_trajectory.Count == 0) return null;
-        var last = _trajectory[_trajectory.Count - 1];
+        var last = _trajectory[^1];
         return (last.Position, last.Distance);
     }
 
@@ -218,7 +221,7 @@ public sealed partial class Train
 
     public float GetVehicleDistance(int vehicleIndex) => GetDistanceToVehicle(vehicleIndex);
 
-    private void InitializeVehicleOffsets()
+    internal void RebuildVehicleOffsets()
     {
         _vehicleOffsets = new Vector2[Composition.Vehicles.Count];
         Vector2 directionVector = DirectionToVector(Direction);
