@@ -11,6 +11,7 @@ public sealed class CouplingService
 {
     public const float CouplingDistance = CouplingGeometry.DefaultCouplingDistance;
     public const float AlignmentDot = CouplingGeometry.DefaultAlignmentDot;
+    public const float DecouplingMaxSpeedKmh = 6f;
 
     public CouplingCheckResult CanCouple(
         Train firstTrain, int firstVehicleIndex, VehicleEnd firstEnd,
@@ -92,13 +93,20 @@ public sealed class CouplingService
         leadingTrain.Speed = 0f;
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
-        return CouplingOperationResult.Ok;
+        return CouplingOperationResult.Ok();
     }
 
     public CouplingOperationResult Decouple(TrainManager manager, Train train, Vehicle firstVehicle, VehicleEnd firstEnd)
     {
         if (manager == null || train == null || firstVehicle == null)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
+
+        float speedKmh = train.Speed * 3.6f;
+        if (speedKmh >= DecouplingMaxSpeedKmh)
+        {
+            DebugManager.Log($"[COUPLING] Decouple rejected: train {train.Id.ToString()[..8]} speed {speedKmh:F1} km/h is not below {DecouplingMaxSpeedKmh:F0} km/h.");
+            return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
+        }
 
         var connection = firstVehicle.CouplingState.Get(firstEnd);
         if (connection == null)
@@ -134,7 +142,7 @@ public sealed class CouplingService
         manager.RegisterCouplingTrain(detached);
 
         DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped.");
-        return CouplingOperationResult.Ok;
+        return CouplingOperationResult.Ok();
     }
 
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
