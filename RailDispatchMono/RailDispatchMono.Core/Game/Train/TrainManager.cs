@@ -48,8 +48,8 @@ public sealed class TrainManager
         }
         train.SetMap(_map);
         _trainsToAdd.Add(train);
-        _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = GetPhysicalMaxSpeed(train) };
-        train.SetEffectiveSignalSpeed(GetPhysicalMaxSpeed(train));
+        _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = GetEffectiveMaxSpeed(train) };
+        train.SetEffectiveSignalSpeed(GetEffectiveMaxSpeed(train));
     }
 
     public Train CreateTrain(Vector2 position, TrackConnections direction, float speed)
@@ -141,7 +141,8 @@ public sealed class TrainManager
             if (CollisionController.ShouldRadioStop(train))
             {
                 train.RadioStop();
-                DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {3f:F0} cells without a protecting signal.");
+                float safetyDistance = CollisionController.GetRequiredSafetyDistanceCells(train);
+                DebugManager.Log($"[COLLISION] RadioStop: train {train.Id.ToString()[..8]} has another train within {safetyDistance:F1} cells without a protecting signal.");
                 continue;
             }
 
@@ -158,7 +159,7 @@ public sealed class TrainManager
     {
         if (!_signalSpeedStates.TryGetValue(train.Id, out var state))
         {
-            state = new SignalSpeedState { CurrentLimit = GetPhysicalMaxSpeed(train) };
+            state = new SignalSpeedState { CurrentLimit = GetEffectiveMaxSpeed(train) };
             _signalSpeedStates[train.Id] = state;
         }
 
@@ -185,22 +186,17 @@ public sealed class TrainManager
         train.SetEffectiveSignalSpeed(state.CurrentLimit);
     }
 
-    private static float GetPhysicalMaxSpeed(Train train)
-    {
-        float maxSpeed = float.MaxValue;
-        foreach (var vehicle in train.Composition.Vehicles)
-            maxSpeed = MathF.Min(maxSpeed, vehicle.Parameters.MaxSpeed);
-        return maxSpeed == float.MaxValue ? 0f : maxSpeed;
-    }
+    private static float GetEffectiveMaxSpeed(Train train) => train.Composition.EffectiveMaxSpeed;
 
     private static float GetSignalSpeedLimit(Train train, Signal signal)
     {
+        float effectiveMaxSpeed = GetEffectiveMaxSpeed(train);
         return signal.Aspect switch
         {
             SignalAspect.Stop => 0f,
             SignalAspect.StopStation => 0f,
-            SignalAspect.Clear => GetPhysicalMaxSpeed(train),
-            _ => MathF.Min(GetPhysicalMaxSpeed(train), signal.GetSpeedLimitKmh() / 3.6f)
+            SignalAspect.Clear => effectiveMaxSpeed,
+            _ => MathF.Min(effectiveMaxSpeed, signal.GetSpeedLimitKmh() / 3.6f)
         };
     }
 
