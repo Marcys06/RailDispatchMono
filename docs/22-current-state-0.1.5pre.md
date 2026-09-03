@@ -74,7 +74,6 @@ The current keyboard command contract is:
 
 | Key | Action |
 |---|---|
-|---|---|
 | `C` | Couple nearest valid boundary candidate |
 | `X` | Decouple the last coupling created by `C`; otherwise first available runtime connection |
 | `F6` | Select 3 km/h shunting/coupling limit |
