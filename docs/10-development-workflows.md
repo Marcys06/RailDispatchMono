@@ -30,6 +30,8 @@
 
 Prefer existing semantic methods in `InputState`. If a new semantic action is needed by more than one screen, add it to `InputState` rather than duplicating the raw keyboard/gamepad logic in each screen.
 
+The current `0.1.5` coupling commands are a temporary exception: `TrainManager.HandleCouplingHotkeys()` owns the `C`/`X`/`F6`/`F7`/`F8` command path. Do not duplicate those commands in another input or UI owner until the planned vehicle/end selection UI replaces the temporary path.
+
 For pointer/touch UI, use `CurrentCursorLocation`, which is already transformed into the presentation coordinate system.
 
 ## Adding a setting
@@ -62,6 +64,18 @@ Do not implement custom flags that duplicate these concepts without a specific n
 Avoid broad refactors mixed with feature work. This repository has multiple platform targets and shared Core code; an apparently local signature change can affect several projects.
 
 Prefer small, mechanically verifiable changes. After a public/member signature change, search the entire repository for the old signature and usages.
+
+## Verification
+
+The repository currently has no dedicated automated Core test project. Normal verification is therefore:
+
+1. build the solution;
+2. run the DesktopGL game when the change affects runtime behavior;
+3. exercise the affected gameplay flow manually;
+4. inspect diagnostics when relevant;
+5. check affected platform consumers for shared Core changes.
+
+Do not reintroduce a test project solely to validate a small gameplay change unless the project structure and documentation explicitly call for one again.
 
 ## Documentation update rule
 
