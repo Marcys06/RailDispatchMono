@@ -2,7 +2,7 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.4h`** is the current rolling-stock, locomotive power/Vmax and speed-dependent safety development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4g` are lettered development stages recorded in changelogs.
+**RailDispatchMono `0.1.4i`** is the current rolling-stock, locomotive power/Vmax, speed-dependent safety and visual polish development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4i` are lettered development stages recorded in changelogs.
 
 ## One-paragraph context
 
@@ -25,7 +25,7 @@ RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platf
 - Three passenger coach definitions are available.
 - One locomotive is allowed per consist; zero or more wagons may be added.
 - Wagon visual labels are `1KL`, `2KL`, `3KL`.
-- Electric locomotives render red; diesel locomotives render black; rolling-stock labels render white and remain readable in both travel directions.
+- Electric locomotives render red; diesel locomotives render black; rolling-stock labels render white, centered and remain readable in both travel directions.
 
 ## Consist performance contract
 
@@ -57,9 +57,20 @@ Signal stopping and safety calculations must use the same effective braking capa
 
 RadioStop is a collision-protection fallback, not a replacement for signal or block authority.
 
+## Coupling data boundary — 0.1.5 preparation
+
+- `Vehicle.Coupling` exposes static front/rear `CouplerType` metadata.
+- `CouplingSpecification` is currently descriptive data only; default front/rear type is `Screw`.
+- No runtime coupling state exists yet.
+- No coupling/decoupling commands, detection, compatibility rules, forces or persistence are implemented in 0.1.4.
+- Runtime connection state should be owned by the train/consist layer in 0.1.5, not by the rendering or UI layer.
+- `TrainComposition` remains the ordered vehicle container; 0.1.5 should extend it rather than introduce a second vehicle collection.
+
 ## Depot lifecycle
 
 Clicking an existing depot through the existing `InputManager.DepotSelected` event opens `DepotScreen`. The builder allows locomotive selection, wagon addition/removal, clearing wagons, live composition statistics and train creation. The created train spawns on an adjacent free track cell when one exists.
+
+Depot buildings are rendered in world space by `DepotRenderer`, using the same camera-space rendering contract as stations.
 
 The previous hard-coded test train in `GameplayScreen` has been removed. The test track remains for the new-game development scenario.
 
@@ -70,6 +81,7 @@ The previous hard-coded test train in `GameplayScreen` has been removed. The tes
 - Preserve `BlockController` and `StationController` authority.
 - When changing acceleration, braking or Vmax, audit signal stopping and RadioStop calculations for the same dependency.
 - Do not reintroduce a fixed-distance collision scan that ignores current speed.
+- Do not implement coupling mechanics in 0.1.4; keep the coupling model static until the 0.1.5 implementation pass.
 
 ## Pause lifecycle
 
@@ -77,4 +89,4 @@ Pause is a gameplay state, not a popup screen. `GameplayScreen` owns the pause s
 
 ## Documentation rule
 
-Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4h` remain lettered changelog stages and must not receive current-state snapshot files.
+Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4i` remain lettered changelog stages and must not receive current-state snapshot files.
