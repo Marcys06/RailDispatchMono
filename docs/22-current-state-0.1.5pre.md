@@ -3,7 +3,7 @@
 **Date:** 2026-09-03  
 **Status:** consolidated development/pre-release milestone
 
-This document is the authoritative current-state snapshot for the `0.1.5` line. Lettered `0.1.5a`–`0.1.5h` stages remain historical development records in `CHANGELOG.md` and `docs/changelog/`.
+This document is the authoritative current-state snapshot for the `0.1.5` line. Lettered `0.1.5a`–`0.1.5i` stages remain historical development records in `CHANGELOG.md` and `docs/changelog/`.
 
 ## 1. Technology and repository structure
 
@@ -28,7 +28,7 @@ Pause is a gameplay state owned by `GameplayScreen`, not a popup `GameScreen`. `
 
 The Depot builder supports one locomotive, zero or more passenger wagons, wagon editing, live composition statistics and creation through `TrainManager.CreateTrainFromComposition()`.
 
-Coupling commands are currently handled by the existing `TrainManager.HandleCouplingHotkeys()` path. This is the current `0.1.5` command path and must not be duplicated by UI code.
+Train coupling/decoupling commands are handled by the existing `TrainManager.HandleCouplingHotkeys()` path. `F6` is now reserved for manual shunting and is no longer a coupling-speed selector.
 
 ## 4. Train and rolling stock domain
 
@@ -49,18 +49,25 @@ Coupling is currently restricted to compatible outer vehicle ends. Validation co
 - maximum endpoint distance;
 - end-facing/alignment geometry.
 
+`C` uses a fixed `6 km/h` shunting limit. There are no longer any runtime commands for selecting a different coupling speed.
+
 A successful coupling stops both participating trains through the existing `RadioStop` mechanism, creates the runtime connection, merges the two compositions while preserving vehicle order, leaves the merged train stopped and removes the trailing runtime train from the manager.
 
 A successful decoupling:
 
-1. resolves the concrete `CouplingConnection` from a vehicle end;
-2. verifies both connected vehicles belong to the same runtime train and form an adjacent train boundary;
-3. stops the train through `RadioStop`;
-4. splits `TrainComposition` at the connected boundary;
-5. clears the connection from both vehicle ends;
-6. initializes the detached train's spatial state from the split position and direction, preserving each vehicle's physical distance behind the head instead of collapsing the consist onto one spawn point;
-7. creates a new stopped `Train` for the detached section;
-8. registers that train through `TrainManager`.
+1. requires the target train to be moving below `6 km/h`;
+2. resolves the concrete `CouplingConnection` from the wagon selected by the cursor;
+3. verifies both connected vehicles belong to the same runtime train and form an adjacent train boundary;
+4. stops the train through `RadioStop`;
+5. splits `TrainComposition` at the connected boundary;
+6. clears the connection from both vehicle ends;
+7. initializes the detached train's spatial state from the split position and direction, preserving each vehicle's physical distance behind the head instead of collapsing the consist onto one spawn point;
+8. creates a new stopped `Train` for the detached section;
+9. registers that train through `TrainManager`.
+
+The `< 6 km/h` decoupling rule is enforced inside `CouplingService`, so direct domain calls cannot bypass the speed restriction.
+
+`X` only acts on a wagon actually under the cursor. It no longer falls back to the last `C` coupling or the oldest available runtime connection. When the hovered wagon has both front and rear runtime connections, the rear connection is preferred; otherwise its available connection is used.
 
 Vehicle transforms normally use trajectory history after movement. For a newly created or repositioned train with no accumulated travel history, vehicle positions are derived from the head position, train direction and each vehicle's distance behind the head. This prevents a detached consist from visually respawning with all vehicles at the same position after `X`.
 
@@ -74,15 +81,17 @@ The current keyboard command contract is:
 
 | Key | Action |
 |---|---|
-| `C` | Couple nearest valid boundary candidate |
-| `X` | Decouple the last coupling created by `C`; otherwise first available runtime connection |
-| `F6` | Select 3 km/h shunting/coupling limit |
-| `F7` | Select 4 km/h shunting/coupling limit |
-| `F8` | Select 5 km/h shunting/coupling limit (default) |
+| `C` | Couple nearest valid boundary candidate, limited to `6 km/h` |
+| `X` | Decouple the wagon under the cursor, only when its train is below `6 km/h` |
+| `F6` | Manual shunting: while held over a train, accelerate it toward `3 km/h` and bypass automatic RadioStop/collision stopping |
 
-`C` refuses a candidate if either train exceeds the selected shunting speed. It delegates all authoritative structural and geometric checks to `CouplingService`.
+`F6` manual shunting is cursor-targeted. Only the train under the cursor receives the manual movement update; other trains continue through the normal station, collision, signal and RadioStop processing path.
 
-The command layer uses `SignalAspect.Reserve3` (`S14`, `Rezerwowy 3`) as its semantic shunting signal profile. This does not replace or bypass normal signal/block safety.
+Manual shunting uses the same consist acceleration/mass model as normal movement, but its target speed is fixed at `3 km/h` and it does not apply the automatic RadioStop/collision stop path while the key is held.
+
+`C` delegates authoritative structural and geometric checks to `CouplingService` and allows the fixed `6 km/h` shunting limit.
+
+The previous `F6/F7/F8` coupling-speed selection mechanism has been removed.
 
 ## 7. Train performance and safety
 
@@ -91,6 +100,8 @@ Loaded consist acceleration/braking use the locomotive capability multiplied by 
 `factor = 1 / (totalMass / locomotiveMass)^1.30`
 
 Locomotive power independently limits Vmax above supported mass. Signal stopping and RadioStop use the same effective consist braking capability as movement.
+
+Manual `F6` shunting intentionally bypasses the automatic RadioStop/collision stop path for the selected train while held.
 
 ## 8. Persistence
 
@@ -104,20 +115,20 @@ Coupling operations write `[COUPLING]` diagnostics. Train movement diagnostics c
 
 The repository no longer contains a dedicated automated Core test project. Validation of current runtime coupling/decoupling behavior therefore relies on the normal application build plus live gameplay verification in the user's .NET/MonoGame environment.
 
-The latest `0.1.5h` decoupling-position fix was inspected against the train trajectory and vehicle-transform implementation. A live build was not run in the current environment because NuGet/package restore requires unavailable network access.
+The `0.1.5i` changes were inspected against the current train movement, RadioStop, collision, coupling, decoupling and cursor/renderer paths. A live build was not run in the current environment because NuGet/package restore requires unavailable network access.
 
 ## 11. Ownership rules
 
-- `TrainManager` owns train lifecycle and exposes the coupling command path.
+- `TrainManager` owns train lifecycle and exposes the coupling/manual-shunting command path.
 - `TrainComposition` owns vehicle order, composition statistics and initialization of adjacent runtime couplings when vehicles are added.
-- `CouplingService` owns coupling/decoupling validation and state mutation for explicit operations.
+- `CouplingService` owns coupling/decoupling validation and state mutation for explicit operations, including the `< 6 km/h` decoupling restriction.
 - `Vehicle` owns its static coupling specification and runtime end connections.
-- `InputManager`/`InputState` own shared gameplay input architecture.
+- `InputManager`/`InputState` own shared gameplay input architecture and provide the cursor world position to gameplay train control.
 - Screens/UI request domain operations and do not mutate `TrainComposition.Vehicles` directly.
 
 ## 12. Deferred work
 
-- vehicle/end selection UI instead of nearest-candidate selection;
+- vehicle/end selection UI for `C` instead of nearest-candidate selection;
 - user-facing coupling failure messages;
 - coupling connection persistence;
 - integration verification across curves, cell boundaries, signals, blocks and stations;
