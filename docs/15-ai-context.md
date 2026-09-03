@@ -2,7 +2,7 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.4f`** is the current rolling-stock, Depot train-builder and consist-mass-performance development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4e` are lettered development stages recorded in changelogs.
+**RailDispatchMono `0.1.4g`** is the current rolling-stock presentation and locomotive power/Vmax development stage. `0.1.3pre` remains the previous consolidated Myra gameplay UI snapshot; `0.1.4a`–`0.1.4f` are lettered development stages recorded in changelogs.
 
 ## One-paragraph context
 
@@ -21,22 +21,26 @@ RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platf
 
 - `Game/RollingStock` contains catalogue definitions and factories.
 - `EP07`, `EU200 — Newag Griffin E4ACP` and `SU42` are the first locomotive definitions.
+- Locomotives now carry `PowerMW` through `LocomotiveParameters`.
 - Three passenger coach definitions are available.
-- One locomotive is allowed per `0.1.4f` consist; zero or more wagons may be added.
+- One locomotive is allowed per consist; zero or more wagons may be added.
 - A locomotive-only train is valid.
-- Composition Vmax is the minimum Vmax of all vehicles.
-- Physical mass/length are displayed in tonnes/metres; internal speed remains m/s.
-- Visual vehicle proportions remain on the established map-cell geometry rather than being shrunk by the 10 m physical scale.
+- Wagon visual labels are `1KL`, `2KL`, `3KL`.
+- Electric locomotives render red; diesel locomotives render black; rolling-stock labels render white and remain readable in both travel directions.
 
-## Consist performance contract — 0.1.4f
+## Consist performance contract
 
-- Locomotive acceleration and braking are the base capabilities for the consist.
+- Locomotive acceleration and braking remain the `0.1.4f` mass model.
 - Total consist mass reduces both acceleration and braking.
 - Mass sensitivity is non-linear and uses exponent `1.30`.
 - `factor = 1 / (totalMass / locomotiveMass)^1.30`.
-- The `1.30` exponent is approximately 30% stronger than a linear inverse-mass relationship.
-- A locomotive-only consist has factor `1.0` and therefore keeps the locomotive's base rates.
-- This is a gameplay approximation, not a full traction-curve or brake-force simulation.
+- Locomotive power now additionally limits Vmax when the consist becomes too heavy.
+- Current power/load calibration uses `0.006 MW/t` and exponent `0.55`.
+- `supportedMass = PowerMW / 0.006`.
+- Above supported mass: `VmaxMultiplier = (supportedMass / totalMass)^0.55`.
+- Effective Vmax is the lower of power-limited locomotive Vmax and wagon Vmax.
+- `EU200` (5.5 MW, 84 t) with ten 40 t wagons remains at 200 km/h.
+- `SU42` (1.2 MW, 74 t) is approximately 75 km/h with five 40 t wagons and approximately 55 km/h with ten.
 
 ## Depot lifecycle
 
@@ -58,4 +62,4 @@ Pause is a gameplay state, not a popup screen. `GameplayScreen` owns the pause s
 
 ## Documentation rule
 
-Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4f` remain lettered changelog stages and must not receive current-state snapshot files.
+Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. `0.1.4a`–`0.1.4g` remain lettered changelog stages and must not receive current-state snapshot files.
