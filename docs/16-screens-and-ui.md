@@ -2,6 +2,10 @@
 
 The Core screen area contains reusable screen infrastructure and concrete game/application screens. Migrated standard UI uses Myra through the shared `MyraUIManager`.
 
+## Current consolidated baseline
+
+`0.1.4pre` is the current consolidated 0.1.4 screen/UI baseline.
+
 ## Confirmed concrete screens
 
 - `GameplayScreen` — primary gameplay screen and authoritative pause/persistence owner.
@@ -28,11 +32,9 @@ The Core screen area contains reusable screen infrastructure and concrete game/a
 
 Depot does not create another Myra manager or Desktop. When `DepotScreen` becomes active it temporarily replaces the gameplay Myra root; `MyraUIManager.Clear()` restores the previous gameplay root when the screen closes.
 
-## Depot interaction — 0.1.4f+
+## Depot interaction
 
-Clicking an existing Depot through `InputManager.DepotSelected` opens `DepotScreen` directly. The old `DepotTrainMenu` SpriteBatch preset menu has been removed.
-
-There are no longer three hardcoded train presets such as short/standard/long. Depot train creation is entirely owned by `DepotScreen` + `MyraDepotView`.
+Clicking an existing Depot through `InputManager.DepotSelected` opens `DepotScreen` directly. The old preset-based SpriteBatch train menu is not the current train-creation architecture.
 
 The Myra builder provides:
 
@@ -45,41 +47,41 @@ The Myra builder provides:
 - create a locomotive-only or locomotive-plus-wagons train;
 - cancel without creating a train.
 
-The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` no longer contains the former preset-based train spawn path or its hardcoded EU06-style `VehicleParameters`.
+The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` does not construct train objects directly.
 
-## Train physics note — 0.1.4h
+## Train physics and safety UI implications
 
-Consist acceleration and braking use the non-linear mass factor from `0.1.4f`:
+Consist acceleration and braking use the non-linear mass factor:
 
 `factor = 1 / (totalMass / locomotiveMass)^1.30`
 
 Locomotive power additionally limits Vmax above the supported consist mass.
 
-Signal `Stop` / `StopStation` braking now uses the same effective braking capability as train movement, so the stopping-distance calculation reflects the actual loaded consist rather than the raw locomotive/wagon braking parameter.
-
-Restricted signal aspects also use effective braking when deciding whether enough distance remains to reduce speed.
-
-`TrainCollisionController` keeps the 3-cell RadioStop minimum but expands its protected distance at higher speed using effective braking distance, `0.15 s` reaction distance and a `0.8`-cell buffer.
+Signal `Stop` / `StopStation` braking and restricted-aspect safety use the same effective braking capability as train movement. `TrainCollisionController` retains the 3-cell RadioStop minimum but expands protected distance at higher speed using effective braking distance, `0.15 s` reaction distance and a `0.8`-cell buffer.
 
 The current Stop target retains the `0.8`-cell offset and leading-vehicle physical half-length correction. Spatial scale remains `1 map cell = 10 m`.
 
-## Rolling stock presentation — 0.1.4i
+## Rolling stock presentation
 
 `TrainRenderer` is responsible for world-space vehicle presentation. It receives the `Arial24` font from `GameplayScreen` and draws a centered white short label on every visible rolling-stock unit. Locomotive labels are `EP07`, `EU200`, `SU42`; passenger labels are `1KL`, `2KL`, `3KL`. Label rotation is normalized so the text remains readable when the train reverses direction.
 
 `DepotRenderer` uses the same world-space/camera transform contract as `StationRenderer`. The Depot is rendered as a visible 1x1-cell building with outline and entrance details, plus a matching placement preview. It must not convert world cells to screen pixels internally.
 
-## Coupling preparation — 0.1.4i / implementation 0.1.5
+## Train diagnostics
 
-Coupling has no gameplay UI in 0.1.4. The code exposes only static `Vehicle.Coupling` metadata through `CouplingSpecification`; runtime connection state belongs to the future train/consist layer.
+Train movement diagnostics are rendered through the central `DebugManager` logger. During a train update, messages beginning with `[TRAIN]` receive the active train's first eight GUID characters, for example `[TRAIN:de148bda] START ...`. The identifier is for log correlation and does not alter UI state or simulation.
 
-Do not add coupling buttons, coupling distance detection or visual connection state before the 0.1.5 implementation pass. The eventual UI should request operations from the train domain rather than edit `TrainComposition.Vehicles` directly.
+## Coupling preparation — implementation target 0.1.5
+
+Coupling has no gameplay UI in `0.1.4pre`. The code exposes only static `Vehicle.Coupling` metadata through `CouplingSpecification`; runtime connection state belongs to the future train/consist layer.
+
+Do not add coupling buttons, coupling distance detection or visual connection state before the `0.1.5` implementation pass. The eventual UI should request operations from the train domain rather than edit `TrainComposition.Vehicles` directly.
 
 ## Pause lifecycle
 
 `GameplayScreen` owns pause state. Entering pause activates `MyraPauseView`; simulation updates stop while Myra input remains active. Resume clears the gameplay pause state and restores the gameplay Myra root. No pause popup is added to `ScreenManager`.
 
-Opening `DepotScreen` also covers `GameplayScreen`, so the ScreenManager lifecycle prevents gameplay simulation updates while the Depot builder is active. Closing the screen restores the gameplay Myra root and normal simulation/HUD operation.
+Opening `DepotScreen` also covers `GameplayScreen`, so gameplay simulation updates do not continue underneath the Depot builder. Closing the screen restores the gameplay Myra root and normal simulation/HUD operation.
 
 ## Gameplay HUD interaction
 
