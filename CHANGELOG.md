@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5i] — Fixed shunting control and cursor-targeted decoupling
+**Data:** 2026-09-03
+
+- Replaced configurable `3 / 4 / 5 km/h` coupling command speeds with a fixed `6 km/h` shunting limit.
+- Removed the `F7` and `F8` coupling-speed commands.
+- `X` decoupling is now allowed only while the target train is below `6 km/h`; the limit is enforced by `CouplingService`.
+- `F6` is now manual shunting control: while held over a train, it accelerates toward `3 km/h` and bypasses the automatic RadioStop/collision stop path.
+- `X` now targets the wagon under the cursor instead of the last `C` coupling or first runtime connection.
+- When the hovered wagon has two connections, the rear connection is preferred; otherwise its available runtime connection is used.
+- `X` no longer falls back to an unrelated/oldest coupling when no wagon is under the cursor.
+- Detailed notes: `docs/changelog/0.1.5i.md`.
+
 ## [0.1.5h] — Preserve detached consist positions after decoupling
 **Data:** 2026-09-03
 
