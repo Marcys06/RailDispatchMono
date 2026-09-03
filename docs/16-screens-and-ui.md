@@ -63,16 +63,17 @@ Restricted signal aspects also use effective braking when deciding whether enoug
 
 The current Stop target retains the `0.8`-cell offset and leading-vehicle physical half-length correction. Spatial scale remains `1 map cell = 10 m`.
 
-## Rolling stock presentation
+## Rolling stock presentation — 0.1.4i
 
-The Myra Depot builder exposes the catalogue; world rendering is handled separately by `TrainRenderer`:
+`TrainRenderer` is responsible for world-space vehicle presentation. It receives the `Arial24` font from `GameplayScreen` and draws a centered white short label on every visible rolling-stock unit. Locomotive labels are `EP07`, `EU200`, `SU42`; passenger labels are `1KL`, `2KL`, `3KL`. Label rotation is normalized so the text remains readable when the train reverses direction.
 
-- electric locomotives are red;
-- diesel locomotives are black;
-- all rolling-stock labels are white and centered;
-- locomotive labels use `EP07`, `EU200`, `SU42`;
-- passenger coaches use `1KL`, `2KL`, `3KL` with distinct blue shades;
-- labels remain readable in both travel directions.
+`DepotRenderer` uses the same world-space/camera transform contract as `StationRenderer`. The Depot is rendered as a visible 1x1-cell building with outline and entrance details, plus a matching placement preview. It must not convert world cells to screen pixels internally.
+
+## Coupling preparation — 0.1.4i / implementation 0.1.5
+
+Coupling has no gameplay UI in 0.1.4. The code exposes only static `Vehicle.Coupling` metadata through `CouplingSpecification`; runtime connection state belongs to the future train/consist layer.
+
+Do not add coupling buttons, coupling distance detection or visual connection state before the 0.1.5 implementation pass. The eventual UI should request operations from the train domain rather than edit `TrainComposition.Vehicles` directly.
 
 ## Pause lifecycle
 
