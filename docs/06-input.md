@@ -1,6 +1,6 @@
 # Input system
 
-`InputState` remains the shared input snapshot/action layer used by the screen system. Gameplay construction is handled by `InputManager` on top of that shared state.
+`InputState` remains the shared input snapshot/action layer used by the screen system. `InputManager` handles gameplay/world input interpretation. Coupling commands currently use the existing `TrainManager.HandleCouplingHotkeys()` path and must not be duplicated by another UI/input owner.
 
 ## Current build controls
 
@@ -21,9 +21,23 @@
 - mouse wheel — zoom camera
 - `Escape` / `P` — pause/resume
 
+## Coupling and decoupling controls
+
+The current rigid coupling command path is:
+
+- `C` — couple the nearest valid outer-boundary candidate;
+- `X` — decouple the last coupling created by `C`, with fallback to the first remaining runtime connection;
+- `F6` — select a `3 km/h` shunting/coupling speed limit;
+- `F7` — select a `4 km/h` shunting/coupling speed limit;
+- `F8` — select a `5 km/h` shunting/coupling speed limit (default).
+
+`C` executes only when the selected candidate passes the authoritative `CouplingService` validation and both participating trains are at or below the selected shunting limit. `X` delegates decoupling to the same domain service.
+
+These commands are currently implemented in `TrainManager` as the temporary `0.1.5` command path. Do not add a second coupling/decoupling command implementation to `InputManager`, Myra or a screen until the planned vehicle/end selection UI replaces the temporary command path.
+
 ## Pause input ownership
 
-At `0.1.4pre`, pause is owned by `GameplayScreen`.
+At the current baseline, pause is owned by `GameplayScreen`.
 
 - `ESC` is handled by the gameplay screen as the authoritative pause/resume toggle.
 - The pause UI is rendered by `MyraPauseView` through the shared `MyraUIManager`.
@@ -59,4 +73,4 @@ The desktop game window is user-resizable. UI should use the current viewport/cl
 
 ## AI rule
 
-Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding gameplay controls. For Myra menus, use the shared `MyraUIManager`/`Desktop` and preserve a single owner for each action.
+Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding general gameplay controls. For Myra menus, use the shared `MyraUIManager`/`Desktop` and preserve a single owner for each action. The temporary coupling command remains in `TrainManager` until its planned vehicle/end selection UI replaces it.
