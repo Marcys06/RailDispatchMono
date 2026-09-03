@@ -133,6 +133,7 @@ public sealed partial class TrainManager
         }
         _trainsToRemove.Clear();
 
+        HandleCouplingHotkeys();
         StationController.Update(deltaTime);
 
         foreach (var train in _trains)
