@@ -21,6 +21,8 @@ public sealed partial class Train
     private BlockController? _blockController;
 
     private float _speed;
+    private Vector2[] _vehicleOffsets = Array.Empty<Vector2>();
+
     public float Speed
     {
         get => _speed;
@@ -82,6 +84,8 @@ public sealed partial class Train
         foreach (var vehicle in vehicles)
             Composition.AddVehicle(vehicle);
 
+        InitializeVehicleOffsets();
+
         _maxSpeed = float.MaxValue;
         foreach (var vehicle in Composition.Vehicles)
         {
@@ -112,7 +116,6 @@ public sealed partial class Train
         TotalDistance = 0f;
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
-        ClearPreservedVehiclePositions();
         ResetCurveState();
         ResetTrajectory();
     }
@@ -123,7 +126,6 @@ public sealed partial class Train
         Direction = direction;
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
-        ClearPreservedVehiclePositions();
         ResetCurveState();
         ResetTrajectory();
     }
@@ -168,60 +170,8 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        if (TryGetPreservedVehiclePosition(vehicleIndex, out Vector2 preservedPosition))
-        {
-            float rotation = TryGetPreservedVehicleRotation(vehicleIndex, out float preservedRotation)
-                ? preservedRotation
-                : GetDirectionAngle(Direction);
-            return (preservedPosition, rotation);
-        }
-
-        float distanceBehindHead = GetMovementDistanceToVehicle(vehicleIndex);
-        float targetDistance = _totalTravelDistance - distanceBehindHead;
-
-        if (_trajectory.Count == 0)
-            return (Position, GetDirectionAngle(Direction));
-
-        if (_totalTravelDistance <= MovementEpsilon)
-        {
-            Vector2 position = GetPositionBehindHead(distanceBehindHead);
-            return (position, GetDirectionAngle(Direction));
-        }
-
-        if (targetDistance <= _trajectory[0].Distance)
-        {
-            var first = _trajectory[0];
-            var angle = _trajectory.Count > 1
-                ? MathF.Atan2(_trajectory[1].Position.Y - first.Position.Y, _trajectory[1].Position.X - first.Position.X)
-                : GetDirectionAngle(Direction);
-            return (first.Position, angle);
-        }
-
-        if (targetDistance >= _trajectory[_trajectory.Count - 1].Distance)
-        {
-            var last = _trajectory[_trajectory.Count - 1];
-            var angle = _trajectory.Count > 1
-                ? MathF.Atan2(last.Position.Y - _trajectory[_trajectory.Count - 2].Position.Y, last.Position.X - _trajectory[_trajectory.Count - 2].Position.X)
-                : GetDirectionAngle(Direction);
-            return (last.Position, angle);
-        }
-
-        for (int i = _trajectory.Count - 1; i > 0; i--)
-        {
-            var curr = _trajectory[i];
-            var prev = _trajectory[i - 1];
-            if (targetDistance >= prev.Distance && targetDistance <= curr.Distance)
-            {
-                float segmentLength = curr.Distance - prev.Distance;
-                float t = segmentLength > MovementEpsilon ? (targetDistance - prev.Distance) / segmentLength : 0f;
-                Vector2 pos = Vector2.Lerp(prev.Position, curr.Position, t);
-                Vector2 dir = curr.Position - prev.Position;
-                float angle = dir != Vector2.Zero ? MathF.Atan2(dir.Y, dir.X) : GetDirectionAngle(Direction);
-                return (pos, angle);
-            }
-        }
-
-        return (Position, GetDirectionAngle(Direction));
+        Vector2 position = Position + _vehicleOffsets[vehicleIndex];
+        return (position, GetDirectionAngle(Direction));
     }
 
     public IReadOnlyList<(Vector2 Position, float Distance)> GetTrajectoryHistory()
@@ -267,6 +217,19 @@ public sealed partial class Train
     }
 
     public float GetVehicleDistance(int vehicleIndex) => GetDistanceToVehicle(vehicleIndex);
+
+    private void InitializeVehicleOffsets()
+    {
+        _vehicleOffsets = new Vector2[Composition.Vehicles.Count];
+        Vector2 directionVector = DirectionToVector(Direction);
+        float distance = 0f;
+
+        for (int i = 0; i < Composition.Vehicles.Count; i++)
+        {
+            _vehicleOffsets[i] = -directionVector * distance;
+            distance += Composition.Vehicles[i].Parameters.Length;
+        }
+    }
 
     private SignalController? _signalController;
     private float _targetSpeed;
