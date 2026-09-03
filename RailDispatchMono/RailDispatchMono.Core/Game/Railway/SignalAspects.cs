@@ -1,5 +1,5 @@
 // ============================================================
-// SIGNALASPECTS.CS - DEFINICJE ASPEKTÓW
+// SIGNALASPECTS.CS - DEFINICJE ASPEKTÃ“W
 // ============================================================
 
 using System.Collections.Generic;
@@ -8,12 +8,12 @@ namespace RailDispatchMono.Core.Game.Railway
 {
     public enum SignalAspect
     {
-        Stop,           // S1a - Stój
-        StopStation,    // S1b - Stój (stacja)
+        Stop,           // S1a - StÃ³j
+        StopStation,    // S1b - StÃ³j (stacja)
         Clear,          // S2 - Jazda z Vmax
-        Warning,        // S5 - Nastêpny semafor stój
-        Speed100,       // S6 - Jazda ? 100 km/h
-        Speed40,        // S10 - Jazda ? 40 km/h
+        Warning,        // S5 - NastÄ™pny semafor stÃ³j
+        Speed100,       // S6 - Jazda â‰¤ 100 km/h
+        Speed40,        // S10 - Jazda â‰¤ 40 km/h
         Reserve1,       // S12 - Rezerwa 1
         Reserve2,       // S13 - Rezerwa 2
         Reserve3,       // S14 - Rezerwa 3
@@ -40,43 +40,43 @@ namespace RailDispatchMono.Core.Game.Railway
 
         public static readonly Dictionary<SignalAspect, AspectInfo> Aspects = new()
         {
-            { SignalAspect.Stop, new AspectInfo("S1a", "Stój - przejazd zabroniony", 0, "Czerwony") },
-            { SignalAspect.StopStation, new AspectInfo("S1b", "Stój (stacja) - przejazd zabroniony", 0, "Czerwony + Bia³y") },
+            { SignalAspect.Stop, new AspectInfo("S1a", "StÃ³j - przejazd zabroniony", 0, "Czerwony") },
+            { SignalAspect.StopStation, new AspectInfo("S1b", "StÃ³j (stacja) - przejazd zabroniony", 0, "Czerwony + BiaÅ‚y") },
             { SignalAspect.Clear, new AspectInfo("S2", "Jazda z Vmax - droga wolna", float.MaxValue, "Zielony") },
-            { SignalAspect.Warning, new AspectInfo("S5", "Ostrze¿enie - nastêpny semafor stój", 5, "¯ó³ty") },
-            { SignalAspect.Speed100, new AspectInfo("S6", "Jazda ? 100 km/h", 100, "Zielony + ¯ó³ty") },
-            { SignalAspect.Speed40, new AspectInfo("S10", "Jazda ? 40 km/h", 40, "¯ó³ty Migaj¹cy") },
+            { SignalAspect.Warning, new AspectInfo("S5", "OstrzeÅ¼enie - nastÄ™pny semafor stÃ³j", 5, "Å»Ã³Å‚ty") },
+            { SignalAspect.Speed100, new AspectInfo("S6", "Jazda â‰¤ 100 km/h", 100, "Zielony + Å»Ã³Å‚ty") },
+            { SignalAspect.Speed40, new AspectInfo("S10", "Jazda â‰¤ 40 km/h", 40, "Å»Ã³Å‚ty MigajÄ…cy") },
             { SignalAspect.Reserve1, new AspectInfo("S12", "Rezerwa 1", 120, "Rezerwowy 1") },
             { SignalAspect.Reserve2, new AspectInfo("S13", "Rezerwa 2", 80, "Rezerwowy 2") },
-            { SignalAspect.Reserve3, new AspectInfo("S14", "Rezerwa 3", 60, "Rezerwowy 3") },
+            { SignalAspect.Reserve3, new AspectInfo("S14", "Rezerwa 3", 5, "Rezerwowy 3") },
             { SignalAspect.Reserve4, new AspectInfo("S15", "Rezerwa 4", 5, "Rezerwowy 4") }
         };
     }
 
     // ============================================================
-    // METODY ROZSZERZAJ¥CE DLA SignalAspect
+    // METODY ROZSZERZAJÄ„CE DLA SignalAspect
     // ============================================================
 
     public static class SignalAspectExtensions
     {
         public static string GetName(this SignalAspect aspect)
         {
-            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info) 
-                ? info.Name 
+            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info)
+                ? info.Name
                 : "Unknown";
         }
 
         public static string GetDescription(this SignalAspect aspect)
         {
-            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info) 
-                ? info.Description 
+            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info)
+                ? info.Description
                 : "Nieznany";
         }
 
         public static float GetSpeedLimit(this SignalAspect aspect)
         {
-            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info) 
-                ? info.SpeedLimitKmh 
+            return SignalAspectInfo.Aspects.TryGetValue(aspect, out var info)
+                ? info.SpeedLimitKmh
                 : 0f;
         }
     }
