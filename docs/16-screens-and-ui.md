@@ -47,13 +47,17 @@ The Myra builder provides:
 
 The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` no longer contains the former preset-based train spawn path or its hardcoded EU06-style `VehicleParameters`.
 
-## Train physics note — 0.1.4f
+## Train physics note — 0.1.4g
 
-Consist acceleration and braking are mass-dependent. The locomotive supplies the base acceleration/braking capability; total consist mass reduces both rates using a non-linear exponent of `1.30`:
+Consist acceleration and braking remain mass-dependent. The locomotive supplies the base acceleration/braking capability; total consist mass reduces both rates using a non-linear exponent of `1.30`:
 
 `factor = 1 / (totalMass / locomotiveMass)^1.30`
 
-This makes the mass effect approximately 30% stronger than linear inverse-mass scaling. A locomotive-only consist remains at the base rate. This is intentionally a gameplay approximation rather than a traction/brake-force simulation.
+Locomotives now also have `PowerMW`. Power limits how much total consist mass can retain the locomotive's base Vmax. The current model uses a 0.006 MW/t supported-mass threshold and exponent 0.55 above that threshold.
+
+`EU200` (5.5 MW) with ten 40 t wagons remains at 200 km/h. `SU42` (1.2 MW) is approximately 75 km/h with five 40 t wagons and approximately 55 km/h with ten.
+
+Rolling-stock rendering distinguishes electric locomotives (red), diesel locomotives (black), and the three passenger wagon variants (blue, light blue and dark blue). White centered labels show `EP07`, `EU200`, `SU42`, `1KL`, `2KL` or `3KL`; labels remain readable in both travel directions.
 
 ## Pause lifecycle
 
