@@ -152,7 +152,9 @@ public sealed class GameplayScreen : GameScreen
         bool hudHandled = HandleHudInput();
         if (!hudHandled)
         {
-            _trainManager.Update(deltaTime);
+            MouseState mouse = Mouse.GetState();
+            Vector2 cursorWorldPosition = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
+            _trainManager.Update(deltaTime, cursorWorldPosition);
             CapturePassengerChanges();
             _floatingText.Update(deltaTime);
             _trainDebugger.Update(deltaTime, _trainManager);
