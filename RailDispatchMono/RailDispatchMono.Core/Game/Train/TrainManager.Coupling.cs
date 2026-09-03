@@ -161,11 +161,6 @@ public sealed partial class TrainManager
         return null;
     }
 
-    /// <summary>
-    /// Returns all boundary-end pairs near the supplied train. The coupling service
-    /// remains authoritative: candidates may be rejected for distance, alignment,
-    /// coupler compatibility or occupied ends.
-    /// </summary>
     public IReadOnlyList<CouplingCandidate> GetCouplingCandidates(Train train)
     {
         if (train == null) throw new ArgumentNullException(nameof(train));
@@ -216,7 +211,6 @@ public sealed partial class TrainManager
             check));
     }
 
-    /// <summary>Registers a train created by decoupling without applying spawn-block checks to its old position.</summary>
     internal void RegisterCouplingTrain(Train train)
     {
         if (train == null) throw new ArgumentNullException(nameof(train));
