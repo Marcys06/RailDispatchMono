@@ -77,15 +77,31 @@ public sealed partial class TrainManager
 
     private void ExecuteDecouplingCommand()
     {
+        DebugManager.Log("[COUPLING] Command X received: searching for runtime coupling to decouple.");
+
         if (_lastCoupledVehicle != null)
         {
             Train? owner = FindTrainContaining(_lastCoupledVehicle);
             if (owner != null)
             {
+                int vehicleIndex = owner.Composition.Vehicles.IndexOf(_lastCoupledVehicle);
+                DebugManager.Log($"[COUPLING] Command X target: train {owner.Id.ToString()[..8]}, vehicle index {vehicleIndex}, end {_lastCoupledEnd} (last C coupling).");
                 var result = Decouple(owner, _lastCoupledVehicle, _lastCoupledEnd);
-                if (result.Success) { _lastCoupledVehicle = null; DebugManager.Log("[COUPLING] Command X decoupled the last coupling."); return; }
+                if (result.Success)
+                {
+                    _lastCoupledVehicle = null;
+                    DebugManager.Log($"[COUPLING] Command X success: train {owner.Id.ToString()[..8]} was split at vehicle index {vehicleIndex} / {_lastCoupledEnd}. New detached train was created and stopped.");
+                    return;
+                }
+
+                DebugManager.Log($"[COUPLING] Command X failed for last C coupling: {result.Reason}.");
+            }
+            else
+            {
+                DebugManager.Log("[COUPLING] Command X: last C coupling exists, but its vehicle is no longer owned by an active train; using fallback search.");
             }
         }
+
         foreach (var train in _trains)
         for (int i = 0; i < train.Composition.Vehicles.Count; i++)
         {
@@ -93,11 +109,19 @@ public sealed partial class TrainManager
             foreach (var connection in vehicle.CouplingState.Connections())
             {
                 VehicleEnd end = ReferenceEquals(connection.VehicleA, vehicle) ? connection.EndA : connection.EndB;
+                DebugManager.Log($"[COUPLING] Command X target: train {train.Id.ToString()[..8]}, vehicle index {i}, end {end} (first runtime coupling found).");
                 var result = Decouple(train, vehicle, end);
-                if (result.Success) { DebugManager.Log("[COUPLING] Command X decoupled the first available runtime coupling."); return; }
+                if (result.Success)
+                {
+                    DebugManager.Log($"[COUPLING] Command X success: train {train.Id.ToString()[..8]} was split at vehicle index {i} / {end}. New detached train was created and stopped.");
+                    return;
+                }
+
+                DebugManager.Log($"[COUPLING] Command X failed for runtime coupling at vehicle index {i} / {end}: {result.Reason}.");
             }
         }
-        DebugManager.Log("[COUPLING] Command X rejected: no runtime coupling found.");
+
+        DebugManager.Log("[COUPLING] Command X rejected: no runtime coupling found. The train may contain multiple vehicles without initialized runtime couplings.");
     }
 
     private bool ContainsVehicle(Vehicle vehicle) => _trains.Any(train => train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle)));
