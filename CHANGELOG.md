@@ -2,6 +2,15 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5h] — Preserve detached consist positions after decoupling
+**Data:** 2026-09-03
+
+- Fixed detached vehicles being rendered/spawned at the same position after `X` decoupling.
+- A newly detached `Train` now preserves the physical vehicle positions implied by the consist's position and direction instead of collapsing all vehicles onto the new train head position.
+- The existing runtime coupling/split behavior is unchanged: the detached section remains an ordered composition with its internal runtime connections intact.
+- Fixed-position handling also resets movement/trajectory state consistently when a train position is initialized or changed.
+- Detailed notes: `docs/changelog/0.1.5h.md`.
+
 ## [0.1.5g] — Automatic runtime couplings for complete consists
 **Data:** 2026-09-03
 
