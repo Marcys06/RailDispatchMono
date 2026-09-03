@@ -2,7 +2,7 @@
 
 ## Current consolidated baseline
 
-`0.1.4pre` is the current consolidated 0.1.4 gameplay/domain baseline. The lettered `0.1.4a`–`0.1.4i` stages remain historical records.
+`0.1.5pre` is the current consolidated 0.1.5 gameplay/domain baseline. The lettered `0.1.5a`–`0.1.5f` stages remain historical records.
 
 ## Railway subsystem
 
@@ -10,7 +10,7 @@ The repository contains `Game/Railway` domain classes including `BlockController
 
 ## Train subsystem
 
-The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Vehicle`, `VehicleParameters`, `LocomotiveParameters`, `Locomotive` and `Wagon`.
+The `Game/Train` area contains `TrainManager`, `Train`, `TrainComposition`, `Vehicle`, `VehicleParameters`, `LocomotiveParameters`, `Locomotive` and `Wagon`, plus the rigid coupling/decoupling domain types.
 
 `TrainComposition` is the authoritative ordered list of vehicles in a train. It exposes total physical mass/length, effective maximum speed and wagon count. A composition may contain a locomotive without wagons; a locomotive is required for movement.
 
@@ -51,23 +51,31 @@ Speed-restricted non-stop signal aspects use the same effective braking rate whe
 
 ### RadioStop safety
 
-`TrainCollisionController` retains a minimum RadioStop safety distance of `3` map cells, but the protected distance is speed-dependent. At higher speed it expands to cover:
+`TrainCollisionController` retains a minimum RadioStop safety distance of `3` map cells, but the protected distance is speed-dependent. At higher speed it expands to cover current braking distance using the effective consist braking rate, `0.15 s` reaction distance and a `0.8`-cell safety buffer. A protecting matching signal encountered before the conflicting train still suppresses RadioStop for that route segment. RadioStop is a collision-protection fallback, not a replacement for signal or block authority.
 
-- current braking distance using the effective consist braking rate;
-- `0.15 s` reaction distance;
-- a `0.8`-cell safety buffer.
+## Rigid coupling and decoupling
 
-A protecting matching signal encountered before the conflicting train still suppresses RadioStop for that route segment. RadioStop is a collision-protection fallback, not a replacement for signal or block authority.
+Runtime coupling state is owned by the vehicle/consist domain and operated through `CouplingService`. `Vehicle.Coupling` remains the static per-end coupler specification; `VehicleCouplingState` stores runtime connections and `CouplingConnection` identifies the two concrete connected vehicle ends.
+
+`CouplingService` is authoritative for both validation and state mutation. Coupling validation requires different trains/vehicles, free ends, compatible coupler types, outer train boundaries, sufficient proximity and compatible end-facing geometry.
+
+A successful coupling stops both participating trains with the existing `RadioStop` mechanism, creates the concrete connection, merges the two ordered compositions without reordering vehicles, leaves the merged train stopped and removes the trailing runtime train from `TrainManager`.
+
+A successful decoupling resolves a concrete connection from a vehicle end, verifies that the connected vehicles are adjacent at a train boundary, stops the train, splits `TrainComposition` at that boundary, clears both connection endpoints, creates a new stopped `Train` for the detached section and registers it through `TrainManager`.
+
+The current gameplay command path is intentionally temporary:
+
+- `C` couples the nearest valid boundary candidate;
+- `X` decouples the last coupling created by `C`, with fallback to the first remaining runtime connection;
+- `F6` / `F7` / `F8` select `3` / `4` / `5 km/h` shunting limits, with `5 km/h` as default.
+
+`C` refuses a candidate if either participating train exceeds the selected shunting limit. The command layer does not bypass `CouplingService`.
+
+Coupling/decoupling currently does not implement dynamic coupler forces, slack, impact shock, animation/delay, brake-pipe propagation or persistence of individual connections. Vehicle/end selection UI is still deferred; the current command deliberately selects candidates automatically.
 
 ## Train diagnostics
 
-During `Train.Update`, the movement layer establishes a temporary diagnostic context containing the train GUID. `DebugManager` normalizes messages that begin with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. For example:
-
-```text
-[General] [TRAIN:de148bda] START - Pos: (...), Dir: East, Speed: ...
-```
-
-This is diagnostic correlation only. It does not alter `Train.Id` or simulation behavior.
+During `Train.Update`, the movement layer establishes a temporary diagnostic context containing the train GUID. `DebugManager` normalizes messages that begin with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. This is diagnostic correlation only. Coupling operations additionally emit `[COUPLING]` diagnostics.
 
 ## Rolling stock catalog
 
@@ -105,25 +113,9 @@ The wagon catalogue contains three passenger coach variants. Their visual labels
 - passenger coaches use `1KL`, `2KL`, `3KL` with distinct blue shades;
 - labels are normalized to remain readable in both travel directions.
 
-## Coupling data boundary — prepared for 0.1.5
-
-Coupling is intentionally prepared as a data boundary only. `Vehicle` exposes a `CouplingSpecification` containing the static interface type at the front and rear of the vehicle. The current default is a screw coupler on both ends.
-
-The following are explicitly **not** implemented in `0.1.4pre`:
-
-- coupled/uncoupled runtime state;
-- coupling distance detection;
-- coupling/decoupling commands;
-- consist merge/split as a coupling action;
-- coupler compatibility checks;
-- coupling forces, slack or longitudinal dynamics;
-- persistence of individual coupler connections.
-
-The planned `0.1.5` boundary is: static rolling-stock coupling data belongs to `Vehicle`; runtime connection state and consist mutations belong to `Train`/`TrainComposition`/`TrainManager`; UI/input should request those operations rather than mutate vehicle lists directly.
-
 ## Runtime save/load
 
-`RuntimeSaveService` persists rolling-stock `ShortName` values while retaining runtime save schema version `1`. Existing saves without the new field remain deserializable because the missing value defaults to empty. Loading uses the current `Locomotive` and `Wagon` constructor contracts.
+`RuntimeSaveService` persists rolling-stock `ShortName` values while retaining runtime save schema version `1`. Existing saves without the new field remain deserializable because the missing value defaults to empty. Coupling connections are not currently persisted.
 
 ## Depot lifecycle
 
@@ -144,11 +136,11 @@ The builder may create a locomotive-only consist. It does not currently support 
 
 ## Domain vs presentation
 
-Screens request or present domain state. They do not become authoritative owners of train collections, depot state or railway simulation.
+Screens request or present domain state. They do not become authoritative owners of train collections, depot state, railway simulation or coupling connections.
 
 ## Ownership rule
 
-Before adding a property to a domain object, determine which existing class already owns the state. Train collection/creation belongs to `TrainManager`; composition order and composition statistics belong to `TrainComposition`; catalogue data belongs to `Game/RollingStock`; depot buildings belong to `DepotController`.
+Before adding a property to a domain object, determine which existing class already owns the state. Train collection/creation belongs to `TrainManager`; composition order and composition statistics belong to `TrainComposition`; coupling validation/operations belong to `CouplingService`; per-vehicle runtime connection endpoints belong to `VehicleCouplingState`; catalogue data belongs to `Game/RollingStock`; depot buildings belong to `DepotController`.
 
 ## Safe extension sequence
 
