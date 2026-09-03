@@ -1,6 +1,6 @@
 # Coupling / Decoupling — work tracker
 
-**Milestone:** `0.1.5`  
+**Milestone:** `0.1.5b`  
 **Purpose:** temporary implementation checklist for coupling/decoupling mechanics only.  
 **Last reviewed:** 2026-09-03
 
@@ -19,8 +19,9 @@ This file is intentionally temporary. It tracks implementation progress and shou
 - [x] End-facing/alignment check.
 - [x] Coupling restricted to outer train boundaries.
 - [x] Coupling merges two `Train` instances into one while preserving vehicle order.
+- [x] Coupling stops both consists via the existing `RadioStop` mechanism and starts the merged train from rest.
 - [x] Decoupling splits a consist at the concrete connected vehicle ends.
-- [x] Detached section is registered as a new `Train`.
+- [x] Detached section is registered as a new `Train` and starts stopped.
 - [x] Existing RadioStop remains independent; coupling does not bypass collision safety.
 - [x] `[COUPLING]` diagnostics added to runtime operations.
 
@@ -63,4 +64,4 @@ This file is intentionally temporary. It tracks implementation progress and shou
 [1KL]--[1KL]--[EP07]
 ```
 
-The target behavior is one runtime `Train` after coupling, with vehicle order preserved exactly.
+The target behavior is one runtime `Train` after coupling, with vehicle order preserved exactly and both shunting consists stopped by the existing RadioStop mechanism before the composition changes.
