@@ -53,6 +53,6 @@ public sealed class LocomotiveDefinition
             1.0f,
             MassCoefficient);
 
-        return new Locomotive(LocomotiveType, parameters);
+        return new Locomotive(LocomotiveType, parameters, Id);
     }
 }
