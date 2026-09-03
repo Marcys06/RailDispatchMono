@@ -37,6 +37,26 @@ The current gameplay calibration uses:
 
 This produces the intended calibration with 40 t passenger wagons: `EU200` (5.5 MW, 84 t) with 10 wagons (484 t total) keeps 200 km/h, while `SU42` (1.2 MW, 74 t) with 5 wagons (274 t total) is approximately 75 km/h and with 10 wagons (474 t total) approximately 55 km/h.
 
+### Speed-dependent signal stopping
+
+Signal stopping uses the same effective consist braking capability as movement. The stopping calculation must not use a raw vehicle braking value because that would ignore the `1.30` mass penalty and underestimate the distance required by heavy trains.
+
+For a `Stop` or `StopStation` aspect, the target speed is derived from the available distance using the kinematic relation `v = sqrt(2*a*d)`. The available distance includes the current reaction-distance allowance and excludes the configured stopping offset plus the physical half-length of the leading locomotive. The current stopping offset is `0.8` map cell, with `1 map cell = 10 m`.
+
+Speed-restricted non-stop signal aspects use the same effective braking rate when determining whether there is enough distance to reduce from the current speed to the aspect's target speed.
+
+### RadioStop safety
+
+`TrainCollisionController` retains a minimum RadioStop safety distance of `3` map cells, but the protected distance is now speed-dependent. At higher speed it expands to cover:
+
+- current braking distance using the effective consist braking rate;
+- `0.15 s` reaction distance;
+- a `0.8`-cell safety buffer.
+
+Therefore RadioStop no longer relies on a fixed 3-cell scan at all speeds. A protecting matching signal encountered before the conflicting train still suppresses RadioStop for that route segment.
+
+RadioStop remains a collision-protection fallback, not a replacement for signal or block authority.
+
 ## Rolling stock catalog
 
 `Game/RollingStock` contains reusable rolling-stock definitions:
