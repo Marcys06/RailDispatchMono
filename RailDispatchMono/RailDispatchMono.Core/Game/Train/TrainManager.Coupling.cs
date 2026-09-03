@@ -111,7 +111,8 @@ public sealed partial class TrainManager
 
     private (Train Train, Vehicle Vehicle, int VehicleIndex, VehicleEnd End)? FindDecouplingTarget(Vector2 cursorWorldPosition)
     {
-        float bestDistance = float.MaxValue;
+        const float detectionRadius = 0.6f;
+        float bestDistance = detectionRadius;
         (Train Train, Vehicle Vehicle, int VehicleIndex, VehicleEnd End)? best = null;
 
         foreach (var train in _trains)
@@ -122,30 +123,28 @@ public sealed partial class TrainManager
                 if (vehicle is not Wagon)
                     continue;
 
-                foreach (var connection in vehicle.CouplingState.Connections())
-                {
-                    VehicleEnd end = ReferenceEquals(connection.VehicleA, vehicle) ? connection.EndA : connection.EndB;
-                    float distance = Vector2.Distance(train.GetVehicleTransform(i).Position, cursorWorldPosition);
-                    if (distance >= bestDistance)
-                        continue;
+                var connections = vehicle.CouplingState.Connections().ToList();
+                if (connections.Count == 0)
+                    continue;
 
-                    bestDistance = distance;
-                    best = (train, vehicle, i, end);
-                }
+                var preferredConnection = connections.FirstOrDefault(connection =>
+                    ReferenceEquals(connection.VehicleA, vehicle) ? connection.EndA == VehicleEnd.Rear : connection.EndB == VehicleEnd.Rear)
+                    ?? connections[0];
+
+                float distance = Vector2.Distance(train.GetVehicleTransform(i).Position, cursorWorldPosition);
+                if (distance >= bestDistance)
+                    continue;
+
+                VehicleEnd end = ReferenceEquals(preferredConnection.VehicleA, vehicle)
+                    ? preferredConnection.EndA
+                    : preferredConnection.EndB;
+
+                bestDistance = distance;
+                best = (train, vehicle, i, end);
             }
         }
 
         return best;
-    }
-
-    private static int FindVehicleIndex(Train train, Vehicle vehicle)
-    {
-        for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-        {
-            if (ReferenceEquals(train.Composition.Vehicles[i], vehicle)) return i;
-        }
-
-        return -1;
     }
 
     private bool ContainsVehicle(Vehicle vehicle) => _trains.Any(train => train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle)));
