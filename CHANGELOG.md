@@ -9,7 +9,7 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Added separate `Decoupling` command on `X` targeting the last coupling created by the command layer, with deterministic fallback to the first remaining runtime connection.
 - Added shunting speed profiles of `3 / 4 / 5 km/h` on `F6 / F7 / F8`; `5 km/h` is the default.
 - Coupling command refuses to execute when either participating train exceeds the selected shunting speed.
-- Associated the command semantics with signal aspect `S14 Rezerwowy 3` without changing its global signal-speed definition or adding new signal physics.
+- Associated the command semantics with signal aspect `S14 Rezerwowy 3`; its signal speed limit is now `5 km/h`.
 - Actual coupling/decoupling remains delegated to the existing authoritative `CouplingService`.
 - Detailed notes: `docs/changelog/0.1.5e.md`.
 
