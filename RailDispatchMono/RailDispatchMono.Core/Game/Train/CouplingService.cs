@@ -64,11 +64,6 @@ public sealed class CouplingService
         firstTrain.RadioStop();
         secondTrain.RadioStop();
 
-        // F7 keeps a temporary rendering snapshot. A composition mutation makes
-        // that snapshot invalid, so discard it before rebuilding the consist.
-        firstTrain.ClearPreservedVehiclePositions();
-        secondTrain.ClearPreservedVehiclePositions();
-
         var connection = new CouplingConnection(
             firstTrain.Composition.Vehicles[firstVehicleIndex], firstEnd,
             secondTrain.Composition.Vehicles[secondVehicleIndex], secondEnd);
@@ -91,6 +86,9 @@ public sealed class CouplingService
                 leadingTrain.Composition.AddVehicle(vehicle);
         }
 
+        // The leading train remains the physical reference. Rebuild the rigid
+        // vehicle offsets from its current direction and logical composition.
+        leadingTrain.RebuildVehicleOffsets();
         leadingTrain.Speed = 0f;
         manager.ResetSignalStateAfterChange(leadingTrain);
 
@@ -134,11 +132,12 @@ public sealed class CouplingService
         TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
         train.Speed = 0f;
         train.RadioStop();
-        train.ClearPreservedVehiclePositions();
         var splitComposition = train.Composition.Split(splitIndex);
 
         connection.VehicleA.CouplingState.Set(connection.EndA, null);
         connection.VehicleB.CouplingState.Set(connection.EndB, null);
+
+        train.RebuildVehicleOffsets();
 
         var detached = new Train(newHeadTransform.Position, newDirection, 0f, splitComposition.Vehicles);
         detached.SetMap(manager.Map);
