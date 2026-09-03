@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using System;
 using System.Collections.Generic;
@@ -8,6 +7,11 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
+    private const float MovementEpsilon = 0.0001f;
+    private const float CurveRadius = 0.5f;
+    private const float HalfPi = MathF.PI / 2f;
+    private const float DefaultCurveLength = MathF.PI * CurveRadius / 2f;
+
     private bool _isOnCurve;
     private MapPosition _curveCell;
     private TrackConnections _curveEntrySide;
@@ -18,97 +22,54 @@ public sealed partial class Train
     private float _curveDistance;
     private float _curveLength;
 
-    private const float CurveRadius = 0.5f;
-    private const float HalfPi = MathF.PI * 0.5f;
-    private const float DefaultCurveLength = MathF.PI * CurveRadius * 0.5f;
-    private const float MovementEpsilon = 0.00001f;
-    private const int MaxMovementIterations = 256;
-
     private readonly List<TrajectoryPoint> _trajectory = new();
     private float _totalTravelDistance;
 
-    private readonly struct TrajectoryPoint
-    {
-        public readonly Vector2 Position;
-        public readonly float Distance;
-
-        public TrajectoryPoint(Vector2 position, float distance)
-        {
-            Position = position;
-            Distance = distance;
-        }
-    }
-
-    private GameMap? _map;
+    private readonly record struct TrajectoryPoint(Vector2 Position, float Distance);
 
     private void ResetCurveState()
     {
         _isOnCurve = false;
-        _curveCell = new MapPosition(0, 0);
+        _curveCell = default;
         _curveEntrySide = TrackConnections.None;
         _curveExitSide = TrackConnections.None;
-        _arcCenter = Vector2.Zero;
-        _arcStartAngle = 0.0f;
-        _arcSweepAngle = 0.0f;
-        _curveDistance = 0.0f;
-        _curveLength = 0.0f;
+        _arcCenter = default;
+        _arcStartAngle = 0f;
+        _arcSweepAngle = 0f;
+        _curveDistance = 0f;
+        _curveLength = 0f;
     }
 
     private void ResetTrajectory()
     {
         _trajectory.Clear();
-        _totalTravelDistance = 0f;
         _trajectory.Add(new TrajectoryPoint(Position, 0f));
+        _totalTravelDistance = 0f;
     }
 
-    private void AddTrajectoryPoint(Vector2 position, float travelledDistance)
+    private void AddTrajectoryPoint(Vector2 position, float distance)
     {
-        if (travelledDistance > 0.0f)
-            _totalTravelDistance += travelledDistance;
-
-        if (_trajectory.Count > 0)
-        {
-            TrajectoryPoint last = _trajectory[_trajectory.Count - 1];
-            if ((last.Position - position).LengthSquared() < MovementEpsilon * MovementEpsilon)
-                return;
-        }
-
-        _trajectory.Add(new TrajectoryPoint(position, _totalTravelDistance));
-
-        float requiredHistory = MathF.Max(Length * 25.0f, 60.0f);
-        float minimumDistance = _totalTravelDistance - requiredHistory;
-
-        while (_trajectory.Count > 2 && _trajectory[1].Distance < minimumDistance)
-            _trajectory.RemoveAt(0);
+        if (_trajectory.Count > 0 && Vector2.DistanceSquared(_trajectory[^1].Position, position) <= MovementEpsilon * MovementEpsilon)
+            return;
+        _trajectory.Add(new TrajectoryPoint(position, distance));
     }
 
-    private void SetupArcParams(MapPosition cell, TrackConnections entrySide, TrackConnections exitSide)
+    private void StartCurve(MapPosition cell, TrackConnections entrySide, TrackConnections exitSide)
+    {
+        _isOnCurve = true;
+        _curveCell = cell;
+        _curveEntrySide = entrySide;
+        _curveExitSide = exitSide;
+        _curveDistance = 0f;
+        _curveLength = DefaultCurveLength;
+        ConfigureArc(cell, entrySide, exitSide);
+    }
+
+    private void ConfigureArc(MapPosition cell, TrackConnections entrySide, TrackConnections exitSide)
     {
         float x = cell.X;
         float y = cell.Y;
-
-        if (entrySide == TrackConnections.West && exitSide == TrackConnections.North)
-        {
-            _arcCenter = new Vector2(x, y);
-            _arcStartAngle = 0.0f;
-            _arcSweepAngle = -HalfPi;
-            return;
-        }
-        if (entrySide == TrackConnections.North && exitSide == TrackConnections.West)
-        {
-            _arcCenter = new Vector2(x, y);
-            _arcStartAngle = 0.0f;
-            _arcSweepAngle = HalfPi;
-            return;
-        }
         if (entrySide == TrackConnections.East && exitSide == TrackConnections.North)
-        {
-            _arcCenter = new Vector2(x + 1.0f, y);
-            _arcStartAngle = HalfPi;
-            _arcSweepAngle = HalfPi;
-            return;
-        }
-        if (entrySide == TrackConnections.North && exitSide == TrackConnections.East)
         {
             _arcCenter = new Vector2(x + 1.0f, y);
             _arcStartAngle = MathF.PI;
@@ -118,21 +79,42 @@ public sealed partial class Train
         if (entrySide == TrackConnections.East && exitSide == TrackConnections.South)
         {
             _arcCenter = new Vector2(x + 1.0f, y + 1.0f);
-            _arcStartAngle = -HalfPi;
-            _arcSweepAngle = -HalfPi;
+            _arcStartAngle = MathF.PI;
+            _arcSweepAngle = HalfPi;
             return;
         }
-        if (entrySide == TrackConnections.South && exitSide == TrackConnections.East)
+        if (entrySide == TrackConnections.West && exitSide == TrackConnections.North)
         {
-            _arcCenter = new Vector2(x + 1.0f, y + 1.0f);
-            _arcStartAngle = MathF.PI;
+            _arcCenter = new Vector2(x, y);
+            _arcStartAngle = 0.0f;
             _arcSweepAngle = HalfPi;
             return;
         }
         if (entrySide == TrackConnections.West && exitSide == TrackConnections.South)
         {
             _arcCenter = new Vector2(x, y + 1.0f);
-            _arcStartAngle = -HalfPi;
+            _arcStartAngle = 0.0f;
+            _arcSweepAngle = -HalfPi;
+            return;
+        }
+        if (entrySide == TrackConnections.North && exitSide == TrackConnections.East)
+        {
+            _arcCenter = new Vector2(x + 1.0f, y);
+            _arcStartAngle = HalfPi;
+            _arcSweepAngle = -HalfPi;
+            return;
+        }
+        if (entrySide == TrackConnections.North && exitSide == TrackConnections.West)
+        {
+            _arcCenter = new Vector2(x, y);
+            _arcStartAngle = HalfPi;
+            _arcSweepAngle = HalfPi;
+            return;
+        }
+        if (entrySide == TrackConnections.South && exitSide == TrackConnections.East)
+        {
+            _arcCenter = new Vector2(x + 1.0f, y + 1.0f);
+            _arcStartAngle = MathF.PI;
             _arcSweepAngle = HalfPi;
             return;
         }
@@ -159,9 +141,6 @@ public sealed partial class Train
         if (distanceBehind <= MovementEpsilon)
             return Position;
 
-        if (TryGetPreservedVehiclePositionByDistance(distanceBehind, out Vector2 preservedPosition))
-            return preservedPosition;
-
         float targetDistance = _totalTravelDistance - distanceBehind;
 
         if (_trajectory.Count == 0 || targetDistance <= 0.0f)
@@ -186,19 +165,6 @@ public sealed partial class Train
         return _trajectory[0].Position;
     }
 
-    private bool TryGetPreservedVehiclePositionByDistance(float distanceBehind, out Vector2 position)
-    {
-        for (int i = 0; i < Composition.Vehicles.Count; i++)
-        {
-            if (MathF.Abs(GetDistanceToVehicle(i) - distanceBehind) <= MovementEpsilon &&
-                TryGetPreservedVehiclePosition(i, out position))
-                return true;
-        }
-
-        position = default;
-        return false;
-    }
-
     private static Vector2 GetPositionAtEntry(MapPosition cell, TrackConnections direction)
     {
         const float epsilon = 0.0001f;
@@ -214,87 +180,33 @@ public sealed partial class Train
 
     private static Vector2 DirectionToVector(TrackConnections direction) => direction switch
     {
-        TrackConnections.North => new Vector2(0.0f, -1.0f),
-        TrackConnections.East => new Vector2(1.0f, 0.0f),
-        TrackConnections.South => new Vector2(0.0f, 1.0f),
-        TrackConnections.West => new Vector2(-1.0f, 0.0f),
-        _ => throw new ArgumentException("Direction must contain exactly one cardinal direction.", nameof(direction))
-    };
-
-    private static TrackConnections GetOppositeDirection(TrackConnections direction) => direction switch
-    {
-        TrackConnections.North => TrackConnections.South,
-        TrackConnections.East => TrackConnections.West,
-        TrackConnections.South => TrackConnections.North,
-        TrackConnections.West => TrackConnections.East,
-        _ => TrackConnections.None
-    };
-
-    private static TrackConnections GetCurveExitDirection(TrackConnections connections, TrackConnections entrySide)
-    {
-        if (!connections.HasFlag(entrySide)) return TrackConnections.None;
-        TrackConnections exits = connections & ~entrySide;
-        if (exits == TrackConnections.None) return TrackConnections.None;
-        if (exits.HasFlag(TrackConnections.North)) return TrackConnections.North;
-        if (exits.HasFlag(TrackConnections.East)) return TrackConnections.East;
-        if (exits.HasFlag(TrackConnections.South)) return TrackConnections.South;
-        if (exits.HasFlag(TrackConnections.West)) return TrackConnections.West;
-        return TrackConnections.None;
-    }
-
-    private static bool IsPerpendicular(TrackConnections first, TrackConnections second)
-    {
-        bool firstHorizontal = first == TrackConnections.East || first == TrackConnections.West;
-        bool secondHorizontal = second == TrackConnections.East || second == TrackConnections.West;
-        return firstHorizontal != secondHorizontal;
-    }
-
-    private static MapPosition GetNextCell(MapPosition cell, TrackConnections direction) => direction switch
-    {
-        TrackConnections.North => new MapPosition(cell.X, cell.Y - 1),
-        TrackConnections.East => new MapPosition(cell.X + 1, cell.Y),
-        TrackConnections.South => new MapPosition(cell.X, cell.Y + 1),
-        TrackConnections.West => new MapPosition(cell.X - 1, cell.Y),
-        _ => cell
+        TrackConnections.East => Vector2.UnitX,
+        TrackConnections.West => -Vector2.UnitX,
+        TrackConnections.South => Vector2.UnitY,
+        TrackConnections.North => -Vector2.UnitY,
+        _ => Vector2.Zero
     };
 
     private static float GetDirectionAngle(TrackConnections direction) => direction switch
     {
         TrackConnections.East => 0f,
-        TrackConnections.South => MathHelper.PiOver2,
-        TrackConnections.West => MathHelper.Pi,
-        TrackConnections.North => -MathHelper.PiOver2,
+        TrackConnections.South => MathF.PI / 2f,
+        TrackConnections.West => MathF.PI,
+        TrackConnections.North => -MathF.PI / 2f,
         _ => 0f
     };
 
-    private static TrackConnections VectorToDirection(float angle)
+    private static TrackConnections VectorToDirection(float rotation)
     {
-        while (angle > MathF.PI) angle -= MathF.Tau;
-        while (angle < -MathF.PI) angle += MathF.Tau;
-        float absAngle = MathF.Abs(angle);
-        if (absAngle < MathF.PI / 4f || absAngle > 3f * MathF.PI / 4f)
-            return angle >= 0f ? TrackConnections.East : TrackConnections.West;
-        return angle >= 0f ? TrackConnections.South : TrackConnections.North;
+        Vector2 direction = new Vector2(MathF.Cos(rotation), MathF.Sin(rotation));
+        if (MathF.Abs(direction.X) >= MathF.Abs(direction.Y))
+            return direction.X >= 0f ? TrackConnections.East : TrackConnections.West;
+        return direction.Y >= 0f ? TrackConnections.South : TrackConnections.North;
     }
 
     private static void ValidateDirection(TrackConnections direction)
     {
-        if (direction != TrackConnections.North && direction != TrackConnections.East &&
-            direction != TrackConnections.South && direction != TrackConnections.West)
-            throw new ArgumentException("Train direction must be a single cardinal direction.", nameof(direction));
-    }
-}
-
-public static class MathHelper
-{
-    public const float PiOver2 = MathF.PI / 2.0f;
-    public const float Pi = MathF.PI;
-
-    public static float Clamp(float value, float min, float max) => value < min ? min : value > max ? max : value;
-
-    public static float LerpAngle(float from, float to, float t)
-    {
-        float difference = MathF.IEEERemainder(to - from, MathF.PI * 2f);
-        return from + difference * t;
+        if (direction is not (TrackConnections.North or TrackConnections.South or TrackConnections.East or TrackConnections.West))
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "Train direction must be a cardinal track connection.");
     }
 }
