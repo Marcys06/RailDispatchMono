@@ -19,7 +19,7 @@
 
 ```text
 TransitionOn --> Active --> TransitionOff --> Hidden
-                      \--> ExitScreen --> TransitionOff --> removed
+                      \\--> ExitScreen --> TransitionOff --> removed
 ```
 
 A newly registered screen starts in its transition-on state. A non-popup screen can cover screens below it. Exiting screens are removed after their transition lifecycle completes.
@@ -28,17 +28,17 @@ A newly registered screen starts in its transition-on state. A non-popup screen 
 
 `ScreenManager` remains the authoritative router for legacy/gameplay screen input. Migrated Myra widgets receive pointer/keyboard input through the single shared Myra `Desktop`.
 
-Do not create a second global input dispatcher for pause or application menus.
+Do not create a second global input dispatcher for pause, Depot or application menus.
 
 ## Popup behavior
 
-Legacy popup screens remain supported for dialogs and other cases that genuinely need `ScreenManager` layering. **Pause is no longer implemented as a popup `GameScreen`.**
+Legacy popup screens remain supported for dialogs and other cases that genuinely need `ScreenManager` layering. **Pause is not implemented as a popup `GameScreen`.**
 
-This distinction is important: the current pause system uses the existing `GameplayScreen` as the lifecycle owner and changes its simulation state instead of adding/removing another screen from the stack.
+This distinction is important: the current pause system uses `GameplayScreen` as the lifecycle owner and changes its simulation state instead of adding/removing another screen from the stack.
 
 ## Pause architecture
 
-At `0.1.2pre`, pause ownership is:
+At `0.1.4pre`, pause ownership is:
 
 ```text
 ScreenManager
@@ -50,17 +50,21 @@ ScreenManager
             +--> SaveMap / LoadMap / ResumeGame
 ```
 
-`GameplayScreen.TogglePause()` is the only authoritative entry point for changing pause state. `ESC` calls the same gameplay path. The visible Myra pause view invokes callbacks/actions owned by `GameplayScreen`.
+`GameplayScreen.TogglePause()` is the authoritative entry point for changing pause state. `ESC` uses the same gameplay path. The visible Myra pause view invokes callbacks/actions owned by `GameplayScreen`.
 
 When entering pause, the simulation is stopped and the Myra pause root becomes active. When resuming, `_isPaused` is cleared and the Myra root is cleared. No `PauseScreen` is inserted into `ScreenManager`.
 
-This removes the previous failure mode where a Myra callback could be consumed while a popup screen remained in the manager or where two lifecycle owners could both attempt to close the pause state.
+## Depot screen
+
+`DepotScreen` is a full-screen `GameScreen`, not a popup and not a second UI host. It owns temporary builder state while `TrainManager` remains the authoritative owner of the created train.
+
+Opening the Depot covers gameplay, so gameplay simulation does not continue underneath the builder. Closing the screen restores the gameplay Myra root and normal gameplay operation.
 
 ## Loading and unloading
 
 `ScreenManager.AddScreen` assigns manager/player references and loads content when appropriate. `RemoveScreen` unloads and removes registered screens.
 
-The pause view does not participate in `ScreenManager` add/remove lifecycle. Its root is owned by `MyraUIManager` and is explicitly replaced/cleared by the gameplay pause lifecycle.
+Pause and Depot Myra views do not create their own `Desktop`; their roots are owned by `MyraUIManager` and are explicitly replaced/cleared by their owning lifecycle.
 
 ## Presentation scaling
 
