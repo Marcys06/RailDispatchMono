@@ -82,7 +82,7 @@ public sealed class TrainCollisionController
         return false;
     }
 
-    public static float GetRequiredSafetyDistanceCells(Train train)
+    public float GetRequiredSafetyDistanceCells(Train train)
     {
         float speed = MathF.Max(0f, train.Speed);
         float braking = MathF.Max(0.01f, train.EffectiveBrakingRate);
