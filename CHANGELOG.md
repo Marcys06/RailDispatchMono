@@ -2,6 +2,16 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5f] — Remove dedicated Core test project
+**Data:** 2026-09-03
+
+- Removed `RailDispatchMono.Core.Tests` from the repository and solution.
+- Removed the dedicated test project files and solution entry.
+- Kept the runtime coupling/decoupling implementation unchanged.
+- Added the consolidated `0.1.5pre` current-state documentation.
+- Updated maintained input, domain, workflow, AI, known-issues and code-index documentation.
+- Detailed notes: `docs/changelog/0.1.5f.md`.
+
 ## [0.1.5e] — Coupling command controls
 **Data:** 2026-09-03
 
