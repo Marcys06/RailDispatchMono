@@ -2,7 +2,7 @@
 
 ## Current release
 
-**RailDispatchMono `0.1.4pre`** is the current consolidated 0.1.4 milestone. It combines the rolling-stock catalogue/visual work, locomotive power/Vmax model, consist-mass braking, speed-dependent signal safety, Depot builder, static coupling metadata, runtime short-label persistence compatibility and train-scoped diagnostics. `0.1.3pre` remains the previous consolidated milestone; `0.1.4a`–`0.1.4i` are immutable historical development stages.
+**RailDispatchMono `0.1.5pre`** is the current consolidated 0.1.5 milestone. It combines the rolling-stock catalogue/visual work, locomotive power/Vmax model, consist-mass braking, speed-dependent signal safety, Depot builder, static and runtime coupling data, rigid coupling/decoupling commands, runtime short-label persistence compatibility and train-scoped diagnostics. `0.1.4pre` remains the previous consolidated milestone; `0.1.5a`–`0.1.5f` are immutable historical development stages.
 
 ## One-paragraph context
 
@@ -38,8 +38,6 @@ RailDispatchMono is a C#/.NET 9 MonoGame project with shared Core code and platf
 - `supportedMass = PowerMW / 0.006`.
 - Above supported mass: `VmaxMultiplier = (supportedMass / totalMass)^0.55`.
 - Effective Vmax is the lower of power-limited locomotive Vmax and wagon Vmax.
-- `EU200` (5.5 MW, 84 t) with ten 40 t wagons remains at 200 km/h.
-- `SU42` (1.2 MW, 74 t) is approximately 75 km/h with five 40 t wagons and approximately 55 km/h with ten.
 
 ## Speed-dependent braking contract
 
@@ -59,16 +57,25 @@ RadioStop is a collision-protection fallback, not a replacement for signal or bl
 
 ## Diagnostics contract
 
-At the beginning of `Train.Update`, the movement layer establishes a temporary train GUID context. `DebugManager` rewrites messages beginning with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. The context is cleared after movement completes. This is diagnostic correlation only and must not become a second train identity system.
+At the beginning of `Train.Update`, the movement layer establishes a temporary train GUID context. `DebugManager` rewrites messages beginning with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. The context is cleared after movement completes. This is diagnostic correlation only and must not become a second train identity system. Coupling operations use `[COUPLING]` diagnostics.
 
-## Coupling data boundary — 0.1.5 preparation
+## Coupling and decoupling contract — 0.1.5
 
 - `Vehicle.Coupling` exposes static front/rear `CouplerType` metadata.
-- `CouplingSpecification` is descriptive data only; default front/rear type is `Screw`.
-- No runtime coupling state exists yet.
-- No coupling/decoupling commands, detection, compatibility rules, forces or persistence are implemented in `0.1.4pre`.
-- Runtime connection state should be owned by the train/consist layer in `0.1.5`, not by rendering or UI.
-- `TrainComposition` remains the ordered vehicle container; `0.1.5` should extend it rather than introduce a second vehicle collection.
+- `VehicleCouplingState` stores runtime connections independently on each vehicle.
+- `CouplingConnection` links two concrete vehicle ends.
+- `CouplingService` is authoritative for validation and state mutation.
+- `TrainComposition` remains the only authoritative ordered vehicle container.
+- Coupling is restricted to compatible free outer train boundaries within the configured distance and alignment constraints.
+- Successful coupling stops both consists through `RadioStop`, merges them without reordering vehicles and leaves the merged train stopped.
+- Successful decoupling stops the train, splits the composition at the connected adjacent boundary, clears both endpoints, creates a stopped detached `Train` and registers it with `TrainManager`.
+- `C` couples the nearest valid candidate.
+- `X` decouples the last coupling created by `C`, with fallback to the first remaining runtime connection.
+- `F6` / `F7` / `F8` select `3` / `4` / `5 km/h` shunting limits; `5 km/h` is the default.
+- `SignalAspect.Reserve3` (`S14`, `Rezerwowy 3`) is the semantic shunting profile for the command layer.
+- Coupling connections are not persisted.
+- There is no dynamic coupler force/slack model, impact shock, animation/delay or brake-pipe propagation.
+- There is no final vehicle/end selection UI yet.
 
 ## Runtime save/load contract
 
@@ -76,6 +83,7 @@ At the beginning of `Train.Update`, the movement layer establishes a temporary t
 - `ShortName` is persisted for rolling stock.
 - Loading remains compatible with saves that do not contain `ShortName`.
 - `RuntimeSaveService` uses the current `Locomotive` and `Wagon` constructor signatures.
+- Coupling connections are runtime-only.
 
 ## Depot lifecycle
 
@@ -92,8 +100,12 @@ The old hard-coded gameplay train creation path is not the authoritative way to 
 - Preserve `BlockController` and `StationController` authority.
 - When changing acceleration, braking or Vmax, audit signal stopping and RadioStop calculations for the same dependency.
 - Do not reintroduce a fixed-distance collision scan that ignores current speed.
-- Do not implement coupling mechanics in `0.1.4pre`; keep coupling metadata static until the `0.1.5` implementation pass.
 - Do not use UI code to mutate `TrainComposition.Vehicles` directly.
+- Do not add a second coupling/decoupling command path while the current temporary command contract is active.
+
+## Verification
+
+The repository currently has no dedicated automated Core test project. Verify changes by building the solution and, for runtime behavior, exercising the affected gameplay flow in the DesktopGL environment and inspecting diagnostics where relevant.
 
 ## Pause lifecycle
 
@@ -101,4 +113,4 @@ Pause is a gameplay state, not a popup screen. `GameplayScreen` owns the pause s
 
 ## Documentation rule
 
-`0.1.2pre`, `0.1.3pre` and `0.1.4pre` have current-state snapshots. Lettered `0.1.4a`–`0.1.4i` remain historical changelog stages. When code changes, update the affected maintained docs, the current `0.1.4pre` snapshot and the changelog.
+`0.1.2pre`, `0.1.3pre`, `0.1.4pre` and `0.1.5pre` have current-state snapshots. Lettered stages remain historical changelog stages. When code changes, update the affected maintained docs, the current `0.1.5pre` snapshot and the changelog.
