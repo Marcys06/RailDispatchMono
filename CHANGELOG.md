@@ -2,6 +2,18 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5d] — Coupling regression test foundation
+**Data:** 2026-09-03
+
+- Added `RailDispatchMono.Core.Tests` targeting .NET 9 and referencing the core project.
+- Added regression tests for default screw-coupler configuration.
+- Added regression tests for `CouplingConnection` matching in both directions and self-connection rejection.
+- Added regression tests for typed coupling operation success/failure semantics.
+- Added regression tests confirming exact vehicle order through `TrainComposition.Split()` and `Train` construction.
+- Added the test project to `RailDispatchMono.slnx`.
+- Runtime coupling mechanics were not executed in a live gameplay scenario as part of this milestone.
+- Detailed notes: `docs/changelog/0.1.5d.md`.
+
 ## [0.1.5c] — Coupling candidate discovery
 **Data:** 2026-09-03
 
