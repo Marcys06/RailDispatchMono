@@ -16,6 +16,7 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Fixed rolling-stock definitions to construct `Locomotive` and `Wagon` with the current `ShortName`-aware signatures.
 - Added explicit wagon short labels `1KL`, `2KL`, `3KL` to the rolling-stock definitions used by the Depot and train renderer.
 - Removed the accidental duplicate top-level `RailDispatchMono.Core` directory introduced during `0.1.4g`; the build solution continues to reference `RailDispatchMono/RailDispatchMono.Core`.
+- Fixed `[TRAIN]` diagnostics to include the first 8 characters of the train GUID, so movement/debug messages can be correlated to the correct train.
 - Kept runtime save schema version at 1; older saves without `ShortName` remain deserializable.
 - Runtime coupling/decoupling, compatibility, connection state, forces and persistence remain explicitly deferred to 0.1.5.
 - Updated game-domain, screen/UI and AI-context documentation and detailed `docs/changelog/0.1.4i.md`.
