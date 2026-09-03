@@ -7,13 +7,16 @@ namespace RailDispatchMono.Core.Game.Train;
 
 /// <summary>
 /// Minimal first-generation train collision protection.
-/// A train is protected by its next matching signal when that signal is reached
-/// before the other train on the currently selected track path. Without such a
-/// signal, another train inside the three-cell safety distance causes RadioStop.
+/// RadioStop keeps the existing three-cell minimum, but at higher speed it
+/// expands the protected distance to cover the train's actual stopping distance.
+/// A matching protecting signal still suppresses RadioStop when it is encountered
+/// before the conflicting train.
 /// </summary>
 public sealed class TrainCollisionController
 {
-    private const float SafetyDistanceCells = 3f;
+    private const float MinimumSafetyDistanceCells = 3f;
+    private const float ReactionTimeSeconds = 0.15f;
+    private const float SafetyBufferCells = 0.8f;
     private readonly GameMap _map;
     private readonly TrainManager _trains;
 
@@ -39,7 +42,10 @@ public sealed class TrainCollisionController
         if (ContainsAnotherTrain(current, train))
             return true;
 
-        for (int step = 0; step < 4; step++)
+        float safetyDistanceCells = GetRequiredSafetyDistanceCells(train);
+        int maxSteps = Math.Max(4, (int)MathF.Ceiling(safetyDistanceCells) + 1);
+
+        for (int step = 0; step < maxSteps; step++)
         {
             if (!visited.Add(current))
                 return false;
@@ -66,14 +72,26 @@ public sealed class TrainCollisionController
             if (protectingSignal?.Position == current)
                 return false;
 
-            if (travelled <= SafetyDistanceCells && ContainsAnotherTrain(current, train))
+            if (travelled <= safetyDistanceCells && ContainsAnotherTrain(current, train))
                 return true;
 
-            if (travelled > SafetyDistanceCells)
+            if (travelled > safetyDistanceCells)
                 return false;
         }
 
         return false;
+    }
+
+    private static float GetRequiredSafetyDistanceCells(Train train)
+    {
+        float speed = MathF.Max(0f, train.Speed);
+        float braking = MathF.Max(0.01f, train.EffectiveBrakingRate);
+        float brakingDistanceMeters = speed * speed / (2f * braking);
+        float reactionDistanceMeters = speed * ReactionTimeSeconds;
+        float bufferMeters = RailDispatchMono.Core.Game.Simulation.SimulationScale.GridToMeters(SafetyBufferCells);
+        float physicalStopDistanceMeters = brakingDistanceMeters + reactionDistanceMeters + bufferMeters;
+        float physicalStopDistanceCells = physicalStopDistanceMeters / 10f;
+        return MathF.Max(MinimumSafetyDistanceCells, physicalStopDistanceCells);
     }
 
     private bool ContainsAnotherTrain(MapPosition cell, Train source)
