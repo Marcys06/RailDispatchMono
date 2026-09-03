@@ -43,7 +43,41 @@ public sealed class TrainComposition
     public void AddVehicle(Vehicle vehicle)
     {
         if (vehicle == null) throw new ArgumentNullException(nameof(vehicle));
+
+        if (_vehicles.Count > 0)
+        {
+            var previous = _vehicles[^1];
+            InitializeAdjacentCoupling(previous, vehicle);
+        }
+
         _vehicles.Add(vehicle);
+    }
+
+    private static void InitializeAdjacentCoupling(Vehicle previous, Vehicle next)
+    {
+        // A consist is a physical chain. When vehicles are inserted into a
+        // composition, establish the runtime connection between adjacent
+        // vehicles immediately. This allows X/decoupling to work even when the
+        // consist was created as a complete formation rather than assembled by C.
+        if (previous.CouplingState.IsOccupied(VehicleEnd.Rear) ||
+            next.CouplingState.IsOccupied(VehicleEnd.Front))
+            return;
+
+        var previousCoupler = previous.Coupling.Get(VehicleEnd.Rear);
+        var nextCoupler = next.Coupling.Get(VehicleEnd.Front);
+        if (previousCoupler == CouplerType.None ||
+            nextCoupler == CouplerType.None ||
+            previousCoupler != nextCoupler)
+            return;
+
+        var connection = new CouplingConnection(
+            previous,
+            VehicleEnd.Rear,
+            next,
+            VehicleEnd.Front);
+
+        previous.CouplingState.Set(VehicleEnd.Rear, connection);
+        next.CouplingState.Set(VehicleEnd.Front, connection);
     }
 
     public void SetLocomotive(LocomotiveDefinition definition)
@@ -60,7 +94,7 @@ public sealed class TrainComposition
     public void AddWagon(WagonDefinition definition)
     {
         if (definition == null) throw new ArgumentNullException(nameof(definition));
-        _vehicles.Add(definition.CreateVehicle());
+        AddVehicle(definition.CreateVehicle());
     }
 
     public bool RemoveVehicle(Vehicle vehicle) => _vehicles.Remove(vehicle);
