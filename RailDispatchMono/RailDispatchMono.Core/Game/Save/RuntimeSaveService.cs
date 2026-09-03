@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 1;
-    public string GameVersion { get; set; } = "0.1.4e";
+    public string GameVersion { get; set; } = "0.1.4i";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -37,6 +37,7 @@ public sealed class VehicleSaveData
 {
     public string Kind { get; set; } = "Wagon";
     public string Type { get; set; } = "Passenger";
+    public string ShortName { get; set; } = "";
     public float MaxSpeed { get; set; }
     public float Mass { get; set; }
     public float Length { get; set; }
@@ -100,6 +101,9 @@ public static class RuntimeSaveService
                 {
                     Kind = vehicle is Locomotive ? "Locomotive" : "Wagon",
                     Type = vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
+                    ShortName = vehicle is Locomotive locomotive
+                        ? locomotive.ShortName
+                        : ((Wagon)vehicle).ShortName,
                     MaxSpeed = p.MaxSpeed,
                     Mass = p.Mass,
                     Length = p.Length,
@@ -183,8 +187,16 @@ public static class RuntimeSaveService
                 }
 
                 Vehicle vehicle = string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase)
-                    ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p)
-                    : new Wagon(p, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
+                    ? new Locomotive(
+                        Enum.Parse<LocomotiveType>(savedVehicle.Type, true),
+                        p,
+                        savedVehicle.ShortName)
+                    : new Wagon(
+                        p,
+                        savedVehicle.ShortName,
+                        Enum.Parse<WagonType>(savedVehicle.Type, true),
+                        savedVehicle.PassengerCapacity,
+                        savedVehicle.ServiceRoute);
                 vehicle.Orientation = savedVehicle.Orientation;
                 vehicles.Add(vehicle);
             }
