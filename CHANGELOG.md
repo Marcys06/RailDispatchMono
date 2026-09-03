@@ -2,6 +2,20 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4i] — Train labels, Depot building and coupling preparation
+**Data:** 2026-09-03
+
+- Restored visible centered white rolling-stock labels during gameplay and bound the `Arial24` font through `GameplayScreen`.
+- Locomotive labels use `EP07`, `EU200`, `SU42`; passenger coaches use `1KL`, `2KL`, `3KL`.
+- Labels remain readable in both travel directions.
+- Reworked `DepotRenderer` to use world-space coordinates under the existing camera transform, matching the station rendering contract.
+- Added a visible 1x1-cell Depot building with outline/entrance details and placement preview.
+- Added static coupling metadata: `CouplerType`, `CouplingSpecification` and `Vehicle.Coupling`.
+- Default rolling stock exposes screw couplers at both ends.
+- Runtime coupling/decoupling, compatibility, connection state, forces and persistence remain explicitly deferred to 0.1.5.
+- Updated game-domain, screen/UI and AI-context documentation and added `docs/changelog/0.1.4i.md`.
+- No `current-state` snapshot was created; `0.1.4i` remains a lettered development stage.
+
 ## [0.1.4h] — Speed-dependent braking and RadioStop safety
 **Data:** 2026-09-03
 
