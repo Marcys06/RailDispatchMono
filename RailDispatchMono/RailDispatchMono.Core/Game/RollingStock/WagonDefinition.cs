@@ -40,6 +40,6 @@ public sealed class WagonDefinition
             LengthMeters,
             1.0f);
 
-        return new Wagon(parameters, Type, Capacity);
+        return new Wagon(parameters, Id, Type, Capacity);
     }
 }
