@@ -4,6 +4,7 @@ using RailDispatchMono.Core.Game.Debug;
 using RailDispatchMono.Core.Game.Railway;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -151,14 +152,14 @@ public sealed partial class TrainManager
     private bool ContainsVehicle(Vehicle vehicle)
     {
         foreach (var train in _trains)
-            if (train.Composition.Vehicles.Contains(vehicle)) return true;
+            if (train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle))) return true;
         return false;
     }
 
     private Train? FindTrainContaining(Vehicle vehicle)
     {
         foreach (var train in _trains)
-            if (train.Composition.Vehicles.Contains(vehicle)) return train;
+            if (train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle))) return train;
         return null;
     }
 
