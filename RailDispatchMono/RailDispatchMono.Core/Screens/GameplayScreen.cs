@@ -101,6 +101,8 @@ public sealed class GameplayScreen : GameScreen
         _trainRenderer.LoadContent(_graphicsDevice);
         _trainRenderer.SetTrainManager(_trainManager);
         _tooltipFont = content.Load<SpriteFont>("Arial24");
+        _trainRenderer.SetFont(_tooltipFont);
+        _inputManager.SetFont(_tooltipFont);
         _junctionRadialMenu.SetFont(_tooltipFont);
         _signalRadialMenu.SetFont(_tooltipFont);
         _signalDirectionMenu.SetFont(_tooltipFont);
