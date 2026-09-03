@@ -1,6 +1,6 @@
 # Coupling / Decoupling — work tracker
 
-**Milestone:** `0.1.5b`  
+**Milestone:** `0.1.5c`  
 **Purpose:** temporary implementation checklist for coupling/decoupling mechanics only.  
 **Last reviewed:** 2026-09-03
 
@@ -24,6 +24,9 @@ This file is intentionally temporary. It tracks implementation progress and shou
 - [x] Detached section is registered as a new `Train` and starts stopped.
 - [x] Existing RadioStop remains independent; coupling does not bypass collision safety.
 - [x] `[COUPLING]` diagnostics added to runtime operations.
+- [x] `CouplingCandidate` exposes both physical endpoints, measured distance and authoritative validation result.
+- [x] `TrainManager.GetCouplingCandidates()` enumerates only outer vehicle ends and delegates validity to `CouplingService`.
+- [x] Candidates are sorted by physical endpoint distance for deterministic UI selection later.
 
 ## Still to do
 
