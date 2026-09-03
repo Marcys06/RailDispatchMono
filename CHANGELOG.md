@@ -2,16 +2,19 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
-## [0.1.5x] — Train travel direction state and non-destructive F7 reversal
+## [0.1.5pre] — Rebuilt train direction reversal and consist spawning
 **Data:** 2026-09-03
 
-- Rebuilt `F7` as a train travel-direction state change instead of a composition mutation.
-- `Train.Direction` is now the authoritative current travel direction, with explicit `Train.IsReversed` runtime state.
-- F7 never reorders `Composition.Vehicles` and never moves vehicle world coordinates at the reversal moment.
-- Vehicle rendering now uses the same authoritative transform calculation as the train simulation.
-- Locomotive `VehicleOrientation` is no longer used as the F7 travel-direction switch.
-- Runtime saves persist the reversed travel state.
-- Detailed notes: `docs/changelog/0.1.5x.md`.
+- Rebuilt `F7` as a non-destructive train travel-direction change.
+- `Composition.Vehicles` remains unchanged; F7 never reverses the logical vehicle list.
+- F7 never teleports or remaps vehicle world positions.
+- The train keeps one physical head position and a rigid set of vehicle offsets, so all vehicles move together after reversing.
+- `Direction` changes to the opposite cardinal direction; `Speed` remains a non-negative magnitude.
+- `IsReversed` remains only as persisted travel-state information and no longer controls vehicle-position reconstruction.
+- Initial vehicle positions are now created from the train direction and vehicle lengths instead of collapsing every vehicle onto the train head.
+- Coupling rebuilds rigid consist offsets after composition changes.
+- Curve-specific reversal behavior remains intentionally deferred; the current milestone targets straight-track behavior first.
+- Detailed notes: `docs/changelog/0.1.5pre.md`.
 
 ## [0.1.5i] — Fixed shunting control and cursor-targeted decoupling
 **Data:** 2026-09-03
