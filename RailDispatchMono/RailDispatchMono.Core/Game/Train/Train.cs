@@ -47,6 +47,7 @@ public sealed partial class Train
     public float SweepAngle => _arcSweepAngle;
     public float CurveProgressDistance => _curveDistance;
     public float CurveLength => _curveLength;
+    public bool IsReversed => _isReversed;
 
 #pragma warning disable CS0067
     public event EventHandler<TrainEventArgs>? VehicleAdded;
@@ -75,6 +76,7 @@ public sealed partial class Train
         Position = spawnPosition;
         Direction = initialDirection;
         _speed = speed;
+        _isReversed = false;
 
         Composition = new TrainComposition();
         foreach (var vehicle in vehicles)
@@ -110,6 +112,7 @@ public sealed partial class Train
         TotalDistance = 0f;
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
+        ClearPreservedVehiclePositions();
         ResetCurveState();
         ResetTrajectory();
     }
@@ -120,6 +123,7 @@ public sealed partial class Train
         Direction = direction;
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
+        ClearPreservedVehiclePositions();
         ResetCurveState();
         ResetTrajectory();
     }
@@ -141,12 +145,7 @@ public sealed partial class Train
     {
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
-
-        float distance = 0f;
-        for (int i = 0; i < vehicleIndex; i++)
-            distance += Composition.Vehicles[i].Parameters.Length;
-        distance += Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
-        return distance;
+        return GetMovementDistanceToVehicle(vehicleIndex);
     }
 
     public float GetTotalTrainLength() => Length;
@@ -154,8 +153,7 @@ public sealed partial class Train
     public Vector2 GetLastVehiclePosition()
     {
         if (Composition.Vehicles.Count == 0) return Position;
-        int lastIndex = Composition.Vehicles.Count - 1;
-        return GetPositionBehindHead(GetDistanceToVehicle(lastIndex));
+        return GetVehicleTransform(Composition.Vehicles.Count - 1).Position;
     }
 
     public TrackConnections GetLastVehicleDirection()
@@ -170,16 +168,20 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        float distanceBehindHead = GetDistanceToVehicle(vehicleIndex);
+        if (TryGetPreservedVehiclePosition(vehicleIndex, out Vector2 preservedPosition))
+        {
+            float rotation = TryGetPreservedVehicleRotation(vehicleIndex, out float preservedRotation)
+                ? preservedRotation
+                : GetDirectionAngle(Direction);
+            return (preservedPosition, rotation);
+        }
+
+        float distanceBehindHead = GetMovementDistanceToVehicle(vehicleIndex);
         float targetDistance = _totalTravelDistance - distanceBehindHead;
 
         if (_trajectory.Count == 0)
             return (Position, GetDirectionAngle(Direction));
 
-        // A newly created or repositioned train has no travelled trajectory yet.
-        // In that state every vehicle must still be placed behind the head instead
-        // of all vehicles using the single initial trajectory point. This is
-        // especially important for a detached consist created by X/decoupling.
         if (_totalTravelDistance <= MovementEpsilon)
         {
             Vector2 position = GetPositionBehindHead(distanceBehindHead);
@@ -259,24 +261,8 @@ public sealed partial class Train
     public List<Vector2> GetVehiclePositions(float vehicleSpacing = 1.0f)
     {
         var result = new List<Vector2>(Composition.Vehicles.Count);
-        if (Composition.Vehicles.Count == 0) return result;
-
-        float distanceBehind = 0.0f;
         for (int i = 0; i < Composition.Vehicles.Count; i++)
-        {
-            var vehicle = Composition.Vehicles[i];
-            if (i == 0)
-            {
-                result.Add(Position);
-                distanceBehind = vehicle.Parameters.Length;
-            }
-            else
-            {
-                float spacing = vehicleSpacing > MovementEpsilon ? vehicleSpacing : vehicle.Parameters.Length;
-                result.Add(GetPositionBehindHead(distanceBehind));
-                distanceBehind += spacing;
-            }
-        }
+            result.Add(GetVehicleTransform(i).Position);
         return result;
     }
 
@@ -359,7 +345,6 @@ public sealed partial class Train
     {
         if (TryFindNextSignal(out var nextSignal, out var distance) && nextSignal == signal)
             return distance;
-
         return SimulationScale.GridToMeters(MathF.Max(0f, GetDistanceToBoundary()));
     }
 
@@ -368,15 +353,9 @@ public sealed partial class Train
         var locomotive = Composition.Locomotive;
         if (locomotive == null)
             return 20f;
-
         float baseBraking = locomotive.Parameters.Braking;
         if (baseBraking <= 0f)
             return 20f;
-
-        // Signal stopping must use the same consist-dependent braking capability
-        // as TrainMovement. Previously this method used the strongest vehicle's
-        // raw braking value, which ignored the 0.1.4f mass penalty and caused
-        // heavy trains to reach the Stop target too late.
         float massFactor = GetMassPerformanceFactor();
         return MathF.Max(0.01f, baseBraking * massFactor);
     }
@@ -384,7 +363,6 @@ public sealed partial class Train
     private float GetSpeedFromSignal(Signal? signal)
     {
         if (signal == null) return _maxSpeed;
-
         float signalSpeed = signal.Aspect switch
         {
             SignalAspect.Stop => 0f,
@@ -399,36 +377,29 @@ public sealed partial class Train
             SignalAspect.Reserve4 => 30f / 3.6f,
             _ => _maxSpeed
         };
-
         float distance = GetSignalDistance(signal);
         float brakingRate = GetBrakingRate();
-
         if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
         {
             const float reactionTime = 0.15f;
             const float stopOffsetCells = 0.8f;
             float stopOffsetMeters = SimulationScale.GridToMeters(stopOffsetCells);
-
             float frontHalfLengthCells = Composition.Vehicles.Count > 0
                 ? Composition.Vehicles[0].Parameters.Length * 0.5f
                 : 0f;
             float frontHalfLengthMeters = SimulationScale.GridToMeters(frontHalfLengthCells);
-
             float availableDistance = MathF.Max(
                 0f,
                 distance - stopOffsetMeters - frontHalfLengthMeters - Speed * reactionTime);
-
             return MathF.Min(_maxSpeed,
                 MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
         }
-
         if (Speed > signalSpeed && brakingRate > 0f)
         {
             float requiredBrakingDistance = MathF.Max(0f, (Speed * Speed - signalSpeed * signalSpeed) / (2f * brakingRate));
             if (distance > requiredBrakingDistance)
                 return Speed;
         }
-
         return MathF.Min(signalSpeed, _maxSpeed);
     }
 
