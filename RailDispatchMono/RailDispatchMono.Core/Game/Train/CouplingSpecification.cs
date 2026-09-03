@@ -8,10 +8,7 @@ public enum CouplerType
     Automatic
 }
 
-/// <summary>
-/// Static rolling-stock coupling data. Runtime connection state is intentionally
-/// not stored here; coupling/decoupling mechanics are planned for 0.1.5.
-/// </summary>
+/// <summary>Static rolling-stock coupling data for both physical vehicle ends.</summary>
 public sealed class CouplingSpecification
 {
     public CouplerType Front { get; }
@@ -24,6 +21,8 @@ public sealed class CouplingSpecification
         Front = front;
         Rear = rear;
     }
+
+    public CouplerType Get(VehicleEnd end) => end == VehicleEnd.Front ? Front : Rear;
 
     public static CouplingSpecification Default { get; } = new();
 }
