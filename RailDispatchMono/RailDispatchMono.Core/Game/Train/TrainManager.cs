@@ -114,7 +114,7 @@ public sealed partial class TrainManager
         StationController = stationController;
     }
 
-    public void Update(float deltaTime)
+    public void Update(float deltaTime, Vector2? manualShuntingCursor = null)
     {
         foreach (var train in _trainsToAdd)
         {
@@ -133,11 +133,21 @@ public sealed partial class TrainManager
         }
         _trainsToRemove.Clear();
 
-        HandleCouplingHotkeys();
+        HandleCouplingHotkeys(manualShuntingCursor);
         StationController.Update(deltaTime);
+
+        Train? manualTrain = manualShuntingCursor.HasValue
+            ? GetTrainAtWorldPosition(manualShuntingCursor.Value)
+            : null;
 
         foreach (var train in _trains)
         {
+            if (ReferenceEquals(train, manualTrain) && Keyboard.GetState().IsKeyDown(KeyboardManualShuntingKey))
+            {
+                train.UpdateManualShunting(deltaTime, ManualShuntingSpeedKmh);
+                continue;
+            }
+
             bool holdAtStation = StationController.BeforeTrainUpdate(train, deltaTime);
             if (holdAtStation)
             {
@@ -160,6 +170,28 @@ public sealed partial class TrainManager
         }
 
         _blockController?.Update(deltaTime);
+    }
+
+    private static readonly Microsoft.Xna.Framework.Input.Keys KeyboardManualShuntingKey = Microsoft.Xna.Framework.Input.Keys.F6;
+
+    private Train? GetTrainAtWorldPosition(Vector2 worldPosition, float detectionRadius = 0.6f)
+    {
+        Train? result = null;
+        float bestDistance = detectionRadius;
+        foreach (var train in _trains)
+        {
+            var positions = train.GetVehiclePositions();
+            foreach (var position in positions)
+            {
+                float distance = Vector2.Distance(position, worldPosition);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    result = train;
+                }
+            }
+        }
+        return result;
     }
 
     private void UpdateSignalSpeedState(Train train)
