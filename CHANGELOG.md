@@ -2,6 +2,16 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5b] — Coupling stop behavior
+**Data:** 2026-09-03
+
+- Coupling now stops both participating trains through the existing `RadioStop` mechanism before changing composition.
+- The merged train starts from `0 m/s` instead of inheriting shunting momentum.
+- Decoupling stops the original train before splitting the composition.
+- The newly created detached train is registered at `0 m/s` and receives `RadioStop`.
+- Vehicle order and concrete vehicle-end coupling state remain unchanged by this stage.
+- Detailed notes: `docs/changelog/0.1.5b.md`.
+
 ## [0.1.5a] — Rigid coupling and decoupling foundation
 **Data:** 2026-09-03
 
