@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace RailDispatchMono.Core
 {
@@ -14,6 +15,7 @@ namespace RailDispatchMono.Core
         private static readonly Queue<DateTime> _outputTimes = new();
         private static readonly List<string> _logHistory = new();
         private static readonly object _lock = new();
+        private static readonly AsyncLocal<Guid?> _currentTrainId = new();
         private const int MaxOutputsPerSecond = 30;
         private static readonly TimeSpan OutputWindow = TimeSpan.FromSeconds(1);
         private static bool _logToConsole = true, _logToFile = true, _showTimestamps = true, _showCategory = true;
@@ -32,6 +34,8 @@ namespace RailDispatchMono.Core
             try { string root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); if (string.IsNullOrWhiteSpace(root)) root = AppContext.BaseDirectory; string dir = Path.Combine(root, "RailDispatchMono", "Logs"); Directory.CreateDirectory(dir); _logFilePath = Path.Combine(dir, "debug_log.txt"); }
             catch { _logFilePath = Path.Combine(AppContext.BaseDirectory, "debug_log.txt"); }
         }
+        public static void BeginTrainLog(Guid trainId) => _currentTrainId.Value = trainId;
+        public static void EndTrainLog() => _currentTrainId.Value = null;
         public static void EnableCategory(DebugCategory c) { _enabledCategories[c] = true; Log($"[DEBUG] Enabled: {c}"); }
         public static void DisableCategory(DebugCategory c) { _enabledCategories[c] = false; Log($"[DEBUG] Disabled: {c}"); }
         public static void ToggleCategory(DebugCategory c) { _enabledCategories[c] = !_enabledCategories[c]; Log($"[DEBUG] {c}: {(_enabledCategories[c] ? "ON" : "OFF")}"); }
@@ -42,8 +46,15 @@ namespace RailDispatchMono.Core
         public static void SetLogToFile(bool e, string filePath = null) { _logToFile = e; if (!string.IsNullOrWhiteSpace(filePath)) _logFilePath = filePath; Log($"[DEBUG] Log to file: {(_logToFile ? "ON" : "OFF")} -> {_logFilePath}"); }
         public static void SetShowTimestamps(bool e) => _showTimestamps = e;
         public static void SetShowCategory(bool e) => _showCategory = e;
-        public static void Log(DebugCategory c, string message) { if (!IsDebugEnabled || !IsCategoryEnabled(c) || !TryAcquireOutputSlot()) return; WriteLog(c, message); }
-        public static void Log(string message) { if (!IsDebugEnabled || !TryAcquireOutputSlot()) return; WriteLog(DebugCategory.General, message); }
+        public static void Log(DebugCategory c, string message) { if (!IsDebugEnabled || !IsCategoryEnabled(c) || !TryAcquireOutputSlot()) return; WriteLog(c, NormalizeTrainMessage(message)); }
+        public static void Log(string message) { if (!IsDebugEnabled || !TryAcquireOutputSlot()) return; WriteLog(DebugCategory.General, NormalizeTrainMessage(message)); }
+        private static string NormalizeTrainMessage(string message)
+        {
+            if (!message.StartsWith("[TRAIN]", StringComparison.Ordinal) || !_currentTrainId.Value.HasValue)
+                return message;
+
+            return $"[TRAIN:{_currentTrainId.Value.Value.ToString("N")[..8]}]" + message[7..];
+        }
         private static bool TryAcquireOutputSlot() { lock (_lock) { DateTime now = DateTime.UtcNow; while (_outputTimes.Count > 0 && now - _outputTimes.Peek() >= OutputWindow) _outputTimes.Dequeue(); if (_outputTimes.Count >= MaxOutputsPerSecond) return false; _outputTimes.Enqueue(now); return true; } }
         private static void WriteLog(DebugCategory c, string message) { string formatted = FormatMessage(c, message); lock (_lock) { _logHistory.Add(formatted); if (_logHistory.Count > _maxLogEntries) _logHistory.RemoveAt(0); try { if (_logToConsole) { Console.WriteLine(formatted); Debug.WriteLine(formatted); Trace.WriteLine(formatted); } } catch { } if (_logToFile) try { string dir = Path.GetDirectoryName(_logFilePath); if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir); File.AppendAllText(_logFilePath, formatted + Environment.NewLine); } catch (Exception ex) { Debug.WriteLine($"[DEBUG] Error saving log: {ex.Message}"); } } }
         public static void LogError(string m) => Log(DebugCategory.Error, $"[ERR] {m}"); public static void LogWarning(string m) => Log(DebugCategory.General, $"[WARN] {m}"); public static void LogSuccess(string m) => Log(DebugCategory.General, $"[OK] {m}"); public static void LogInfo(string m) => Log(DebugCategory.General, $"[INFO] {m}");
