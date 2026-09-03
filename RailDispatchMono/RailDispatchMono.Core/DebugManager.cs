@@ -42,24 +42,8 @@ namespace RailDispatchMono.Core
         public static void SetLogToFile(bool e, string filePath = null) { _logToFile = e; if (!string.IsNullOrWhiteSpace(filePath)) _logFilePath = filePath; Log($"[DEBUG] Log to file: {(_logToFile ? "ON" : "OFF")} -> {_logFilePath}"); }
         public static void SetShowTimestamps(bool e) => _showTimestamps = e;
         public static void SetShowCategory(bool e) => _showCategory = e;
-        public static void Log(DebugCategory c, string message) { if (!IsDebugEnabled || !IsCategoryEnabled(c) || !TryAcquireOutputSlot()) return; WriteLog(c, NormalizeMessage(c, message)); }
-        public static void Log(string message) { if (!IsDebugEnabled || !TryAcquireOutputSlot()) return; WriteLog(DebugCategory.General, NormalizeMessage(DebugCategory.General, message)); }
-        private static string NormalizeMessage(DebugCategory c, string message)
-        {
-            if (message.StartsWith("[TRAIN]", StringComparison.Ordinal))
-                return $"[TRAIN:{GetTrainLogId(message)}]" + message[7..];
-
-            return message;
-        }
-        private static string GetTrainLogId(string message)
-        {
-            const string legacyStart = "?? START";
-            int startIndex = message.IndexOf(legacyStart, StringComparison.Ordinal);
-            if (startIndex >= 0)
-                return "UNKNOWN";
-
-            return "UNKNOWN";
-        }
+        public static void Log(DebugCategory c, string message) { if (!IsDebugEnabled || !IsCategoryEnabled(c) || !TryAcquireOutputSlot()) return; WriteLog(c, message); }
+        public static void Log(string message) { if (!IsDebugEnabled || !TryAcquireOutputSlot()) return; WriteLog(DebugCategory.General, message); }
         private static bool TryAcquireOutputSlot() { lock (_lock) { DateTime now = DateTime.UtcNow; while (_outputTimes.Count > 0 && now - _outputTimes.Peek() >= OutputWindow) _outputTimes.Dequeue(); if (_outputTimes.Count >= MaxOutputsPerSecond) return false; _outputTimes.Enqueue(now); return true; } }
         private static void WriteLog(DebugCategory c, string message) { string formatted = FormatMessage(c, message); lock (_lock) { _logHistory.Add(formatted); if (_logHistory.Count > _maxLogEntries) _logHistory.RemoveAt(0); try { if (_logToConsole) { Console.WriteLine(formatted); Debug.WriteLine(formatted); Trace.WriteLine(formatted); } } catch { } if (_logToFile) try { string dir = Path.GetDirectoryName(_logFilePath); if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir); File.AppendAllText(_logFilePath, formatted + Environment.NewLine); } catch (Exception ex) { Debug.WriteLine($"[DEBUG] Error saving log: {ex.Message}"); } } }
         public static void LogError(string m) => Log(DebugCategory.Error, $"[ERR] {m}"); public static void LogWarning(string m) => Log(DebugCategory.General, $"[WARN] {m}"); public static void LogSuccess(string m) => Log(DebugCategory.General, $"[OK] {m}"); public static void LogInfo(string m) => Log(DebugCategory.General, $"[INFO] {m}");
