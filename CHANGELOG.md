@@ -1,91 +1,60 @@
 # Changelog
 
-This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
+This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
 
-## [0.1.5pre] — Rebuilt train direction reversal and consist spawning
+## [0.1.5pre] — Final 0.1.5 pre-release
 **Data:** 2026-09-03
+
+### Train direction and F7
 
 - Rebuilt `F7` as a non-destructive train travel-direction change.
-- `Composition.Vehicles` remains unchanged; F7 never reverses the logical vehicle list.
-- F7 never teleports or remaps vehicle world positions.
-- The train keeps one physical head position and a rigid set of vehicle offsets, so all vehicles move together after reversing.
-- `Direction` changes to the opposite cardinal direction; `Speed` remains a non-negative magnitude.
-- `IsReversed` remains only as persisted travel-state information and no longer controls vehicle-position reconstruction.
-- Initial vehicle positions are now created from the train direction and vehicle lengths instead of collapsing every vehicle onto the train head.
-- Coupling rebuilds rigid consist offsets after composition changes.
-- Curve-specific reversal behavior remains intentionally deferred; the current milestone targets straight-track behavior first.
-- Detailed notes: `docs/changelog/0.1.5pre.md`.
+- `Composition.Vehicles` is never reversed or reordered by F7.
+- Vehicle world positions and inter-vehicle distances are preserved at the reversal instant.
+- F7 changes only the train's cardinal `Direction` and is accepted only at `0 km/h`.
+- The locomotive remains at its existing world position; F7 does not teleport it to the opposite end.
+- `Speed` remains a non-negative magnitude.
+- `IsReversed` remains persisted travel-state information and does not reconstruct the vehicle list.
 
-## [0.1.5i] — Fixed shunting control and cursor-targeted decoupling
-**Data:** 2026-09-03
+### Train movement and curves
 
-- Replaced configurable `3 / 4 / 5 km/h` coupling command speeds with a fixed `6 km/h` shunting limit.
-- Removed the `F7` and `F8` coupling-speed commands.
-- `X` decoupling is now allowed only while the target train is below `6 km/h`; the limit is enforced by `CouplingService`.
-- `F6` is now manual shunting control: while held over a train, it accelerates toward `3 km/h` and bypasses the automatic RadioStop/collision stop path.
-- `X` now targets the wagon under the cursor instead of the last `C` coupling or first runtime connection.
-- When the hovered wagon has two connections, the rear connection is preferred; otherwise its available runtime connection is used.
-- `X` no longer falls back to an unrelated/oldest coupling when no wagon is under the cursor.
-- Detailed notes: `docs/changelog/0.1.5i.md`.
+- Initial consist spawning now uses vehicle lengths and travel direction so vehicles do not collapse onto one grid coordinate.
+- Rigid vehicle offsets preserve straight-track spacing.
+- Curve movement follows the travelled trajectory.
+- Each vehicle samples its own historical position according to its distance behind the train head.
+- Each vehicle derives its rotation from the local tangent of its own trajectory position, so vehicles enter curves sequentially rather than rotating simultaneously.
+- The train head continues to use the exact active curve-arc tangent.
+- F7 does not independently rotate vehicle graphics.
 
-## [0.1.5h] — Preserve detached consist positions after decoupling
-**Data:** 2026-09-03
+### Coupling and decoupling
 
-- Fixed detached vehicles being rendered/spawned at the same position after `X` decoupling.
-- A newly detached `Train` now preserves the physical vehicle positions implied by the consist's position and direction instead of collapsing all vehicles onto the new train head position.
-- The existing runtime coupling/split behavior is unchanged: the detached section remains an ordered composition with its internal runtime connections intact.
-- Fixed-position handling also resets movement/trajectory state consistently when a train position is initialized or changed.
-- Detailed notes: `docs/changelog/0.1.5h.md`.
+- Physical coupling is represented by concrete vehicle ends and runtime `CouplingConnection` objects.
+- Coupler compatibility is determined by `CouplingSpecification` / `CouplerType`.
+- Adjacent compatible vehicles in pre-built consists can establish runtime couplings automatically.
+- Coupling operates on outer train boundaries and preserves consist order.
+- `C` selects the nearest valid coupling candidate and delegates the authoritative operation to `CouplingService`.
+- `X` targets the wagon under the cursor and prefers its rear runtime connection when both ends are connected.
+- Decoupling is allowed only below `6 km/h`.
+- Detached consists preserve vehicle order, internal runtime couplings and physical positions.
 
-## [0.1.5g] — Automatic runtime couplings for complete consists
-**Data:** 2026-09-03
+### Shunting and safety
 
-- `TrainComposition.AddVehicle()` now establishes runtime couplings between adjacent vehicles when both physical ends expose the same supported coupler type.
-- Mixed passenger-wagon formations such as `1KL <-> 2KL <-> 3KL` are therefore treated as one physically connected consist instead of an unconnected list of vehicles.
-- `X` decoupling now works for those pre-built multi-vehicle consists without requiring a preceding `C` command.
-- `TrainComposition.Split()` preserves the existing runtime connections inside the detached section; the split boundary connection is still cleared by `CouplingService`.
-- Existing explicit `C` coupling remains authoritative for connecting separate trains and does not create duplicate runtime connections when merged vehicles are appended.
-- No change was made to the coupler compatibility rule: physical coupling remains based on `CouplingSpecification`, not wagon display/class names.
-- Detailed notes: `docs/changelog/0.1.5g.md`.
+- `F6` is manual shunting control toward `3 km/h` while held over a train.
+- The former configurable `F6/F7/F8` coupling-speed profiles are removed.
+- Coupling uses a fixed `6 km/h` shunting limit.
+- `F6` manual shunting bypasses the automatic RadioStop/collision stop path for the targeted train while held.
+- RadioStop remains an independent safety mechanism.
+- Coupling and decoupling reset affected signal state.
 
-## [0.1.5f] — Remove dedicated Core test project
-**Data:** 2026-09-03
+### Persistence
 
-- Removed `RailDispatchMono.Core.Tests` from the repository and solution.
-- Removed the dedicated test project files and solution entry.
-- Kept the runtime coupling/decoupling implementation unchanged.
-- Added the consolidated `0.1.5pre` current-state documentation.
-- Updated maintained input, domain, workflow, AI, known-issues and code-index documentation.
-- Detailed notes: `docs/changelog/0.1.5f.md`.
+- Saved reversal state is restored without reversing the physical vehicle list or reconstructing vehicle positions from list order.
 
-## [0.1.5e] — Coupling command controls
-**Data:** 2026-09-03
+### Scope
 
-- Added direct `Coupling` command on `C` using the nearest valid boundary candidate.
-- Added separate `Decoupling` command on `X` targeting the last coupling created by the command layer, with deterministic fallback to the first remaining runtime connection.
-- Added shunting speed profiles of `3 / 4 / 5 km/h` on `F6 / F7 / F8`; `5 km/h` is the default.
-- Coupling command refuses to execute when either participating train exceeds the selected shunting speed.
-- Associated the command semantics with signal aspect `S14 Rezerwowy 3`; its signal speed limit is now `5 km/h`.
-- Actual coupling/decoupling remains delegated to the existing authoritative `CouplingService`.
-- Detailed notes: `docs/changelog/0.1.5e.md`.
+`0.1.5pre` is the final version of the 0.1.5 development cycle. Further features and changes belong to a later version.
 
-## [0.1.5d] — Coupling regression test foundation
-**Data:** 2026-09-03
+The milestone intentionally remains a rigid consist model. Slack action, impact forces, coupling delay, brake-pipe propagation and full longitudinal vehicle dynamics are outside its scope.
 
-- Added `RailDispatchMono.Core.Tests` targeting .NET 9 and referencing the core project.
-- Added regression tests for default screw-coupler configuration.
-- Added regression tests for `CouplingConnection` matching in both directions and self-connection rejection.
-- Added regression tests for typed coupling operation success/failure semantics.
-- Added regression tests confirming exact vehicle order through `TrainComposition.Split()` and `Train` construction.
-- Added the test project to `RailDispatchMono.slnx`.
-- Runtime coupling mechanics were not executed in a live gameplay scenario as part of this milestone.
-- Detailed notes: `docs/changelog/0.1.5d.md`.
+The dedicated `RailDispatchMono.Core.Tests` project is not part of the repository.
 
-## [0.1.5c] — Coupling candidate discovery
-**Data:** 2026-09-03
-
-- Added `CouplingCandidate` as a UI-neutral snapshot of a possible physical connection.
-- Added `TrainManager.GetCouplingCandidates(Train)` as the authoritative discovery entry point for future UI/input code.
-- Candidate data exposes both concrete vehicle ends, endpoint positions, measured distance and the authoritative `CouplingCheckResult`.
-- Candidate discovery considers only outer vehicle ends, matching the current rigid coupling rule.
-- Candidates are sorted by endpoint distance for deterministic selection.
+Detailed final notes: `docs/changelog/0.1.5pre.md`.
