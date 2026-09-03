@@ -13,6 +13,8 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Added static coupling metadata: `CouplerType`, `CouplingSpecification` and `Vehicle.Coupling`.
 - Default rolling stock exposes screw couplers at both ends.
 - Fixed `RuntimeSaveService` to save/load rolling-stock `ShortName` values and to use the current `Locomotive` and `Wagon` constructor signatures.
+- Fixed rolling-stock definitions to construct `Locomotive` and `Wagon` with the current `ShortName`-aware signatures.
+- Added explicit wagon short labels `1KL`, `2KL`, `3KL` to the rolling-stock definitions used by the Depot and train renderer.
 - Kept runtime save schema version at 1; older saves without `ShortName` remain deserializable.
 - Runtime coupling/decoupling, compatibility, connection state, forces and persistence remain explicitly deferred to 0.1.5.
 - Updated game-domain, screen/UI and AI-context documentation and detailed `docs/changelog/0.1.4i.md`.
