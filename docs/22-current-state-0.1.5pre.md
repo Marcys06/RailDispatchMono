@@ -3,7 +3,7 @@
 **Date:** 2026-09-03  
 **Status:** consolidated development/pre-release milestone
 
-This document is the authoritative current-state snapshot for the `0.1.5` line. Lettered `0.1.5a`–`0.1.5f` stages remain historical development records in `CHANGELOG.md` and `docs/changelog/`.
+This document is the authoritative current-state snapshot for the `0.1.5` line. Lettered `0.1.5a`–`0.1.5h` stages remain historical development records in `CHANGELOG.md` and `docs/changelog/`.
 
 ## 1. Technology and repository structure
 
@@ -58,8 +58,11 @@ A successful decoupling:
 3. stops the train through `RadioStop`;
 4. splits `TrainComposition` at the connected boundary;
 5. clears the connection from both vehicle ends;
-6. creates a new stopped `Train` for the detached section;
-7. registers that train through `TrainManager`.
+6. initializes the detached train's spatial state from the split position and direction, preserving each vehicle's physical distance behind the head instead of collapsing the consist onto one spawn point;
+7. creates a new stopped `Train` for the detached section;
+8. registers that train through `TrainManager`.
+
+Vehicle transforms normally use trajectory history after movement. For a newly created or repositioned train with no accumulated travel history, vehicle positions are derived from the head position, train direction and each vehicle's distance behind the head. This prevents a detached consist from visually respawning with all vehicles at the same position after `X`.
 
 A complete pre-built multi-vehicle composition already contains runtime connections between adjacent vehicles. Therefore `X` does not require a preceding `C` command to split such a formation.
 
@@ -70,6 +73,7 @@ No dynamic coupler forces, slack, impact shock, coupling animation, brake-pipe p
 The current keyboard command contract is:
 
 | Key | Action |
+|---|---|
 |---|---|
 | `C` | Couple nearest valid boundary candidate |
 | `X` | Decouple the last coupling created by `C`; otherwise first available runtime connection |
@@ -100,6 +104,8 @@ Coupling operations write `[COUPLING]` diagnostics. Train movement diagnostics c
 ## 10. Verification boundary
 
 The repository no longer contains a dedicated automated Core test project. Validation of current runtime coupling/decoupling behavior therefore relies on the normal application build plus live gameplay verification in the user's .NET/MonoGame environment.
+
+The latest `0.1.5h` decoupling-position fix was inspected against the train trajectory and vehicle-transform implementation. A live build was not run in the current environment because NuGet/package restore requires unavailable network access.
 
 ## 11. Ownership rules
 
