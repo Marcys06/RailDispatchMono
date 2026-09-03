@@ -9,16 +9,17 @@ This index is a navigation aid based on source files confirmed in the repository
 | `RailDispatchMono/RailDispatchMono.Core/RailDispatchMonoGame.cs` | Main shared MonoGame `Game` implementation and game-loop delegation. |
 | `RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj` | Shared Core project configuration; currently `net9.0` with MonoGame and Myra dependencies. |
 | `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraUIManager.cs` | Shared Myra initialization boundary and single `Desktop` owner. |
+| `RailDispatchMono/RailDispatchMono.Core/DebugManager.cs` | Central diagnostics logger; train-scoped `[TRAIN]` messages receive a short GUID prefix during train updates. |
 
 ## Screen architecture
 
 | Path | Role |
 |---|---|
 | `RailDispatchMono/RailDispatchMono.Core/Screens/GameScreen.cs` | Base screen lifecycle, transition state and input/draw hooks. |
-| `RailDispatchMono/RailDispatchMono.Core/Screens/GameplayScreen.cs` | Primary gameplay screen; owns map/simulation services and opens Depot. Test train creation was removed in `0.1.4e`. |
+| `RailDispatchMono/RailDispatchMono.Core/Screens/GameplayScreen.cs` | Primary gameplay screen; owns map/simulation services and opens Depot. Hardcoded test-train creation is not part of the current gameplay flow. |
 | `RailDispatchMono/RailDispatchMono.Core/Screens/DepotScreen.cs` | Full-screen depot train-builder screen; creates player consists through `TrainManager`. |
 | `RailDispatchMono/RailDispatchMono.Core/ScreenManagers/ScreenManager.cs` | Screen collection, lifecycle orchestration, input routing and drawing. |
-| `RailDispatchMono/RailDispatchMono.Core/Screens/UI/InputManager.cs` | UI/world input management; emits depot selection events. |
+| `RailDispatchMono/RailDispatchMono.Core/Screens/UI/InputManager.cs` | UI/world input management; emits depot selection events and does not directly own train creation. |
 
 ## Myra UI
 
@@ -33,11 +34,11 @@ This index is a navigation aid based on source files confirmed in the repository
 
 | Path | Role |
 |---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model. Signal braking uses composition-aware physical mass data. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear 1.30 exponent; effective Vmax is supplied by `TrainComposition`. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model; exposes effective braking capability for safety-facing calculations. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear `1.30` exponent and establishes train-scoped diagnostics during updates. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Authoritative train lifecycle and composition-based creation. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass and power/load-limited Vmax. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction and static coupling metadata. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Internal physics parameters plus physical mass/length metadata. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/LocomotiveParameters.cs` | Locomotive-specific physical parameters, including `PowerMW`. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle and short display label. |
@@ -49,7 +50,8 @@ This index is a navigation aid based on source files confirmed in the repository
 
 | Path | Role |
 |---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/TrainRenderer.cs` | Top-down rolling-stock rendering: electric/diesel locomotive colors, wagon colors and centered white vehicle labels. Labels are normalized for both travel directions. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/TrainRenderer.cs` | Top-down rolling-stock rendering: electric/diesel locomotive colors, wagon colors and centered white vehicle labels normalized for both travel directions. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/DepotRenderer.cs` | World-space Depot rendering and placement preview; follows the camera/world coordinate contract used by railway rendering. |
 
 ## Rolling stock catalogue
 
@@ -67,6 +69,12 @@ This index is a navigation aid based on source files confirmed in the repository
 | `RailDispatchMono/RailDispatchMono.Core/Inputs/InputState.cs` | Device snapshots, edge detection and semantic input. |
 | `RailDispatchMono/RailDispatchMono.Core/Settings/RailDispatchMonoSettings.cs` | Observable game settings model. |
 
+## Persistence
+
+| Path | Role |
+|---|---|
+| `RailDispatchMono/RailDispatchMono.Core/Game/Save/RuntimeSaveService.cs` | Runtime train/map save-load boundary; persists rolling-stock short labels while retaining schema version 1 compatibility. |
+
 ## Android host
 
 | Path | Role |
@@ -77,4 +85,4 @@ This index is a navigation aid based on source files confirmed in the repository
 
 ## How to use this index
 
-Use it to choose where to start reading, not as a substitute for reading dependencies. Before modifying a listed component, search for its callers and consumers.
+Use it to choose where to start reading, not as a substitute for reading dependencies. Before modifying a listed component, search for its callers and consumers. For train movement or safety changes, inspect movement, composition, signal/collision consumers and diagnostics together.
