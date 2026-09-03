@@ -66,15 +66,13 @@ public sealed partial class TrainManager
             return;
         }
 
-        // F7 never mutates Composition.Vehicles. The logical composition stays
-        // A-B (or A-B-B); every vehicle keeps its world coordinate while stopped.
+        // F7 changes only the train travel state. Composition.Vehicles is never
+        // reordered and every vehicle keeps its world coordinate at the instant
+        // of reversal. The opposite physical end becomes the movement head.
         train.SetDirectionPreservingVehiclePositions(GetOppositeDirection(train.Direction));
-        locomotive.Orientation = locomotive.Orientation == VehicleOrientation.Forward
-            ? VehicleOrientation.Reverse
-            : VehicleOrientation.Forward;
         ResetSignalStateAfterChange(train);
 
-        DebugManager.Log($"[TRAIN] Command F7: locomotive reversed for train {train.Id.ToString()[..8]}; composition order and vehicle coordinates unchanged, direction={train.Direction}, locomotive orientation={locomotive.Orientation}.");
+        DebugManager.Log($"[TRAIN] Command F7: travel direction reversed for train {train.Id.ToString()[..8]}; composition order and vehicle coordinates unchanged, direction={train.Direction}, reversed={train.IsReversed}.");
     }
 
     internal void ResetSignalStateAfterChange(Train train)
