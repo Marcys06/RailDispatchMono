@@ -9,6 +9,7 @@ public sealed class Wagon : Vehicle
 {
     private readonly List<Passenger> _passengers = new();
 
+    public string ShortName { get; }
     public WagonType WagonType { get; set; }
     public int PassengerCapacity { get; }
     public IReadOnlyList<Passenger> Passengers => _passengers;
@@ -19,11 +20,13 @@ public sealed class Wagon : Vehicle
 
     public Wagon(
         VehicleParameters parameters,
+        string shortName,
         WagonType wagonType = WagonType.Passenger,
         int passengerCapacity = 80,
         IEnumerable<Guid>? serviceRoute = null)
         : base(parameters)
     {
+        ShortName = shortName;
         WagonType = wagonType;
         PassengerCapacity = Math.Max(0, passengerCapacity);
         Route = new TrainRoute();

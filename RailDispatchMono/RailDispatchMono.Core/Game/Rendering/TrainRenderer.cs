@@ -1,3 +1,4 @@
+// TrainRenderer.cs
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -109,15 +110,15 @@ public sealed class TrainRenderer
 
     private static float NormalizeLabelAngle(float angle)
     {
-        if (MathF.Cos(angle) < 0f)
-            angle += MathF.PI;
+        if ((float)Math.Cos(angle) < 0f)
+            angle += (float)Math.PI;
         return angle;
     }
 
-    public (Train.Train train, int vehicleIndex, Vector2 worldPosition)? GetVehicleAtPosition(
-        TrainManager trainManager,
-        Vector2 worldPosition,
-        float detectionRadius = 0.6f)
+    public (global::RailDispatchMono.Core.Game.Train.Train train, int vehicleIndex, Vector2 worldPosition)? GetVehicleAtPosition(
+    TrainManager trainManager,
+    Vector2 worldPosition,
+    float detectionRadius = 0.6f)
     {
         if (trainManager == null)
             return null;
@@ -135,7 +136,7 @@ public sealed class TrainRenderer
         return null;
     }
 
-    public Train.Train? GetTrainAtPosition(
+    public global::RailDispatchMono.Core.Game.Train.Train? GetTrainAtPosition(
         TrainManager trainManager,
         Vector2 worldPosition,
         float detectionRadius = 0.6f)

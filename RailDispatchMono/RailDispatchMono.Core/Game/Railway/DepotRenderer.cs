@@ -1,3 +1,5 @@
+// DepotRenderer.cs
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Map;
@@ -105,7 +107,7 @@ public sealed class DepotRenderer
             start,
             null,
             color,
-            MathF.Atan2(delta.Y, delta.X),
+            (float)Math.Atan2(delta.Y, delta.X),
             new Vector2(0f, 0.5f),
             new Vector2(length, thickness),
             SpriteEffects.None,
