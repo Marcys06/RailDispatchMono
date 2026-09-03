@@ -142,7 +142,7 @@ public sealed partial class TrainManager
 
         foreach (var train in _trains)
         {
-            if (ReferenceEquals(train, manualTrain) && Keyboard.GetState().IsKeyDown(KeyboardManualShuntingKey))
+            if (ReferenceEquals(train, manualTrain) && Microsoft.Xna.Framework.Input.Keyboard.GetState().IsKeyDown(KeyboardManualShuntingKey))
             {
                 train.UpdateManualShunting(deltaTime, ManualShuntingSpeedKmh);
                 continue;
