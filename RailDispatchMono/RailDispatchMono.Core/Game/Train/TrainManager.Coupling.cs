@@ -66,9 +66,9 @@ public sealed partial class TrainManager
             return;
         }
 
-        // F7 changes only the train travel state. Composition.Vehicles is never
-        // reordered and every vehicle keeps its world coordinate at the instant
-        // of reversal. The opposite physical end becomes the movement head.
+        // F7 changes only the travel direction. Composition.Vehicles and every
+        // vehicle world position remain unchanged; the rigid formation then moves
+        // together in the new direction on subsequent simulation ticks.
         train.SetDirectionPreservingVehiclePositions(GetOppositeDirection(train.Direction));
         ResetSignalStateAfterChange(train);
 
