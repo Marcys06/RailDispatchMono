@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
-public sealed class TrainManager
+public sealed partial class TrainManager
 {
     private sealed class SignalSpeedState
     {
@@ -46,6 +46,11 @@ public sealed class TrainManager
             DebugManager.LogWarning($"[COLLISION] Train {train.Id.ToString()[..8]} spawn rejected: occupied track cell.");
             return;
         }
+        RegisterTrain(train);
+    }
+
+    private void RegisterTrain(Train train)
+    {
         train.SetMap(_map);
         _trainsToAdd.Add(train);
         _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = GetEffectiveMaxSpeed(train) };
@@ -86,7 +91,8 @@ public sealed class TrainManager
     public bool Remove(Train train)
     {
         if (train == null || !_trains.Contains(train)) return false;
-        _trainsToRemove.Add(train);
+        if (!_trainsToRemove.Contains(train))
+            _trainsToRemove.Add(train);
         return true;
     }
 
