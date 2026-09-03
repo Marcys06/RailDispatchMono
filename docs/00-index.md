@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.4pre`**  
+**Documentation baseline: `0.1.5pre`**  
 **Status: current consolidated documentation set**
 
 This directory contains the authoritative project documentation. Historical release changes belong in `docs/changelog/` and are not duplicated in current-state snapshots.
@@ -13,10 +13,10 @@ This directory contains the authoritative project documentation. Historical rele
 4. [04-runtime-lifecycle.md](04-runtime-lifecycle.md) — game startup, update and shutdown flow.
 5. [05-screen-system.md](05-screen-system.md) — screen manager and screen lifecycle.
 6. [06-input.md](06-input.md) — input modes and controls.
-7. [07-game-domain.md](07-game-domain.md) — trains, rolling stock, railway, stations and passengers.
+7. [07-game-domain.md](07-game-domain.md) — trains, rolling stock, railway, coupling and decoupling.
 8. [08-settings-localization.md](08-settings-localization.md) — settings and localization.
 9. [09-content-platforms.md](09-content-platforms.md) — content and platform targets.
-10. [10-development-workflows.md](10-development-workflows.md) — build, test and development workflow.
+10. [10-development-workflows.md](10-development-workflows.md) — build and development workflow.
 11. [11-ai-agent-rules.md](11-ai-agent-rules.md) — mandatory rules for AI-assisted development.
 12. [12-known-issues-and-cautions.md](12-known-issues-and-cautions.md) — current limitations and known risks.
 13. [13-code-index.md](13-code-index.md) — useful implementation entry points.
@@ -27,8 +27,8 @@ This directory contains the authoritative project documentation. Historical rele
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
 19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical authoritative `0.1.2pre` snapshot.
 20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical authoritative `0.1.3pre` snapshot.
-21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — authoritative consolidated `0.1.4pre` snapshot.
-22. [coupling-decoupling-work.md](coupling-decoupling-work.md) — temporary `0.1.5` coupling/decoupling implementation tracker.
+21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical authoritative `0.1.4pre` snapshot.
+22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
 
 ## Version policy
 
@@ -37,7 +37,9 @@ This directory contains the authoritative project documentation. Historical rele
 - `0.1.3a`–`0.1.3e` are immutable historical development stages.
 - `0.1.3pre` is the historical authoritative snapshot for the 0.1.3 series.
 - `0.1.4a`–`0.1.4i` are immutable lettered development stages recorded in changelogs.
-- `0.1.4pre` is the current consolidated snapshot for the 0.1.4 series.
+- `0.1.4pre` is the historical consolidated snapshot for the 0.1.4 series.
+- `0.1.5a`–`0.1.5f` are immutable lettered development stages recorded in changelogs.
+- `0.1.5pre` is the current consolidated snapshot for the 0.1.5 series.
 - Historical lettered stages are not rewritten when the series is consolidated.
 - Historical changes are documented in `CHANGELOG.md` and `docs/changelog/`.
 - If a historical commit has no reliable functional description, document it as `bugfix` rather than inventing behavior.
