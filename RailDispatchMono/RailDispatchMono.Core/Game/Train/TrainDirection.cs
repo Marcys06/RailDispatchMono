@@ -30,9 +30,11 @@ public sealed partial class Train
         for (int i = 0; i < count; i++)
             transforms[i] = GetVehicleTransform(i);
 
-        // Direction is an independent travel-state property. The physical first
-        // vehicle remains the simulation reference point and the composition list
-        // is never reversed or otherwise mutated by F7.
+        // F7 changes the travel direction of the complete physical consist.
+        // The logical composition order is unchanged, but the physical leading
+        // vehicle becomes the vehicle that was at the opposite end of the consist.
+        // Remapping preserved coordinates in reverse index order prevents vehicles
+        // from crossing through one another when movement resumes.
         _isReversed = !_isReversed;
         Direction = direction;
 
@@ -40,9 +42,18 @@ public sealed partial class Train
         _preservedVehicleRotations = new float[count];
         for (int i = 0; i < count; i++)
         {
-            _preservedVehiclePositions[i] = transforms[i].Position;
-            _preservedVehicleRotations[i] = transforms[i].Rotation;
+            int sourceIndex = count - 1 - i;
+            _preservedVehiclePositions[i] = transforms[sourceIndex].Position;
+            _preservedVehicleRotations[i] = NormalizeAngle(transforms[sourceIndex].Rotation + MathF.PI);
         }
+
+        // The simulation reference point is always the physical front of the
+        // consist. After F7 it therefore moves to the former last vehicle's
+        // position. The consist reverses as one formation; no vehicle overtakes
+        // another during the transition.
+        Position = _preservedVehiclePositions[0];
+        DistanceAlongTrack = 0f;
+        TotalDistance = 0f;
 
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
@@ -65,9 +76,6 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new System.ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        // The first vehicle is the simulation reference point. Subsequent vehicle
-        // centers are spaced by the length of the preceding vehicles. This remains
-        // indexed by Composition.Vehicles in both travel directions.
         float distance = 0f;
         for (int i = 0; i < vehicleIndex; i++)
             distance += Composition.Vehicles[i].Parameters.Length;
@@ -111,4 +119,13 @@ public sealed partial class Train
     }
 
     internal SignalController? GetSignalController() => _signalController;
+
+    private static float NormalizeAngle(float angle)
+    {
+        while (angle > MathF.PI)
+            angle -= MathF.Tau;
+        while (angle <= -MathF.PI)
+            angle += MathF.Tau;
+        return angle;
+    }
 }
