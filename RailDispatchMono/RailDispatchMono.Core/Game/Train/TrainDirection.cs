@@ -33,9 +33,6 @@ public sealed partial class Train
         bool newReversed = !_isReversed;
         int newMovementHeadIndex = newReversed ? count - 1 : 0;
 
-        // Position is the movement reference point. When reversing, the physical
-        // rear vehicle becomes the movement head, but Composition.Vehicles is
-        // deliberately never reordered.
         Position = transforms[newMovementHeadIndex].Position;
         _isReversed = newReversed;
         Direction = direction;
@@ -97,7 +94,8 @@ public sealed partial class Train
 
     internal bool TryGetPreservedVehiclePosition(int vehicleIndex, out Vector2 position)
     {
-        if (_preservedVehiclePositions != null &&
+        if (_totalTravelDistance <= 0.00001f &&
+            _preservedVehiclePositions != null &&
             vehicleIndex >= 0 &&
             vehicleIndex < _preservedVehiclePositions.Length)
         {
@@ -111,7 +109,8 @@ public sealed partial class Train
 
     internal bool TryGetPreservedVehicleRotation(int vehicleIndex, out float rotation)
     {
-        if (_preservedVehicleRotations != null &&
+        if (_totalTravelDistance <= 0.00001f &&
+            _preservedVehicleRotations != null &&
             vehicleIndex >= 0 &&
             vehicleIndex < _preservedVehicleRotations.Length)
         {
