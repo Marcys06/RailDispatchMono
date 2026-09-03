@@ -198,6 +198,9 @@ public sealed partial class Train
         if (distanceBehind <= MovementEpsilon)
             return Position;
 
+        if (TryGetPreservedVehiclePositionByDistance(distanceBehind, out Vector2 preservedPosition))
+            return preservedPosition;
+
         float targetDistance = _totalTravelDistance - distanceBehind;
 
         if (_trajectory.Count == 0 || targetDistance <= 0.0f)
@@ -222,6 +225,21 @@ public sealed partial class Train
         }
 
         return _trajectory[0].Position;
+    }
+
+    private bool TryGetPreservedVehiclePositionByDistance(float distanceBehind, out Vector2 position)
+    {
+        for (int i = 0; i < Composition.Vehicles.Count; i++)
+        {
+            if (MathF.Abs(GetDistanceToVehicle(i) - distanceBehind) <= MovementEpsilon &&
+                TryGetPreservedVehiclePosition(i, out position))
+            {
+                return true;
+            }
+        }
+
+        position = default;
+        return false;
     }
 
     private static Vector2 GetPositionAtEntry(MapPosition cell, TrackConnections direction)
