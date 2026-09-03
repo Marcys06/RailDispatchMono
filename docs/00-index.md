@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.4f`**  
-**Status: current documentation set**
+**Documentation baseline: `0.1.4pre`**  
+**Status: current consolidated documentation set**
 
 This directory contains the authoritative project documentation. Historical release changes belong in `docs/changelog/` and are not duplicated in current-state snapshots.
 
@@ -25,21 +25,23 @@ This directory contains the authoritative project documentation. Historical rele
 16. [16-screens-and-ui.md](16-screens-and-ui.md) — current UI/screen inventory.
 17. [17-game-map-and-geometry.md](17-game-map-and-geometry.md) — map and geometry rules.
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
-19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — authoritative `0.1.2pre` snapshot.
-20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — authoritative `0.1.3pre` snapshot.
+19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical authoritative `0.1.2pre` snapshot.
+20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical authoritative `0.1.3pre` snapshot.
+21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — authoritative consolidated `0.1.4pre` snapshot.
 
 ## Version policy
 
 - `0.1.2a`–`0.1.2k` are immutable historical development stages.
 - `0.1.2pre` is the authoritative stabilization snapshot for the 0.1.2 series.
 - `0.1.3a`–`0.1.3e` are immutable historical development stages.
-- `0.1.3pre` is the authoritative snapshot for the 0.1.3 series.
-- `0.1.4a`–`0.1.4f` are immutable lettered development stages recorded in changelogs.
-- Lettered development stages do not receive separate current-state files.
+- `0.1.3pre` is the historical authoritative snapshot for the 0.1.3 series.
+- `0.1.4a`–`0.1.4i` are immutable lettered development stages recorded in changelogs.
+- `0.1.4pre` is the current consolidated snapshot for the 0.1.4 series.
+- Historical lettered stages are not rewritten when the series is consolidated.
 - Historical changes are documented in `CHANGELOG.md` and `docs/changelog/`.
 - If a historical commit has no reliable functional description, document it as `bugfix` rather than inventing behavior.
-- Failed lettered stages are not rewritten in place; their corrections belong to a later stage.
+- Failed lettered stages are not rewritten in place; their corrections belong to a later stage or the consolidated `pre` milestone.
 
 ## Source of truth
 
-When documentation conflicts with code, inspect the current implementation and its call sites first. Update the affected authoritative documentation after confirmed architectural or behavioral changes. Current-state snapshots exist only for `pre` milestones; detailed change history belongs in the changelog.
+When documentation conflicts with code, inspect the current implementation and its call sites first. Update the affected authoritative documentation after confirmed architectural or behavioral changes. Current-state snapshots exist for consolidated `pre` milestones; detailed change history belongs in the changelog.
