@@ -32,10 +32,56 @@ public sealed partial class TrainManager
         KeyboardState keyboard = Keyboard.GetState();
         if (IsNewCouplingKey(keyboard, Keys.C)) ExecuteCouplingCommand();
         if (IsNewCouplingKey(keyboard, Keys.X)) ExecuteDecouplingCommand(cursorWorldPosition);
+        if (IsNewCouplingKey(keyboard, Keys.F7)) ExecuteLocomotiveReverseCommand(cursorWorldPosition);
         _previousCouplingKeyboard = keyboard;
     }
 
     private bool IsNewCouplingKey(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && _previousCouplingKeyboard.IsKeyUp(key);
+
+    private void ExecuteLocomotiveReverseCommand(Vector2? cursorWorldPosition)
+    {
+        if (!cursorWorldPosition.HasValue)
+        {
+            DebugManager.Log("[TRAIN] Command F7 rejected: cursor position unavailable.");
+            return;
+        }
+
+        Train? train = GetTrainAtWorldPosition(cursorWorldPosition.Value);
+        if (train == null)
+        {
+            DebugManager.Log("[TRAIN] Command F7 rejected: no train under the cursor.");
+            return;
+        }
+
+        if (train.Speed != 0f)
+        {
+            DebugManager.Log($"[TRAIN] Command F7 rejected: locomotive reversal requires 0 km/h (current {train.Speed * 3.6f:F1} km/h).");
+            return;
+        }
+
+        var locomotive = train.Composition.Locomotive;
+        if (locomotive == null)
+        {
+            DebugManager.Log("[TRAIN] Command F7 rejected: selected train has no locomotive.");
+            return;
+        }
+
+        train.SetDirection(GetOppositeDirection(train.Direction));
+        locomotive.Orientation = locomotive.Orientation == VehicleOrientation.Forward
+            ? VehicleOrientation.Reverse
+            : VehicleOrientation.Forward;
+
+        DebugManager.Log($"[TRAIN] Command F7: locomotive reversed for train {train.Id.ToString()[..8]}; direction={train.Direction}, locomotive orientation={locomotive.Orientation}.");
+    }
+
+    private static TrackConnections GetOppositeDirection(TrackConnections direction) => direction switch
+    {
+        TrackConnections.North => TrackConnections.South,
+        TrackConnections.South => TrackConnections.North,
+        TrackConnections.East => TrackConnections.West,
+        TrackConnections.West => TrackConnections.East,
+        _ => TrackConnections.None
+    };
 
     private void ExecuteCouplingCommand()
     {
