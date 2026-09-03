@@ -175,25 +175,18 @@ public sealed partial class Train
 
         float distanceBehind = GetMovementDistanceToVehicle(vehicleIndex);
 
-        // On straight track, the rigid offsets preserve exact vehicle spacing and
-        // make F7 a pure direction change without moving the consist. Once enough
-        // movement history exists, use the travelled path so every vehicle follows
-        // curves instead of cutting across them with a straight-line offset.
-        Vector2 position;
+        // The head uses the exact current tangent. Other vehicles use the same
+        // historical trajectory sample for both position and tangent, so they
+        // enter and leave curves one after another instead of rotating together.
         if (distanceBehind <= MovementEpsilon)
-        {
-            position = Position;
-        }
-        else if (_totalTravelDistance >= distanceBehind - MovementEpsilon && _trajectory.Count > 0)
-        {
-            position = GetPositionBehindHead(distanceBehind);
-        }
-        else
-        {
-            position = Position + _vehicleOffsets[vehicleIndex];
-        }
+            return (Position, GetRotation());
 
-        return (position, GetDirectionAngle(Direction));
+        if (TryGetTrajectoryTransformBehindHead(distanceBehind, out Vector2 trajectoryPosition, out float trajectoryRotation))
+            return (trajectoryPosition, trajectoryRotation);
+
+        // Before enough trajectory history exists, the consist is rigid on a
+        // straight section. This also keeps F7 position-invariant.
+        return (Position + _vehicleOffsets[vehicleIndex], GetDirectionAngle(Direction));
     }
 
     public IReadOnlyList<(Vector2 Position, float Distance)> GetTrajectoryHistory()
