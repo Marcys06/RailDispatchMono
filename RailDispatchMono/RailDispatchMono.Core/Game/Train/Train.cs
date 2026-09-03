@@ -173,7 +173,26 @@ public sealed partial class Train
         if (_vehicleOffsets.Length != Composition.Vehicles.Count)
             RebuildVehicleOffsets();
 
-        Vector2 position = Position + _vehicleOffsets[vehicleIndex];
+        float distanceBehind = GetMovementDistanceToVehicle(vehicleIndex);
+
+        // On straight track, the rigid offsets preserve exact vehicle spacing and
+        // make F7 a pure direction change without moving the consist. Once enough
+        // movement history exists, use the travelled path so every vehicle follows
+        // curves instead of cutting across them with a straight-line offset.
+        Vector2 position;
+        if (distanceBehind <= MovementEpsilon)
+        {
+            position = Position;
+        }
+        else if (_totalTravelDistance >= distanceBehind - MovementEpsilon && _trajectory.Count > 0)
+        {
+            position = GetPositionBehindHead(distanceBehind);
+        }
+        else
+        {
+            position = Position + _vehicleOffsets[vehicleIndex];
+        }
+
         return (position, GetDirectionAngle(Direction));
     }
 
