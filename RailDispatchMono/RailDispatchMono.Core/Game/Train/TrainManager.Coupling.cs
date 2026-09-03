@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Debug;
 using RailDispatchMono.Core.Game.Railway;
 using System;
@@ -9,6 +10,7 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class TrainManager
 {
+    private KeyboardState _previousCouplingKeyboard;
     private Vehicle? _lastCoupledVehicle;
     private VehicleEnd _lastCoupledEnd;
 
@@ -28,15 +30,20 @@ public sealed partial class TrainManager
     public const SignalAspect CouplingSignalAspect = SignalAspect.Reserve3;
     public float CouplingCommandSpeedKmh { get; private set; } = CouplingSpeed5Kmh;
 
-    public void SetCouplingCommandSpeed(float speedKmh)
+    public void HandleCouplingHotkeys()
     {
-        if (speedKmh != CouplingSpeed3Kmh && speedKmh != CouplingSpeed4Kmh && speedKmh != CouplingSpeed5Kmh)
-            throw new ArgumentOutOfRangeException(nameof(speedKmh), "Coupling speed must be 3, 4 or 5 km/h.");
-
-        CouplingCommandSpeedKmh = speedKmh;
+        KeyboardState keyboard = Keyboard.GetState();
+        if (IsNewCouplingKey(keyboard, Keys.F6)) CouplingCommandSpeedKmh = CouplingSpeed3Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.F7)) CouplingCommandSpeedKmh = CouplingSpeed4Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.F8)) CouplingCommandSpeedKmh = CouplingSpeed5Kmh;
+        if (IsNewCouplingKey(keyboard, Keys.C)) ExecuteCouplingCommand();
+        if (IsNewCouplingKey(keyboard, Keys.X)) ExecuteDecouplingCommand();
+        _previousCouplingKeyboard = keyboard;
     }
 
-    public void ExecuteCouplingCommand()
+    private bool IsNewCouplingKey(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && _previousCouplingKeyboard.IsKeyUp(key);
+
+    private void ExecuteCouplingCommand()
     {
         CouplingCandidate? selected = null;
         float limitMps = CouplingCommandSpeedKmh / 3.6f;
@@ -68,7 +75,7 @@ public sealed partial class TrainManager
         DebugManager.Log($"[COUPLING] Command C executed at {CouplingCommandSpeedKmh:F0} km/h shunting limit / S14 Rezerwowy 3.");
     }
 
-    public void ExecuteDecouplingCommand()
+    private void ExecuteDecouplingCommand()
     {
         if (_lastCoupledVehicle != null)
         {
