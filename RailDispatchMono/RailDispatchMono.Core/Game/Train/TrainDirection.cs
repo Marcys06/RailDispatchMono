@@ -30,9 +30,9 @@ public sealed partial class Train
         for (int i = 0; i < count; i++)
             transforms[i] = GetVehicleTransform(i);
 
-        // Position remains anchored to the same physical first vehicle. Direction
-        // is the independent travel state. Reversing therefore never changes the
-        // composition order and never moves the formation at the instant of F7.
+        // Direction is an independent travel-state property. The physical first
+        // vehicle remains the simulation reference point and the composition list
+        // is never reversed or otherwise mutated by F7.
         _isReversed = !_isReversed;
         Direction = direction;
 
@@ -65,10 +65,12 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new System.ArgumentOutOfRangeException(nameof(vehicleIndex));
 
+        // The first vehicle is the simulation reference point. Subsequent vehicle
+        // centers are spaced by the length of the preceding vehicles. This remains
+        // indexed by Composition.Vehicles in both travel directions.
         float distance = 0f;
         for (int i = 0; i < vehicleIndex; i++)
             distance += Composition.Vehicles[i].Parameters.Length;
-        distance += Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
         return distance;
     }
 
