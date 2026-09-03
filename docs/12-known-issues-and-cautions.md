@@ -1,8 +1,8 @@
 # Known issues and cautions
 
-## Current baseline: `0.1.4pre`
+## Current baseline: `0.1.5pre`
 
-`0.1.4pre` is the current consolidated 0.1.4 documentation and gameplay milestone. Lettered `0.1.4a`–`0.1.4i` entries remain historical development stages.
+`0.1.5pre` is the current consolidated 0.1.5 documentation and gameplay milestone. Lettered `0.1.5a`–`0.1.5f` entries remain historical development stages.
 
 ## Myra integration
 
@@ -20,6 +20,7 @@
 - Runtime save schema remains version `1`; `ShortName` loading is backward-compatible when the field is absent.
 - Auto-save is intentionally disabled.
 - Invalid/incomplete save data must produce a user-facing notification rather than silent partial loading.
+- Individual runtime coupling connections are not persisted.
 
 ## Train and rolling stock
 
@@ -30,21 +31,23 @@
 - Signal stopping and RadioStop must use effective consist braking, not a raw locomotive value.
 - Train diagnostics beginning with `[TRAIN]` are normalized to `[TRAIN:<first-8-guid-chars>]` while a train update is active.
 
-## Coupling boundary
+## Coupling and decoupling
 
-Static coupling metadata exists on vehicles, but runtime coupling is not implemented in `0.1.4pre`.
+Rigid runtime coupling and decoupling are implemented through `CouplingService`.
 
-Not yet implemented:
+Current command contract:
 
-- coupled/uncoupled runtime connection state;
-- coupling distance detection;
-- coupling/decoupling commands;
-- consist merge/split as a coupling action;
-- coupler compatibility checks;
-- coupling forces, slack or longitudinal dynamics;
-- persistence of individual coupler connections.
+- `C` couples the nearest valid outer-boundary candidate;
+- `X` decouples the last coupling created by `C`, with fallback to the first remaining runtime connection;
+- `F6` / `F7` / `F8` select `3` / `4` / `5 km/h` shunting limits, with `5 km/h` as default.
 
-These belong to the planned `0.1.5` implementation line.
+Coupling requires compatible free coupler ends, boundary positions, sufficient proximity and end alignment. Successful coupling and decoupling stop the affected consists through `RadioStop` before changing runtime composition.
+
+The current command path is intentionally temporary. There is no vehicle/end selection UI yet, and no user-facing failure-reason panel. Dynamic coupling forces, slack, impact shock, animation/delay, brake-pipe propagation and individual connection persistence are also not implemented.
+
+## Verification
+
+There is no dedicated automated Core test project in the current repository. Runtime coupling/decoupling changes require solution build and live gameplay verification in the user's .NET/MonoGame environment.
 
 ## Startup and pause
 
@@ -60,7 +63,7 @@ Junction/signal radial interaction UI, legacy floating/tooltips where still used
 
 ## Diagnostics
 
-Duplicate log lines do not by themselves prove duplicated simulation updates. Inspect logger subscriptions/call sites and screen/update traversal before changing game-loop logic. Train movement diagnostics now carry a short train GUID prefix for correlation.
+Duplicate log lines do not by themselves prove duplicated simulation updates. Inspect logger subscriptions/call sites and screen/update traversal before changing game-loop logic. Train movement diagnostics now carry a short train GUID prefix for correlation; coupling operations use `[COUPLING]` diagnostics.
 
 ## Rule for future agents
 
