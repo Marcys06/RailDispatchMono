@@ -5,7 +5,8 @@ namespace RailDispatchMono.Core.Game.Train;
 
 public sealed partial class Train
 {
-    private Vector2[]? _preservedVehicleOffsets;
+    private bool _isReversed;
+    private Vector2[]? _preservedVehiclePositions;
     private float[]? _preservedVehicleRotations;
 
     internal void SetDirectionPreservingVehiclePositions(TrackConnections direction)
@@ -13,31 +14,94 @@ public sealed partial class Train
         ValidateDirection(direction);
 
         int count = Composition.Vehicles.Count;
-        _preservedVehicleOffsets = new Vector2[count];
-        _preservedVehicleRotations = new float[count];
-
-        Vector2 headPosition = Position;
-        for (int i = 0; i < count; i++)
+        if (count == 0)
         {
-            var transform = GetVehicleTransform(i);
-            _preservedVehicleOffsets[i] = transform.Position - headPosition;
-            _preservedVehicleRotations[i] = transform.Rotation;
+            Direction = direction;
+            _isReversed = false;
+            ClearPreservedVehiclePositions();
+            _lastSignal = null;
+            _lastSignalSpeed = _maxSpeed;
+            ResetCurveState();
+            ResetTrajectory();
+            return;
         }
 
+        var transforms = new (Vector2 Position, float Rotation)[count];
+        for (int i = 0; i < count; i++)
+            transforms[i] = GetVehicleTransform(i);
+
+        bool newReversed = !_isReversed;
+        int newMovementHeadIndex = newReversed ? count - 1 : 0;
+
+        // Position is the movement reference point. When reversing, the physical
+        // rear vehicle becomes the movement head, but Composition.Vehicles is
+        // deliberately never reordered.
+        Position = transforms[newMovementHeadIndex].Position;
+        _isReversed = newReversed;
         Direction = direction;
+
+        _preservedVehiclePositions = new Vector2[count];
+        _preservedVehicleRotations = new float[count];
+        for (int i = 0; i < count; i++)
+        {
+            _preservedVehiclePositions[i] = transforms[i].Position;
+            _preservedVehicleRotations[i] = transforms[i].Rotation;
+        }
+
         _lastSignal = null;
         _lastSignalSpeed = _maxSpeed;
         ResetCurveState();
         ResetTrajectory();
     }
 
+    internal void RestoreTravelDirection(bool reversed)
+    {
+        _isReversed = reversed;
+        ClearPreservedVehiclePositions();
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
+        ResetCurveState();
+        ResetTrajectory();
+    }
+
+    internal int GetMovementHeadVehicleIndex()
+    {
+        return Composition.Vehicles.Count == 0
+            ? -1
+            : (_isReversed ? Composition.Vehicles.Count - 1 : 0);
+    }
+
+    internal float GetMovementDistanceToVehicle(int vehicleIndex)
+    {
+        if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
+            throw new System.ArgumentOutOfRangeException(nameof(vehicleIndex));
+
+        int headIndex = GetMovementHeadVehicleIndex();
+        if (vehicleIndex == headIndex)
+            return 0f;
+
+        float distance = 0f;
+        if (!_isReversed)
+        {
+            for (int i = 0; i < vehicleIndex; i++)
+                distance += Composition.Vehicles[i].Parameters.Length;
+        }
+        else
+        {
+            for (int i = Composition.Vehicles.Count - 1; i > vehicleIndex; i--)
+                distance += Composition.Vehicles[i].Parameters.Length;
+        }
+
+        return distance;
+    }
+
     internal bool TryGetPreservedVehiclePosition(int vehicleIndex, out Vector2 position)
     {
-        if (_preservedVehicleOffsets != null &&
+        if (_preservedVehiclePositions != null &&
             vehicleIndex >= 0 &&
-            vehicleIndex < _preservedVehicleOffsets.Length)
+            vehicleIndex < _preservedVehiclePositions.Length)
         {
-            position = Position + _preservedVehicleOffsets[vehicleIndex];
+            position = _preservedVehiclePositions[vehicleIndex];
             return true;
         }
 
@@ -61,7 +125,7 @@ public sealed partial class Train
 
     internal void ClearPreservedVehiclePositions()
     {
-        _preservedVehicleOffsets = null;
+        _preservedVehiclePositions = null;
         _preservedVehicleRotations = null;
     }
 
