@@ -6,13 +6,14 @@ The `docs/` directory preserves architectural context, implementation contracts 
 
 ## Current baseline
 
-The current project baseline is `0.1.4pre`.
+The current project baseline is `0.1.5pre`.
 
 Only consolidated `pre` milestones receive current-state snapshots:
 
 - `19-current-state-0.1.2pre.md`
 - `20-current-state-0.1.3pre.md`
 - `21-current-state-0.1.4pre.md`
+- `22-current-state-0.1.5pre.md`
 
 Lettered stages do not receive current-state files.
 
@@ -28,7 +29,7 @@ Update maintained documentation when a change affects project structure, depende
 
 ## Change discipline
 
-Historical lettered stages remain immutable. Do not rewrite `0.1.4i` as if it were a final release. The `0.1.4pre` snapshot consolidates the implemented 0.1.4 line without erasing its historical changelog.
+Historical lettered stages remain immutable. Do not rewrite a historical lettered stage as if it were a final release. A current `pre` snapshot consolidates the implemented line without erasing its historical changelog.
 
 ## Audit procedure
 
@@ -47,4 +48,4 @@ For a substantial change:
 
 ## AI handoff
 
-Start with `docs/00-index.md`, then read architecture/lifecycle/screen/domain/AI documents relevant to the task and the current `0.1.4pre` snapshot. Treat source code and call sites as authoritative if any documentation is stale.
+Start with `docs/00-index.md`, then read architecture/lifecycle/screen/domain/AI documents relevant to the task and the current `0.1.5pre` snapshot. Treat source code and call sites as authoritative if any documentation is stale.
