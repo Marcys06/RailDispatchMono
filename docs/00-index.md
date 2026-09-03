@@ -28,6 +28,7 @@ This directory contains the authoritative project documentation. Historical rele
 19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical authoritative `0.1.2pre` snapshot.
 20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical authoritative `0.1.3pre` snapshot.
 21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — authoritative consolidated `0.1.4pre` snapshot.
+22. [coupling-decoupling-work.md](coupling-decoupling-work.md) — temporary `0.1.5` coupling/decoupling implementation tracker.
 
 ## Version policy
 
