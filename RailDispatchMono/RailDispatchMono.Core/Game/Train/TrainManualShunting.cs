@@ -1,3 +1,4 @@
+using RailDispatchMono.Core.Game.Simulation;
 using System;
 
 namespace RailDispatchMono.Core.Game.Train;
@@ -18,7 +19,7 @@ public sealed partial class Train
         Speed = MathF.Min(Speed + accelerationRate * deltaTime, targetSpeedMps);
         ClearRadioStop();
 
-        float distance = Simulation.SimulationScale.MetersToGrid(Speed * deltaTime);
+        float distance = SimulationScale.MetersToGrid(Speed * deltaTime);
         if (distance > MovementEpsilon)
             Move(distance);
     }
