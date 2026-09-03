@@ -11,8 +11,6 @@ namespace RailDispatchMono.Core.Game.Train;
 public sealed partial class TrainManager
 {
     private KeyboardState _previousCouplingKeyboard;
-    private Vehicle? _lastCoupledVehicle;
-    private VehicleEnd _lastCoupledEnd;
 
     public CouplingService CouplingService { get; } = new();
 
@@ -51,7 +49,7 @@ public sealed partial class TrainManager
         }
         if (!selected.HasValue)
         {
-            DebugManager.Log($"[COUPLING] Command C rejected: no valid candidate at <= {CouplingSpeedKmh:F0} km/h (S14 Rezerwowy 3).");
+            DebugManager.Log($"[COUPLING] Command C rejected: no valid candidate at <= {CouplingSpeedKmh:F0} km/h (fixed shunting limit).");
             return;
         }
         var candidateValue = selected.Value;
@@ -61,14 +59,7 @@ public sealed partial class TrainManager
             DebugManager.Log($"[COUPLING] Command C failed: {result.Reason}.");
             return;
         }
-        Vehicle firstVehicle = candidateValue.FirstTrain.Composition.Vehicles[candidateValue.FirstVehicleIndex];
-        var connection = firstVehicle.CouplingState.Get(candidateValue.FirstEnd);
-        if (connection != null)
-        {
-            if (ContainsVehicle(connection.VehicleA)) { _lastCoupledVehicle = connection.VehicleA; _lastCoupledEnd = connection.EndA; }
-            else { _lastCoupledVehicle = connection.VehicleB; _lastCoupledEnd = connection.EndB; }
-        }
-        DebugManager.Log($"[COUPLING] Command C executed at fixed {CouplingSpeedKmh:F0} km/h shunting limit / S14 Rezerwowy 3.");
+        DebugManager.Log($"[COUPLING] Command C executed at fixed {CouplingSpeedKmh:F0} km/h shunting limit.");
     }
 
     private void ExecuteDecouplingCommand(Vector2? cursorWorldPosition)
@@ -105,14 +96,12 @@ public sealed partial class TrainManager
             return;
         }
 
-        _lastCoupledVehicle = null;
         DebugManager.Log($"[COUPLING] Command X success: train {train.Id.ToString()[..8]} was split at wagon index {vehicleIndex} / {end}. New detached train was created and stopped.");
     }
 
     private (Train Train, Vehicle Vehicle, int VehicleIndex, VehicleEnd End)? FindDecouplingTarget(Vector2 cursorWorldPosition)
     {
-        const float detectionRadius = 0.6f;
-        float bestDistance = detectionRadius;
+        float bestDistance = float.MaxValue;
         (Train Train, Vehicle Vehicle, int VehicleIndex, VehicleEnd End)? best = null;
 
         foreach (var train in _trains)
@@ -131,8 +120,9 @@ public sealed partial class TrainManager
                     ReferenceEquals(connection.VehicleA, vehicle) ? connection.EndA == VehicleEnd.Rear : connection.EndB == VehicleEnd.Rear)
                     ?? connections[0];
 
+                float detectionRadius = MathF.Max(0.6f, vehicle.Parameters.Length * 0.5f);
                 float distance = Vector2.Distance(train.GetVehicleTransform(i).Position, cursorWorldPosition);
-                if (distance >= bestDistance)
+                if (distance >= detectionRadius || distance >= bestDistance)
                     continue;
 
                 VehicleEnd end = ReferenceEquals(preferredConnection.VehicleA, vehicle)
@@ -146,8 +136,6 @@ public sealed partial class TrainManager
 
         return best;
     }
-
-    private bool ContainsVehicle(Vehicle vehicle) => _trains.Any(train => train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle)));
 
     public IReadOnlyList<CouplingCandidate> GetCouplingCandidates(Train train)
     {
