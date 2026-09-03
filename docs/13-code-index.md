@@ -34,23 +34,30 @@ This index is a navigation aid based on source files confirmed in the repository
 | Path | Role |
 |---|---|
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model. Signal braking uses composition-aware physical mass data. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear 1.30 exponent to locomotive performance. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear 1.30 exponent; effective Vmax is supplied by `TrainComposition`. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Authoritative train lifecycle and composition-based creation. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass and power/load-limited Vmax. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Internal physics parameters plus physical mass/length metadata. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Wagon.cs` | Passenger/freight/service wagon and passenger state. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/LocomotiveParameters.cs` | Locomotive-specific physical parameters, including `PowerMW`. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle and short display label. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Wagon.cs` | Passenger/freight/service wagon, passenger state and short display label. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Railway/Depot.cs` | Depot building domain object. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Railway/DepotController.cs` | Depot collection/ownership. |
+
+## Rendering
+
+| Path | Role |
+|---|---|
+| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/TrainRenderer.cs` | Top-down rolling-stock rendering: electric/diesel locomotive colors, wagon colors and centered white vehicle labels. Labels are normalized for both travel directions. |
 
 ## Rolling stock catalogue
 
 | Path | Role |
 |---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/RollingStockCatalog.cs` | Registered locomotive and wagon definitions. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/LocomotiveDefinition.cs` | Locomotive catalogue definition and factory. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/WagonDefinition.cs` | Wagon catalogue definition and factory. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/RollingStockCatalog.cs` | Registered locomotive/wagon definitions, power values and short labels. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/LocomotiveDefinition.cs` | Locomotive catalogue definition, power and vehicle factory. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/WagonDefinition.cs` | Wagon catalogue definition, short label and vehicle factory. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/TractionType.cs` | Electric/diesel classification. |
 
 ## Input and settings
