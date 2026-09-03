@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.3pre`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.5pre`.
 
 ## 1. Never invent architecture
 
@@ -20,7 +20,7 @@ Understand `GameScreen`, transitions, popup behavior and input routing before ch
 
 ## 5. Input ownership
 
-A migrated Myra surface uses the shared Myra `Desktop`; it must not duplicate the same interaction through a legacy UI path.
+A migrated Myra surface uses the shared Myra `Desktop`; it must not duplicate the same interaction through a legacy UI path. The current coupling command path is the temporary `TrainManager.HandleCouplingHotkeys()` implementation; do not duplicate it in another owner.
 
 ## 6. Preserve state ownership
 
@@ -56,7 +56,7 @@ If documentation and code disagree, inspect implementation and call sites before
 
 ## 14. Update documentation with architecture changes
 
-Update the relevant maintained documentation and changelog when behavior or architecture changes. Do not create lettered current-state snapshots.
+Update the relevant maintained documentation and changelog when behavior or architecture changes. Do not rewrite historical lettered stages.
 
 ## 15. Save-system contract
 
@@ -73,6 +73,7 @@ The application enters through Main Menu. New Game creates a new empty game stat
 - Pause is owned by `GameplayScreen` and toggled with `ESC` or the Myra pause action.
 - Depots are world objects and the entry point for train creation.
 - Wagon routes describe passenger-service destinations and do not directly control locomotive movement.
+- Rigid coupling/decoupling is a domain operation owned by `CouplingService` and exposed through the current `TrainManager` command path.
 
 ## 18. Myra contract
 
@@ -87,6 +88,16 @@ The application enters through Main Menu. New Game creates a new empty game stat
 - `MyraPauseView` exposes Resume, Save, Load and Quit; gameplay owns the operations.
 - Myra does not automatically replace railway rendering or remaining world-specific radial/tooltip UI.
 
-## 19. Documentation version discipline
+## 19. Coupling contract
 
-Only `0.1.2pre` and `0.1.3pre` have current-state snapshots. Lettered stages are documented in the changelog.
+- `Vehicle.Coupling` is static per-end coupler data.
+- `VehicleCouplingState` and `CouplingConnection` represent runtime connections.
+- `CouplingService` is authoritative for coupling/decoupling validation and state mutation.
+- `TrainComposition` remains the only authoritative ordered vehicle container.
+- `C`/`X`/`F6`/`F7`/`F8` are the current temporary command path.
+- UI must not mutate `TrainComposition.Vehicles` or coupling state directly.
+- Do not introduce coupling physics, persistence or a second command path without updating the current architecture and docs.
+
+## 20. Documentation version discipline
+
+`0.1.2pre`, `0.1.3pre`, `0.1.4pre` and `0.1.5pre` have current-state snapshots. Lettered stages remain historical changelog records. When code changes, update the affected maintained docs, the current `0.1.5pre` snapshot and the changelog.
