@@ -30,11 +30,10 @@ public sealed partial class Train
         for (int i = 0; i < count; i++)
             transforms[i] = GetVehicleTransform(i);
 
-        bool newReversed = !_isReversed;
-        int newMovementHeadIndex = newReversed ? count - 1 : 0;
-
-        Position = transforms[newMovementHeadIndex].Position;
-        _isReversed = newReversed;
+        // Position remains anchored to the same physical first vehicle. Direction
+        // is the independent travel state. Reversing therefore never changes the
+        // composition order and never moves the formation at the instant of F7.
+        _isReversed = !_isReversed;
         Direction = direction;
 
         _preservedVehiclePositions = new Vector2[count];
@@ -61,34 +60,15 @@ public sealed partial class Train
         ResetTrajectory();
     }
 
-    internal int GetMovementHeadVehicleIndex()
-    {
-        return Composition.Vehicles.Count == 0
-            ? -1
-            : (_isReversed ? Composition.Vehicles.Count - 1 : 0);
-    }
-
     internal float GetMovementDistanceToVehicle(int vehicleIndex)
     {
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new System.ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        int headIndex = GetMovementHeadVehicleIndex();
-        if (vehicleIndex == headIndex)
-            return 0f;
-
         float distance = 0f;
-        if (!_isReversed)
-        {
-            for (int i = 0; i < vehicleIndex; i++)
-                distance += Composition.Vehicles[i].Parameters.Length;
-        }
-        else
-        {
-            for (int i = Composition.Vehicles.Count - 1; i > vehicleIndex; i--)
-                distance += Composition.Vehicles[i].Parameters.Length;
-        }
-
+        for (int i = 0; i < vehicleIndex; i++)
+            distance += Composition.Vehicles[i].Parameters.Length;
+        distance += Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
         return distance;
     }
 
