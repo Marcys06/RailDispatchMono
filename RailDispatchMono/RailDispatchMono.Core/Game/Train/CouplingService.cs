@@ -64,6 +64,11 @@ public sealed class CouplingService
         firstTrain.RadioStop();
         secondTrain.RadioStop();
 
+        // F7 keeps a temporary rendering snapshot. A composition mutation makes
+        // that snapshot invalid, so discard it before rebuilding the consist.
+        firstTrain.ClearPreservedVehiclePositions();
+        secondTrain.ClearPreservedVehiclePositions();
+
         var connection = new CouplingConnection(
             firstTrain.Composition.Vehicles[firstVehicleIndex], firstEnd,
             secondTrain.Composition.Vehicles[secondVehicleIndex], secondEnd);
@@ -87,16 +92,11 @@ public sealed class CouplingService
         }
 
         leadingTrain.Speed = 0f;
-
-        // Coupling changes the consist boundary. Rebuild both manager-level and
-        // train-local signal context from the signal that is actually ahead of
-        // the resulting train, rather than inheriting stale state from either
-        // source train.
         manager.ResetSignalStateAfterChange(leadingTrain);
 
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
-        return CouplingOperationResult.Ok;
+        return CouplingOperationResult.Ok();
     }
 
     public CouplingOperationResult Decouple(TrainManager manager, Train train, Vehicle firstVehicle, VehicleEnd firstEnd)
@@ -134,6 +134,7 @@ public sealed class CouplingService
         TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
         train.Speed = 0f;
         train.RadioStop();
+        train.ClearPreservedVehiclePositions();
         var splitComposition = train.Composition.Split(splitIndex);
 
         connection.VehicleA.CouplingState.Set(connection.EndA, null);
@@ -141,12 +142,14 @@ public sealed class CouplingService
 
         var detached = new Train(newHeadTransform.Position, newDirection, 0f, splitComposition.Vehicles);
         detached.SetMap(manager.Map);
+        detached.SetSignalController(train.GetSignalController() ?? new SignalController(manager.Map));
         detached.RadioStop();
         manager.RegisterCouplingTrain(detached);
         manager.ResetSignalStateAfterChange(train);
+        manager.ResetSignalStateAfterChange(detached);
 
-        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped.");
-        return CouplingOperationResult.Ok;
+        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped and signal context rebuilt.");
+        return CouplingOperationResult.Ok();
     }
 
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
@@ -158,10 +161,6 @@ public sealed class CouplingService
         Train secondTrain, int secondIndex, VehicleEnd secondEnd,
         out Train leading, out Train trailing)
     {
-        // A locomotive is always kept first in the logical consist when coupling
-        // a locomotive train with a wagon-only train. Previously the result
-        // depended on which train happened to be enumerated first by C, so the
-        // same physical A+B operation could produce A-B or B-A.
         bool firstHasLocomotive = firstTrain.Composition.Locomotive != null;
         bool secondHasLocomotive = secondTrain.Composition.Locomotive != null;
         if (firstHasLocomotive != secondHasLocomotive)
