@@ -20,9 +20,9 @@ public static class RollingStockCatalog
 
     public static IReadOnlyList<WagonDefinition> Wagons { get; } = new[]
     {
-        new WagonDefinition("PassengerCoach", "Wagon pasażerski", 40f, 26.4f, 160f, WagonType.Passenger, 80),
-        new WagonDefinition("PassengerCoach2", "Wagon pasażerski 2", 38f, 26.4f, 200f, WagonType.Passenger, 80),
-        new WagonDefinition("PassengerCoach3", "Wagon pasażerski 3", 42f, 26.4f, 160f, WagonType.Passenger, 96)
+        new WagonDefinition("PassengerCoach", "Wagon pasażerski", 40f, 26.4f, 160f, WagonType.Passenger, 80, "1KL"),
+        new WagonDefinition("PassengerCoach2", "Wagon pasażerski 2", 38f, 26.4f, 200f, WagonType.Passenger, 80, "2KL"),
+        new WagonDefinition("PassengerCoach3", "Wagon pasażerski 3", 42f, 26.4f, 160f, WagonType.Passenger, 96, "3KL")
     };
 
     public static LocomotiveDefinition GetLocomotive(string id) =>
