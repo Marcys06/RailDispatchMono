@@ -1,5 +1,9 @@
 # Game domain
 
+## Current consolidated baseline
+
+`0.1.4pre` is the current consolidated 0.1.4 gameplay/domain baseline. The lettered `0.1.4a`–`0.1.4i` stages remain historical records.
+
 ## Railway subsystem
 
 The repository contains `Game/Railway` domain classes including `BlockController`, `Junction`, `TrackRoute`, `Depot` and `DepotController`. Railway infrastructure/control remains owned by the domain layer rather than by screens.
@@ -35,27 +39,35 @@ The current gameplay calibration uses:
 - above the supported mass, `multiplier = (supportedMass / totalMass)^0.55`;
 - effective Vmax is `base locomotive Vmax * multiplier`, additionally limited by wagon Vmax.
 
-This produces the intended calibration with 40 t passenger wagons: `EU200` (5.5 MW, 84 t) with 10 wagons (484 t total) keeps 200 km/h, while `SU42` (1.2 MW, 74 t) with 5 wagons (274 t total) is approximately 75 km/h and with 10 wagons (474 t total) approximately 55 km/h.
+The documented calibration is: `EU200` (5.5 MW, 84 t) with ten 40 t passenger wagons remains at 200 km/h; `SU42` (1.2 MW, 74 t) with five 40 t wagons is approximately 75 km/h and with ten is approximately 55 km/h.
 
 ### Speed-dependent signal stopping
 
-Signal stopping uses the same effective consist braking capability as movement. The stopping calculation must not use a raw vehicle braking value because that would ignore the `1.30` mass penalty and underestimate the distance required by heavy trains.
+Signal stopping uses the same effective consist braking capability as movement. A raw vehicle braking value must not be used for heavy-consist stopping because it ignores the `1.30` mass penalty.
 
-For a `Stop` or `StopStation` aspect, the target speed is derived from the available distance using the kinematic relation `v = sqrt(2*a*d)`. The available distance includes the current reaction-distance allowance and excludes the configured stopping offset plus the physical half-length of the leading locomotive. The current stopping offset is `0.8` map cell, with `1 map cell = 10 m`.
+For a `Stop` or `StopStation` aspect, the target speed is derived from the available distance using `v = sqrt(2*a*d)`. The available distance includes the current reaction-distance allowance and excludes the configured stopping offset plus the physical half-length of the leading locomotive. The current stopping offset is `0.8` map cell, with `1 map cell = 10 m`.
 
 Speed-restricted non-stop signal aspects use the same effective braking rate when determining whether there is enough distance to reduce from the current speed to the aspect's target speed.
 
 ### RadioStop safety
 
-`TrainCollisionController` retains a minimum RadioStop safety distance of `3` map cells, but the protected distance is now speed-dependent. At higher speed it expands to cover:
+`TrainCollisionController` retains a minimum RadioStop safety distance of `3` map cells, but the protected distance is speed-dependent. At higher speed it expands to cover:
 
 - current braking distance using the effective consist braking rate;
 - `0.15 s` reaction distance;
 - a `0.8`-cell safety buffer.
 
-Therefore RadioStop no longer relies on a fixed 3-cell scan at all speeds. A protecting matching signal encountered before the conflicting train still suppresses RadioStop for that route segment.
+A protecting matching signal encountered before the conflicting train still suppresses RadioStop for that route segment. RadioStop is a collision-protection fallback, not a replacement for signal or block authority.
 
-RadioStop remains a collision-protection fallback, not a replacement for signal or block authority.
+## Train diagnostics
+
+During `Train.Update`, the movement layer establishes a temporary diagnostic context containing the train GUID. `DebugManager` normalizes messages that begin with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. For example:
+
+```text
+[General] [TRAIN:de148bda] START - Pos: (...), Dir: East, Speed: ...
+```
+
+This is diagnostic correlation only. It does not alter `Train.Id` or simulation behavior.
 
 ## Rolling stock catalog
 
@@ -97,7 +109,7 @@ The wagon catalogue contains three passenger coach variants. Their visual labels
 
 Coupling is intentionally prepared as a data boundary only. `Vehicle` exposes a `CouplingSpecification` containing the static interface type at the front and rear of the vehicle. The current default is a screw coupler on both ends.
 
-The following are explicitly **not** implemented in 0.1.4:
+The following are explicitly **not** implemented in `0.1.4pre`:
 
 - coupled/uncoupled runtime state;
 - coupling distance detection;
@@ -107,7 +119,11 @@ The following are explicitly **not** implemented in 0.1.4:
 - coupling forces, slack or longitudinal dynamics;
 - persistence of individual coupler connections.
 
-The planned 0.1.5 boundary is: static rolling-stock coupling data belongs to `Vehicle`; runtime connection state and consist mutations belong to `Train`/`TrainComposition`/`TrainManager`; UI/input should request those operations rather than mutate vehicle lists directly.
+The planned `0.1.5` boundary is: static rolling-stock coupling data belongs to `Vehicle`; runtime connection state and consist mutations belong to `Train`/`TrainComposition`/`TrainManager`; UI/input should request those operations rather than mutate vehicle lists directly.
+
+## Runtime save/load
+
+`RuntimeSaveService` persists rolling-stock `ShortName` values while retaining runtime save schema version `1`. Existing saves without the new field remain deserializable because the missing value defaults to empty. Loading uses the current `Locomotive` and `Wagon` constructor contracts.
 
 ## Depot lifecycle
 
@@ -124,6 +140,8 @@ The Depot builder allows:
 
 The builder may create a locomotive-only consist. It does not currently support multiple locomotives.
 
+`DepotRenderer` renders the Depot in world space under the existing camera transform and provides a matching placement preview.
+
 ## Domain vs presentation
 
 Screens request or present domain state. They do not become authoritative owners of train collections, depot state or railway simulation.
@@ -139,6 +157,8 @@ When extending railway gameplay:
 1. Locate the domain object that owns the state.
 2. Locate its manager/coordinator, if one exists.
 3. Search all call sites before changing a signature.
-4. Check the active screen(s) that consume the state.
-5. Only then implement the smallest change that preserves the existing flow.
-6. Update this documentation if the ownership or lifecycle contract changes.
+4. Check save/load and catalogue factories when constructor/data contracts change.
+5. Check signal/collision consumers when movement physics changes.
+6. Check the active screen(s) that consume the state.
+7. Only then implement the smallest change that preserves the existing flow.
+8. Update the maintained documentation and changelog if the ownership or lifecycle contract changes.
