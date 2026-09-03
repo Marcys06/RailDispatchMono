@@ -34,6 +34,8 @@ Coupling commands are currently handled by the existing `TrainManager.HandleCoup
 
 `TrainManager` owns train lifecycle. `TrainComposition` is the authoritative ordered vehicle collection and owns derived consist statistics. `Vehicle` owns static coupling metadata and runtime coupling state.
 
+When vehicles are added sequentially to a `TrainComposition`, the composition automatically initializes a runtime coupling between each adjacent pair when their physical coupling ends are free and their `CouplerType` values are compatible. This applies equally to mixed wagon formations such as `1KL <-> 2KL <-> 3KL`.
+
 Runtime coupling state is represented by `VehicleCouplingState` and `CouplingConnection`. `CouplingService` is the authoritative operation/validation boundary for coupling and decoupling.
 
 ## 5. Rigid coupling and decoupling
@@ -58,6 +60,8 @@ A successful decoupling:
 5. clears the connection from both vehicle ends;
 6. creates a new stopped `Train` for the detached section;
 7. registers that train through `TrainManager`.
+
+A complete pre-built multi-vehicle composition already contains runtime connections between adjacent vehicles. Therefore `X` does not require a preceding `C` command to split such a formation.
 
 No dynamic coupler forces, slack, impact shock, coupling animation, brake-pipe propagation or persistence of individual connections are implemented.
 
@@ -100,8 +104,8 @@ The repository no longer contains a dedicated automated Core test project. Valid
 ## 11. Ownership rules
 
 - `TrainManager` owns train lifecycle and exposes the coupling command path.
-- `TrainComposition` owns vehicle order and composition statistics.
-- `CouplingService` owns coupling/decoupling validation and state mutation.
+- `TrainComposition` owns vehicle order, composition statistics and initialization of adjacent runtime couplings when vehicles are added.
+- `CouplingService` owns coupling/decoupling validation and state mutation for explicit operations.
 - `Vehicle` owns its static coupling specification and runtime end connections.
 - `InputManager`/`InputState` own shared gameplay input architecture.
 - Screens/UI request domain operations and do not mutate `TrainComposition.Vehicles` directly.
