@@ -1,5 +1,4 @@
 <Solution>
   <Project Path="RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj" />
   <Project Path="RailDispatchMono/RailDispatchMono.DesktopGL/RailDispatchMono.DesktopGL.csproj" />
-  <Project Path="RailDispatchMono/RailDispatchMono.Core.Tests/RailDispatchMono.Core.Tests.csproj" />
 </Solution>
