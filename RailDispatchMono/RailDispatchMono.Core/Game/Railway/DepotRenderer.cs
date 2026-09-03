@@ -49,9 +49,23 @@ public sealed class DepotRenderer
         Color building = preview ? Color.SlateGray * 0.55f : new Color(75, 75, 85, 235);
         Color detail = preview ? Color.White * 0.65f : Color.White;
 
-        spriteBatch.Draw(_pixel,
-            new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)width, (int)height),
-            building);
+        DrawFilledRect(spriteBatch, center, new Vector2(width, height), building);
+        DrawLine(spriteBatch,
+            new Vector2(topLeft.X, topLeft.Y),
+            new Vector2(bottomRight.X, topLeft.Y),
+            detail, roofThickness);
+        DrawLine(spriteBatch,
+            new Vector2(bottomRight.X, topLeft.Y),
+            new Vector2(bottomRight.X, bottomRight.Y),
+            detail, roofThickness);
+        DrawLine(spriteBatch,
+            new Vector2(bottomRight.X, bottomRight.Y),
+            new Vector2(topLeft.X, bottomRight.Y),
+            detail, roofThickness);
+        DrawLine(spriteBatch,
+            new Vector2(topLeft.X, bottomRight.Y),
+            new Vector2(topLeft.X, topLeft.Y),
+            detail, roofThickness);
 
         DrawLine(spriteBatch,
             new Vector2(topLeft.X + roofInset, topLeft.Y + roofInset),
@@ -71,6 +85,12 @@ public sealed class DepotRenderer
             new Vector2(center.X + doorWidth * 0.5f, bottomRight.Y - doorHeight),
             new Vector2(center.X + doorWidth * 0.5f, bottomRight.Y),
             detail, 0.06f);
+    }
+
+    private void DrawFilledRect(SpriteBatch spriteBatch, Vector2 center, Vector2 size, Color color)
+    {
+        if (_pixel == null) return;
+        spriteBatch.Draw(_pixel, center, null, color, 0f, new Vector2(0.5f), size, SpriteEffects.None, 0f);
     }
 
     private void DrawLine(SpriteBatch spriteBatch, Vector2 start, Vector2 end, Color color, float thickness)
