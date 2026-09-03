@@ -6,6 +6,7 @@ public sealed class WagonDefinition
 {
     public string Id { get; }
     public string DisplayName { get; }
+    public string ShortName { get; }
     public float MassTons { get; }
     public float LengthMeters { get; }
     public float MaxSpeedKmh { get; }
@@ -19,10 +20,12 @@ public sealed class WagonDefinition
         float lengthMeters,
         float maxSpeedKmh,
         WagonType type,
-        int capacity)
+        int capacity,
+        string? shortName = null)
     {
         Id = id;
         DisplayName = displayName;
+        ShortName = string.IsNullOrWhiteSpace(shortName) ? id : shortName;
         MassTons = massTons;
         LengthMeters = lengthMeters;
         MaxSpeedKmh = maxSpeedKmh;
@@ -40,6 +43,6 @@ public sealed class WagonDefinition
             LengthMeters,
             1.0f);
 
-        return new Wagon(parameters, Id, Type, Capacity);
+        return new Wagon(parameters, ShortName, Type, Capacity);
     }
 }
