@@ -84,7 +84,7 @@ public sealed partial class TrainManager
             Train? owner = FindTrainContaining(_lastCoupledVehicle);
             if (owner != null)
             {
-                int vehicleIndex = owner.Composition.Vehicles.IndexOf(_lastCoupledVehicle);
+                int vehicleIndex = FindVehicleIndex(owner, _lastCoupledVehicle);
                 DebugManager.Log($"[COUPLING] Command X target: train {owner.Id.ToString()[..8]}, vehicle index {vehicleIndex}, end {_lastCoupledEnd} (last C coupling).");
                 var result = Decouple(owner, _lastCoupledVehicle, _lastCoupledEnd);
                 if (result.Success)
@@ -122,6 +122,16 @@ public sealed partial class TrainManager
         }
 
         DebugManager.Log("[COUPLING] Command X rejected: no runtime coupling found. The train may contain multiple vehicles without initialized runtime couplings.");
+    }
+
+    private static int FindVehicleIndex(Train train, Vehicle vehicle)
+    {
+        for (int i = 0; i < train.Composition.Vehicles.Count; i++)
+        {
+            if (ReferenceEquals(train.Composition.Vehicles[i], vehicle)) return i;
+        }
+
+        return -1;
     }
 
     private bool ContainsVehicle(Vehicle vehicle) => _trains.Any(train => train.Composition.Vehicles.Any(v => ReferenceEquals(v, vehicle)));
