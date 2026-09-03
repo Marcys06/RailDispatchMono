@@ -37,7 +37,7 @@ public sealed class TrainRenderer
             return;
 
         const float vehicleWidth = 0.45f;
-        const float labelScale = 0.016f;
+        const float labelScale = 0.0145f;
         var origin = new Vector2(0.5f, 0.5f);
         var positions = train.GetVehiclePositions();
 
