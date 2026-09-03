@@ -23,7 +23,7 @@
 
 ## Pause input ownership
 
-At `0.1.2pre`, pause is owned by `GameplayScreen`.
+At `0.1.4pre`, pause is owned by `GameplayScreen`.
 
 - `ESC` is handled by the gameplay screen as the authoritative pause/resume toggle.
 - The pause UI is rendered by `MyraPauseView` through the shared `MyraUIManager`.
@@ -45,7 +45,9 @@ Station mode supports `1x1`, `2x2`, `3x3` and `4x4` areas. The complete selected
 
 ## Depot building
 
-Depot mode is activated with `9`. A depot is a world building and does not require a track cell. The building is rendered using programmatic geometry. Clicking an existing depot is reserved for opening its depot/train-selection workflow; removal is available through the existing right-click interaction.
+Depot mode is activated with `9`. A depot is a world building and does not require a track cell. The building is rendered using programmatic geometry. Clicking an existing depot opens the Depot workflow; removal remains available through the existing right-click interaction.
+
+`DepotScreen` and `MyraDepotView` own builder interaction. Train creation goes through `TrainManager.CreateTrainFromComposition()`; `InputManager` does not construct train objects directly.
 
 ## Coordinate transformation
 
