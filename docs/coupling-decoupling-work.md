@@ -1,6 +1,6 @@
 # Coupling / Decoupling — work tracker
 
-**Milestone:** `0.1.5c`  
+**Milestone:** `0.1.5d`  
 **Purpose:** temporary implementation checklist for coupling/decoupling mechanics only.  
 **Last reviewed:** 2026-09-03
 
@@ -27,10 +27,13 @@ This file is intentionally temporary. It tracks implementation progress and shou
 - [x] `CouplingCandidate` exposes both physical endpoints, measured distance and authoritative validation result.
 - [x] `TrainManager.GetCouplingCandidates()` enumerates only outer vehicle ends and delegates validity to `CouplingService`.
 - [x] Candidates are sorted by physical endpoint distance for deterministic UI selection later.
+- [x] Added a dedicated `RailDispatchMono.Core.Tests` project to establish automated regression coverage for coupling primitives and consist-order invariants.
+- [x] Added tests for default coupler configuration, connection matching/rejection, operation result semantics, composition split order and train construction order.
+- [x] Added the test project to `RailDispatchMono.slnx`.
 
 ## Still to do
 
-- [ ] Add automated unit tests for compatibility, distance, alignment and boundary validation.
+- [ ] Add automated unit tests for compatibility, distance, alignment and boundary validation once test fixtures for track geometry are isolated.
 - [ ] Add integration tests for `EP07 + wagons -> decouple -> new locomotive -> couple`.
 - [ ] Verify split/merge behavior on curves and at cell boundaries.
 - [ ] Verify infrastructure state after merge/split (signals, blocks, stations, collision state) under real gameplay update.
@@ -68,3 +71,7 @@ This file is intentionally temporary. It tracks implementation progress and shou
 ```
 
 The target behavior is one runtime `Train` after coupling, with vehicle order preserved exactly and both shunting consists stopped by the existing RadioStop mechanism before the composition changes.
+
+## Verification boundary
+
+The repository changes in this milestone establish automated regression coverage for the pure coupling/consist invariants, but the new runtime mechanics have not been executed in a live gameplay scenario here. Build/test execution remains an external verification step until a runnable test environment is available.
