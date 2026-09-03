@@ -2,6 +2,21 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4g] — Rolling stock visuals and locomotive power
+**Data:** 2026-09-03
+
+- Added differentiated rolling-stock rendering: electric locomotives are red, diesel locomotives are black, and passenger coach variants use distinct blue shades.
+- Added centered white rolling-stock labels: `EP07`, `EU200`, `SU42`, `1KL`, `2KL`, `3KL`.
+- Labels remain readable when trains travel in either direction.
+- Added `LocomotiveParameters` with `PowerMW`.
+- Calibrated locomotive power: EP07 2.0 MW, EU200 5.5 MW, SU42 1.2 MW.
+- Added nonlinear power/load Vmax model with a 0.006 MW/t supported-mass threshold and 0.55 load exponent.
+- EU200 + 10 passenger wagons remains at 200 km/h; SU42 + 5 wagons is approximately 75 km/h and SU42 + 10 wagons approximately 55 km/h.
+- Passenger coach catalogue Vmax was raised to 200 km/h so EU200 is not artificially capped by the coach definitions.
+- The 0.1.4f nonlinear mass effect on acceleration/braking remains unchanged and independent from the new power/Vmax model.
+- Detailed notes: `docs/changelog/0.1.4g.md`.
+- No `current-state` snapshot was created; `0.1.4g` is a lettered development stage.
+
 ## [0.1.4f] — Depot Myra migration and consist mass performance
 **Data:** 2026-09-01
 
