@@ -183,6 +183,64 @@ public sealed partial class Train
         return _trajectory[0].Position;
     }
 
+    private bool TryGetTrajectoryTransformBehindHead(float distanceBehind, out Vector2 position, out float rotation)
+    {
+        position = default;
+        rotation = 0f;
+
+        if (distanceBehind <= MovementEpsilon || _trajectory.Count < 2)
+            return false;
+
+        float targetDistance = _totalTravelDistance - distanceBehind;
+        if (targetDistance < _trajectory[0].Distance - MovementEpsilon)
+            return false;
+
+        int upperIndex = -1;
+        for (int i = 1; i < _trajectory.Count; i++)
+        {
+            if (_trajectory[i].Distance >= targetDistance)
+            {
+                upperIndex = i;
+                break;
+            }
+        }
+
+        if (upperIndex < 0)
+            upperIndex = _trajectory.Count - 1;
+
+        int lowerIndex = Math.Max(0, upperIndex - 1);
+        TrajectoryPoint lower = _trajectory[lowerIndex];
+        TrajectoryPoint upper = _trajectory[upperIndex];
+
+        float span = upper.Distance - lower.Distance;
+        if (span > MovementEpsilon)
+        {
+            float t = MathHelper.Clamp((targetDistance - lower.Distance) / span, 0f, 1f);
+            position = Vector2.Lerp(lower.Position, upper.Position, t);
+        }
+        else
+        {
+            position = upper.Position;
+        }
+
+        Vector2 tangent;
+        if (upperIndex < _trajectory.Count - 1)
+        {
+            tangent = _trajectory[upperIndex + 1].Position - lower.Position;
+        }
+        else
+        {
+            tangent = upper.Position - lower.Position;
+        }
+
+        if (tangent.LengthSquared() <= MovementEpsilon * MovementEpsilon)
+            return false;
+
+        tangent.Normalize();
+        rotation = MathF.Atan2(tangent.Y, tangent.X);
+        return true;
+    }
+
     private static Vector2 GetPositionAtEntry(MapPosition cell, TrackConnections direction)
     {
         const float epsilon = 0.0001f;
