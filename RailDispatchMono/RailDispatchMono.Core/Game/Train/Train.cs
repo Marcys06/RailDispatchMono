@@ -124,6 +124,12 @@ public sealed partial class Train
         ResetTrajectory();
     }
 
+    public void ResetSignalState()
+    {
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
+    }
+
     public bool IsOnTrack()
     {
         if (_map is null) return false;
