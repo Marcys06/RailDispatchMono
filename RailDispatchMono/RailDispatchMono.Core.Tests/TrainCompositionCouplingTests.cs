@@ -13,7 +13,7 @@ public sealed class TrainCompositionCouplingTests
         var second = CreateLocomotive("1KL-01");
         var third = CreateLocomotive("1KL-02");
         var fourth = CreateLocomotive("1KL-03");
-        var composition = new TrainComposition(new[] { first, second, third, fourth });
+        var composition = CreateComposition(first, second, third, fourth);
 
         var split = composition.Split(2);
 
@@ -26,7 +26,7 @@ public sealed class TrainCompositionCouplingTests
     {
         var first = CreateLocomotive("A");
         var second = CreateLocomotive("B");
-        var composition = new TrainComposition(new[] { first, second });
+        var composition = CreateComposition(first, second);
 
         var split = composition.Split(0);
 
@@ -48,6 +48,14 @@ public sealed class TrainCompositionCouplingTests
             new[] { first, second, third });
 
         Assert.Equal(new[] { first, second, third }, train.Composition.Vehicles);
+    }
+
+    private static TrainComposition CreateComposition(params Vehicle[] vehicles)
+    {
+        var composition = new TrainComposition();
+        foreach (var vehicle in vehicles)
+            composition.AddVehicle(vehicle);
+        return composition;
     }
 
     private static Locomotive CreateLocomotive(string shortName) =>
