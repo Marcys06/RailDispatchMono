@@ -12,4 +12,7 @@ public sealed partial class Train
 
     /// <summary>Effective target speed after applying the consist Vmax limit.</summary>
     public float EffectiveTargetSpeed => MathF.Min(TargetSpeed, MaxSpeed);
+
+    /// <summary>Current braking capability after applying the non-linear consist-mass penalty.</summary>
+    public float EffectiveBrakingRate => GetBrakingRate();
 }
