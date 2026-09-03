@@ -37,8 +37,12 @@ This index is a navigation aid based on source files confirmed in the repository
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model; exposes effective braking capability for safety-facing calculations. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear `1.30` exponent and establishes train-scoped diagnostics during updates. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Authoritative train lifecycle and composition-based creation. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.Coupling.cs` | Runtime coupling/decoupling command path, candidate discovery and split-train registration. Current commands: `C`, `X`, `F6`, `F7`, `F8`. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/CouplingService.cs` | Authoritative coupling/decoupling validation and runtime composition mutation. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/CouplingConnection.cs` | Concrete connection between two vehicle ends. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleCouplingState.cs` | Runtime per-vehicle coupling-end state. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass and power/load-limited Vmax. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction and static coupling metadata. |
+| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction and static coupling metadata plus runtime coupling state. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Internal physics parameters plus physical mass/length metadata. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/LocomotiveParameters.cs` | Locomotive-specific physical parameters, including `PowerMW`. |
 | `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle and short display label. |
@@ -75,7 +79,7 @@ This index is a navigation aid based on source files confirmed in the repository
 |---|---|
 | `RailDispatchMono/RailDispatchMono.Core/Game/Save/RuntimeSaveService.cs` | Runtime train/map save-load boundary; persists rolling-stock short labels while retaining schema version 1 compatibility. |
 
-## Android host
+## Platform hosts
 
 | Path | Role |
 |---|---|
@@ -85,4 +89,4 @@ This index is a navigation aid based on source files confirmed in the repository
 
 ## How to use this index
 
-Use it to choose where to start reading, not as a substitute for reading dependencies. Before modifying a listed component, search for its callers and consumers. For train movement or safety changes, inspect movement, composition, signal/collision consumers and diagnostics together.
+Use it to choose where to start reading, not as a substitute for reading dependencies. Before modifying a listed component, search for its callers and consumers. For coupling/decoupling changes, inspect `TrainManager.Coupling.cs`, `CouplingService`, `TrainComposition`, vehicle coupling state and the active input path together.
