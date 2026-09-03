@@ -10,10 +10,17 @@ public abstract class Vehicle
 
     /// <summary>
     /// Static coupling-interface data for the rolling-stock definition.
-    /// Connection state is not stored on the vehicle yet; 0.1.5 will own that state.
     /// </summary>
     public CouplingSpecification Coupling { get; }
 
+    /// <summary>
+    /// Runtime connections at the vehicle's physical ends.
+    /// </summary>
+    public VehicleCouplingState CouplingState { get; }
+
+    /// <summary>
+    /// Intrinsic vehicle orientation. Front/Rear coupling ends are independent of travel direction.
+    /// </summary>
     public VehicleOrientation Orientation { get; set; }
 
     protected Vehicle(
@@ -23,6 +30,7 @@ public abstract class Vehicle
         Id = Guid.NewGuid();
         Parameters = parameters;
         Coupling = coupling ?? CouplingSpecification.Default;
+        CouplingState = new VehicleCouplingState();
         Orientation = VehicleOrientation.Forward;
     }
 }
