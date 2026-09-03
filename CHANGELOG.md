@@ -2,6 +2,17 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5g] — Automatic runtime couplings for complete consists
+**Data:** 2026-09-03
+
+- `TrainComposition.AddVehicle()` now establishes runtime couplings between adjacent vehicles when both physical ends expose the same supported coupler type.
+- Mixed passenger-wagon formations such as `1KL <-> 2KL <-> 3KL` are therefore treated as one physically connected consist instead of an unconnected list of vehicles.
+- `X` decoupling now works for those pre-built multi-vehicle consists without requiring a preceding `C` command.
+- `TrainComposition.Split()` preserves the existing runtime connections inside the detached section; the split boundary connection is still cleared by `CouplingService`.
+- Existing explicit `C` coupling remains authoritative for connecting separate trains and does not create duplicate runtime connections when merged vehicles are appended.
+- No change was made to the coupler compatibility rule: physical coupling remains based on `CouplingSpecification`, not wagon display/class names.
+- Detailed notes: `docs/changelog/0.1.5g.md`.
+
 ## [0.1.5f] — Remove dedicated Core test project
 **Data:** 2026-09-03
 
@@ -43,46 +54,3 @@ This file is the high-level release history. Detailed release notes are kept in 
 - Candidate data exposes both concrete vehicle ends, endpoint positions, measured distance and the authoritative `CouplingCheckResult`.
 - Candidate discovery considers only outer vehicle ends, matching the current rigid coupling rule.
 - Candidates are sorted by endpoint distance for deterministic selection.
-- Detailed notes: `docs/changelog/0.1.5c.md`.
-
-## [0.1.5b] — Coupling stop behavior
-**Data:** 2026-09-03
-
-- Coupling now stops both participating trains through the existing `RadioStop` mechanism before changing composition.
-- The merged train starts from `0 m/s` instead of inheriting shunting momentum.
-- Decoupling stops the original train before splitting the composition.
-- The newly created detached train is registered at `0 m/s` and receives `RadioStop`.
-- Vehicle order and concrete vehicle-end coupling state remain unchanged by this stage.
-- Detailed notes: `docs/changelog/0.1.5b.md`.
-
-## [0.1.5a] — Rigid coupling and decoupling foundation
-**Data:** 2026-09-03
-
-- Added intrinsic `VehicleEnd` (`Front` / `Rear`) and runtime per-vehicle coupling state.
-- Added runtime `CouplingConnection` linking two concrete vehicle ends.
-- Added typed coupling validation and operation results with explicit failure reasons.
-- Added endpoint geometry derived from the existing vehicle transforms and vehicle `Length`.
-- Added coupling-distance and end-alignment validation.
-- Added static coupler compatibility checks.
-- Coupling is currently restricted to outer train boundaries and preserves vehicle order when two trains merge.
-- Decoupling now splits a consist at the concrete connected vehicle boundary and registers the detached section as a new `Train`.
-- Added `[COUPLING]` diagnostics.
-- Kept RadioStop independent from coupling; safety stopping is not bypassed by coupling mechanics.
-- Added temporary `docs/coupling-decoupling-work.md` tracker covering only coupling/decoupling mechanics.
-- Deferred UI, persistence, automated tests, coupling animation/delay, slack, forces, impact dynamics and brake-pipe propagation.
-- Build was not run in this environment.
-
-## [0.1.4i] — Train labels, Depot building and coupling preparation
-**Data:** 2026-09-03
-
-- Restored visible centered white rolling-stock labels during gameplay and bound the `Arial24` font through `GameplayScreen`.
-- Locomotive labels use `EP07`, `EU200`, `SU42`; passenger coaches use `1KL`, `2KL`, `3KL`.
-- Labels remain readable in both travel directions.
-- Reworked `DepotRenderer` to use world-space coordinates under the existing camera transform, matching the station rendering contract.
-- Added a visible 1x1-cell Depot building with outline/entrance details and placement preview.
-- Added static coupling metadata: `CouplerType`, `CouplingSpecification` and `Vehicle.Coupling`.
-- Default rolling stock exposes screw couplers at both ends.
-- Fixed `RuntimeSaveService` to save/load rolling-stock `ShortName` values and to use the current `Locomotive` and `Wagon` constructor signatures.
-- Fixed rolling-stock definitions to construct `Locomotive` and `Wagon` with the current `ShortName`-aware signatures.
-- Added explicit wagon short labels `1KL`, `2KL`, `3KL` to the rolling-stock definitions used by the Depot and train renderer.
-- Removed the accidental duplicate top-level `RailDispatchMono.Core` directory introduced during `0.1.4g`; the build solution continues to reference `RailDispatchMono/RailDispatchMono.Core`.
