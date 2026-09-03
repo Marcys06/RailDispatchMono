@@ -1,13 +1,12 @@
+using Microsoft.Xna.Framework;
 using RailDispatchMono.Core.Game.Debug;
+using RailDispatchMono.Core.Game.Railway;
 using System;
 using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.Train;
 
-/// <summary>
-/// First runtime coupling/decoupling implementation. It models rigid connections only:
-/// no slack, impact, force, delay or brake-pipe propagation yet.
-/// </summary>
+/// <summary>Rigid runtime coupling/decoupling. Dynamic coupler physics is deferred to a later version.</summary>
 public sealed class CouplingService
 {
     public const float CouplingDistance = CouplingGeometry.DefaultCouplingDistance;
@@ -27,7 +26,6 @@ public sealed class CouplingService
 
         var first = firstTrain.Composition.Vehicles[firstVehicleIndex];
         var second = secondTrain.Composition.Vehicles[secondVehicleIndex];
-
         if (ReferenceEquals(first, second))
             return CouplingCheckResult.Fail(CouplingFailureReason.SameVehicle);
         if (first.CouplingState.IsOccupied(firstEnd) || second.CouplingState.IsOccupied(secondEnd))
@@ -84,7 +82,6 @@ public sealed class CouplingService
 
         leadingTrain.Speed = MathF.Min(firstTrain.Speed, secondTrain.Speed);
         manager.Remove(trailingTrain);
-
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled.");
         return CouplingOperationResult.Ok;
     }
@@ -98,13 +95,8 @@ public sealed class CouplingService
         if (connection == null)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
 
-        Vehicle secondVehicle = ReferenceEquals(connection.VehicleA, firstVehicle)
-            ? connection.VehicleB
-            : connection.VehicleA;
-        VehicleEnd secondEnd = ReferenceEquals(connection.VehicleA, firstVehicle)
-            ? connection.EndB
-            : connection.EndA;
-
+        Vehicle secondVehicle = ReferenceEquals(connection.VehicleA, firstVehicle) ? connection.VehicleB : connection.VehicleA;
+        VehicleEnd secondEnd = ReferenceEquals(connection.VehicleA, firstVehicle) ? connection.EndB : connection.EndA;
         int firstIndex = IndexOf(train, firstVehicle);
         int secondIndex = IndexOf(train, secondVehicle);
         if (firstIndex < 0 || secondIndex < 0)
@@ -130,7 +122,7 @@ public sealed class CouplingService
         detached.SetMap(manager.Map);
         manager.RegisterCouplingTrain(detached);
 
-        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled at vehicle {splitIndex}; new train {detached.Id.ToString()[..8]}.");
+        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]}.");
         return CouplingOperationResult.Ok;
     }
 
@@ -150,7 +142,6 @@ public sealed class CouplingService
             trailing = secondTrain;
             return true;
         }
-
         if (secondIndex == secondTrain.Composition.Vehicles.Count - 1 && secondEnd == VehicleEnd.Rear &&
             firstIndex == 0 && firstEnd == VehicleEnd.Front)
         {
@@ -158,7 +149,6 @@ public sealed class CouplingService
             trailing = firstTrain;
             return true;
         }
-
         leading = null!;
         trailing = null!;
         return false;
@@ -170,8 +160,7 @@ public sealed class CouplingService
     private static int IndexOf(Train train, Vehicle vehicle)
     {
         for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-            if (ReferenceEquals(train.Composition.Vehicles[i], vehicle))
-                return i;
+            if (ReferenceEquals(train.Composition.Vehicles[i], vehicle)) return i;
         return -1;
     }
 
