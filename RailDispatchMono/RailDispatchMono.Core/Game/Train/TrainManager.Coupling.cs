@@ -66,9 +66,8 @@ public sealed partial class TrainManager
             return;
         }
 
-        // F7 changes only the locomotive's physical orientation and the train's
-        // travel direction. Composition order is immutable here: A-B-B remains
-        // A-B-B, only ---> becomes <---.
+        // F7 never mutates Composition.Vehicles. The logical composition stays
+        // A-B (or A-B-B); only travel direction and locomotive orientation change.
         train.SetDirection(GetOppositeDirection(train.Direction));
         locomotive.Orientation = locomotive.Orientation == VehicleOrientation.Forward
             ? VehicleOrientation.Reverse
@@ -80,12 +79,19 @@ public sealed partial class TrainManager
 
     internal void ResetSignalStateAfterChange(Train train)
     {
+        Signal? nextSignal = train.GetNextSignal();
+        float currentLimit = nextSignal != null
+            ? GetSignalSpeedLimit(train, nextSignal)
+            : GetEffectiveMaxSpeed(train);
+
         _signalSpeedStates[train.Id] = new SignalSpeedState
         {
-            ApproachingSignal = null,
-            CurrentLimit = GetEffectiveMaxSpeed(train)
+            ApproachingSignal = nextSignal,
+            CurrentLimit = currentLimit
         };
+
         train.ResetSignalState();
+        train.SetEffectiveSignalSpeed(currentLimit);
     }
 
     private static TrackConnections GetOppositeDirection(TrackConnections direction) => direction switch
@@ -231,8 +237,8 @@ public sealed partial class TrainManager
         if (_trains.Contains(train) || _trainsToAdd.Contains(train)) return;
         train.SetMap(_map);
         _trainsToAdd.Add(train);
-        _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = train.Composition.EffectiveMaxSpeed };
-        train.SetEffectiveSignalSpeed(train.Composition.EffectiveMaxSpeed);
+        _signalSpeedStates[train.Id] = new SignalSpeedState { CurrentLimit = GetEffectiveMaxSpeed(train) };
+        train.SetEffectiveSignalSpeed(GetEffectiveMaxSpeed(train));
         DebugManager.Log($"[COUPLING] Registered split train {train.Id.ToString()[..8]}.");
     }
 }
