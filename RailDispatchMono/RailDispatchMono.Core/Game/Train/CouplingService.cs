@@ -59,8 +59,6 @@ public sealed class CouplingService
                 out Train leadingTrain, out Train trailingTrain))
             return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
-        // Coupling is a shunting operation: stop the maneuvering consist through
-        // the existing train stop mechanism before changing runtime composition.
         firstTrain.Speed = 0f;
         secondTrain.Speed = 0f;
         firstTrain.RadioStop();
@@ -88,9 +86,14 @@ public sealed class CouplingService
                 leadingTrain.Composition.AddVehicle(vehicle);
         }
 
-        // The newly coupled train starts from rest. Signal logic may release it
-        // on a later TrainManager.Update; it must not inherit shunting momentum.
         leadingTrain.Speed = 0f;
+
+        // Coupling changes the consist boundary and therefore the signal context.
+        // Drop both the train-local and manager-level cached signal state so the
+        // newly coupled AB/ABB consist immediately evaluates the semaphore ahead
+        // of its current direction instead of inheriting the old train state.
+        manager.ResetSignalStateAfterChange(leadingTrain);
+
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
         return CouplingOperationResult.Ok;
@@ -140,6 +143,7 @@ public sealed class CouplingService
         detached.SetMap(manager.Map);
         detached.RadioStop();
         manager.RegisterCouplingTrain(detached);
+        manager.ResetSignalStateAfterChange(train);
 
         DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped.");
         return CouplingOperationResult.Ok;
