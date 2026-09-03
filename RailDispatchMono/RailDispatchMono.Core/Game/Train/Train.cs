@@ -349,13 +349,20 @@ public sealed partial class Train
 
     private float GetBrakingRate()
     {
-        float braking = 0f;
-        foreach (var vehicle in Composition.Vehicles)
-        {
-            if (vehicle.Parameters.Braking > braking)
-                braking = vehicle.Parameters.Braking;
-        }
-        return braking > 0f ? braking : 20f;
+        var locomotive = Composition.Locomotive;
+        if (locomotive == null)
+            return 20f;
+
+        float baseBraking = locomotive.Parameters.Braking;
+        if (baseBraking <= 0f)
+            return 20f;
+
+        // Signal stopping must use the same consist-dependent braking capability
+        // as TrainMovement. Previously this method used the strongest vehicle's
+        // raw braking value, which ignored the 0.1.4f mass penalty and caused
+        // heavy trains to reach the Stop target too late.
+        float massFactor = GetMassPerformanceFactor();
+        return MathF.Max(0.01f, baseBraking * massFactor);
     }
 
     private float GetSpeedFromSignal(Signal? signal)
@@ -386,9 +393,6 @@ public sealed partial class Train
             const float stopOffsetCells = 0.8f;
             float stopOffsetMeters = SimulationScale.GridToMeters(stopOffsetCells);
 
-            // Position is the centre of the first vehicle. The requested 0.8-cell
-            // clearance applies to the physical front of that vehicle, so its
-            // half-length must also be removed from the braking target distance.
             float frontHalfLengthCells = Composition.Vehicles.Count > 0
                 ? Composition.Vehicles[0].Parameters.Length * 0.5f
                 : 0f;
