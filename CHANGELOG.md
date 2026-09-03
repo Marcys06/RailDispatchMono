@@ -2,6 +2,23 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.5a] — Rigid coupling and decoupling foundation
+**Data:** 2026-09-03
+
+- Added intrinsic `VehicleEnd` (`Front` / `Rear`) and runtime per-vehicle coupling state.
+- Added runtime `CouplingConnection` linking two concrete vehicle ends.
+- Added typed coupling validation and operation results with explicit failure reasons.
+- Added endpoint geometry derived from the existing vehicle transforms and vehicle `Length`.
+- Added coupling-distance and end-alignment validation.
+- Added static coupler compatibility checks.
+- Coupling is currently restricted to outer train boundaries and preserves vehicle order when two trains merge.
+- Decoupling now splits a consist at the concrete connected vehicle boundary and registers the detached section as a new `Train`.
+- Added `[COUPLING]` diagnostics.
+- Kept RadioStop independent from coupling; safety stopping is not bypassed by coupling mechanics.
+- Added temporary `docs/coupling-decoupling-work.md` tracker covering only coupling/decoupling mechanics.
+- Deferred UI, persistence, automated tests, coupling animation/delay, slack, forces, impact dynamics and brake-pipe propagation.
+- Build was not run in this environment.
+
 ## [0.1.4i] — Train labels, Depot building and coupling preparation
 **Data:** 2026-09-03
 
