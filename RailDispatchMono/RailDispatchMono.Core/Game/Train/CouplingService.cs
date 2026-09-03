@@ -96,7 +96,7 @@ public sealed class CouplingService
 
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
-        return CouplingOperationResult.Ok();
+        return CouplingOperationResult.Ok;
     }
 
     public CouplingOperationResult Decouple(TrainManager manager, Train train, Vehicle firstVehicle, VehicleEnd firstEnd)
@@ -149,7 +149,7 @@ public sealed class CouplingService
         manager.ResetSignalStateAfterChange(detached);
 
         DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped and signal context rebuilt.");
-        return CouplingOperationResult.Ok();
+        return CouplingOperationResult.Ok;
     }
 
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
