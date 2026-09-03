@@ -2,6 +2,17 @@
 
 This file is the high-level release history. Detailed release notes are kept in `docs/changelog/`.
 
+## [0.1.4h] — Speed-dependent braking and RadioStop safety
+**Data:** 2026-09-03
+
+- Fixed signal stopping after the `0.1.4f` consist-mass braking change: Stop/StopStation braking now uses the same effective braking rate as actual train movement.
+- Speed-restricted signal braking-distance checks also use effective consist braking.
+- Preserved the current 0.8-cell Stop target offset and leading-vehicle physical half-length correction.
+- RadioStop retains its 3-cell minimum safety distance but expands the protected distance at higher speed using actual braking distance, 0.15 s reaction distance and a 0.8-cell buffer.
+- Added `Train.EffectiveBrakingRate` as the shared safety-facing representation of loaded consist braking capability.
+- Updated game-domain, UI and AI-context documentation and added detailed `docs/changelog/0.1.4h.md`.
+- No `current-state` snapshot was created; `0.1.4h` is a lettered development stage.
+
 ## [0.1.4g] — Rolling stock visuals and locomotive power
 **Data:** 2026-09-03
 
