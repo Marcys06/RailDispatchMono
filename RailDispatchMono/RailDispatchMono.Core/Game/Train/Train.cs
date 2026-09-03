@@ -170,6 +170,16 @@ public sealed partial class Train
         if (_trajectory.Count == 0)
             return (Position, GetDirectionAngle(Direction));
 
+        // A newly created or repositioned train has no travelled trajectory yet.
+        // In that state every vehicle must still be placed behind the head instead
+        // of all vehicles using the single initial trajectory point. This is
+        // especially important for a detached consist created by X/decoupling.
+        if (_totalTravelDistance <= MovementEpsilon)
+        {
+            Vector2 position = GetPositionBehindHead(distanceBehindHead);
+            return (position, GetDirectionAngle(Direction));
+        }
+
         if (targetDistance <= _trajectory[0].Distance)
         {
             var first = _trajectory[0];
