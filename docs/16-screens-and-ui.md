@@ -28,7 +28,7 @@ The Core screen area contains reusable screen infrastructure and concrete game/a
 
 Depot does not create another Myra manager or Desktop. When `DepotScreen` becomes active it temporarily replaces the gameplay Myra root; `MyraUIManager.Clear()` restores the previous gameplay root when the screen closes.
 
-## Depot interaction — 0.1.4f
+## Depot interaction — 0.1.4f+
 
 Clicking an existing Depot through `InputManager.DepotSelected` opens `DepotScreen` directly. The old `DepotTrainMenu` SpriteBatch preset menu has been removed.
 
@@ -47,17 +47,32 @@ The Myra builder provides:
 
 The created train is placed on an adjacent free track cell through the single authoritative `TrainManager.CreateTrainFromComposition()` path. `InputManager` no longer contains the former preset-based train spawn path or its hardcoded EU06-style `VehicleParameters`.
 
-## Train physics note — 0.1.4g
+## Train physics note — 0.1.4h
 
-Consist acceleration and braking remain mass-dependent. The locomotive supplies the base acceleration/braking capability; total consist mass reduces both rates using a non-linear exponent of `1.30`:
+Consist acceleration and braking use the non-linear mass factor from `0.1.4f`:
 
 `factor = 1 / (totalMass / locomotiveMass)^1.30`
 
-Locomotives now also have `PowerMW`. Power limits how much total consist mass can retain the locomotive's base Vmax. The current model uses a 0.006 MW/t supported-mass threshold and exponent 0.55 above that threshold.
+Locomotive power additionally limits Vmax above the supported consist mass.
 
-`EU200` (5.5 MW) with ten 40 t wagons remains at 200 km/h. `SU42` (1.2 MW) is approximately 75 km/h with five 40 t wagons and approximately 55 km/h with ten.
+Signal `Stop` / `StopStation` braking now uses the same effective braking capability as train movement, so the stopping-distance calculation reflects the actual loaded consist rather than the raw locomotive/wagon braking parameter.
 
-Rolling-stock rendering distinguishes electric locomotives (red), diesel locomotives (black), and the three passenger wagon variants (blue, light blue and dark blue). White centered labels show `EP07`, `EU200`, `SU42`, `1KL`, `2KL` or `3KL`; labels remain readable in both travel directions.
+Restricted signal aspects also use effective braking when deciding whether enough distance remains to reduce speed.
+
+`TrainCollisionController` keeps the 3-cell RadioStop minimum but expands its protected distance at higher speed using effective braking distance, `0.15 s` reaction distance and a `0.8`-cell buffer.
+
+The current Stop target retains the `0.8`-cell offset and leading-vehicle physical half-length correction. Spatial scale remains `1 map cell = 10 m`.
+
+## Rolling stock presentation
+
+The Myra Depot builder exposes the catalogue; world rendering is handled separately by `TrainRenderer`:
+
+- electric locomotives are red;
+- diesel locomotives are black;
+- all rolling-stock labels are white and centered;
+- locomotive labels use `EP07`, `EU200`, `SU42`;
+- passenger coaches use `1KL`, `2KL`, `3KL` with distinct blue shades;
+- labels remain readable in both travel directions.
 
 ## Pause lifecycle
 
