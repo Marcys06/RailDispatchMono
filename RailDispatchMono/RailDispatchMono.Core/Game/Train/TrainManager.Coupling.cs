@@ -195,13 +195,17 @@ public sealed partial class TrainManager
         var result = new List<CouplingCandidate>();
         if (train.Composition.Vehicles.Count == 0) return result;
 
-        int lastIndex = train.Composition.Vehicles.Count - 1;
+        // Coupling boundaries are defined by the current travel direction,
+        // not by static composition indices. F7 changes these indices without
+        // changing the physical vehicle order.
+        int firstIndex = train.IsReversed ? 0 : train.Composition.Vehicles.Count - 1;
         for (int otherIndex = 0; otherIndex < _trains.Count; otherIndex++)
         {
             var otherTrain = _trains[otherIndex];
             if (ReferenceEquals(otherTrain, train) || otherTrain.Composition.Vehicles.Count == 0) continue;
 
-            AddCandidateForEnd(result, train, lastIndex, VehicleEnd.Rear, otherTrain, 0, VehicleEnd.Front);
+            int secondIndex = otherTrain.IsReversed ? otherTrain.Composition.Vehicles.Count - 1 : 0;
+            AddCandidateForEnd(result, train, firstIndex, VehicleEnd.Rear, otherTrain, secondIndex, VehicleEnd.Front);
         }
 
         result.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
