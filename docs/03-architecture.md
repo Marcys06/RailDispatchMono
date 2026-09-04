@@ -1,5 +1,11 @@
 # Architecture
 
+## Current development line
+
+`0.1.6a` builds on the consolidated `0.1.5pre` architecture. The main 0.1.5 additions are now part of the normal domain contract: rolling-stock catalogue, consist performance, Depot train creation, rigid coupling/decoupling, manual shunting, F7 direction reversal and curve-aware per-vehicle transforms.
+
+The station/passenger foundation is also an implemented domain subsystem and must not be treated as planned-only functionality.
+
 ## Core rule
 
 `RailDispatchMono.Core` is the shared application/game layer. Platform projects host the application. Dependency direction points from platform hosts toward Core.
@@ -14,9 +20,6 @@ RailDispatchMonoGame
     |
     +--> GraphicsDeviceManager
     +--> MyraUIManager
-    |       +--> MyraEnvironment.Game
-    |       +--> one shared Desktop
-    |       +--> one active Root
     |
     v
 ScreenManager
@@ -24,43 +27,54 @@ ScreenManager
     +--> GameScreen instances
     +--> InputState
     +--> SpriteBatch / shared resources
+    |
+    v
+GameplayScreen
+    |
+    +--> railway/map services
+    +--> TrainManager
+    +--> StationController
+            +--> PassengerManager
+            +--> IPassengerService
+            +--> IPassengerDemandProvider
 ```
-
-Myra is a UI/presentation layer inside this architecture. It does not replace `ScreenManager`, gameplay/domain ownership or the legacy MonoGame renderer where that renderer is still authoritative.
-
-## MyraUIManager
-
-`MyraUIManager` is the single Myra integration boundary. It initializes `MyraEnvironment.Game`, owns the shared `Desktop` and manages the active Myra root. Migrated views must use this boundary and must not create independent desktops.
-
-At `0.1.4pre`, Myra surfaces include Main Menu, Settings, About, Pause, gameplay HUD and the full-screen Depot builder. The gameplay HUD includes the clock, `GameDay`, speed controls, build tools and the train/station information panel.
-
-## ScreenManager
-
-`ScreenManager` remains the authoritative owner of registered screen lifecycle, update, input routing and drawing. Pause is not a popup screen: `GameplayScreen` owns pause state and activates `MyraPauseView` through `MyraUIManager`. `DepotScreen` is a real full-screen `GameScreen` and therefore follows normal screen lifecycle.
 
 ## Ownership
 
 - simulation/domain state belongs to `Game/` subsystems;
-- camera state belongs to the rendering/camera subsystem;
-- screen lifecycle belongs to `ScreenManager`/`GameScreen`;
-- Myra presentation belongs to Myra views and `MyraUIManager`;
-- persistence remains behind the existing save services and gameplay-owned actions;
 - train lifecycle belongs to `TrainManager`;
-- ordered consist state and derived consist statistics belong to `TrainComposition`;
+- ordered consist state/statistics belong to `TrainComposition`;
+- coupling validation and mutation belong to `CouplingService`;
+- station lifecycle, stop/dwell coordination and passenger-generation timing belong to `StationController`;
+- passenger collection/state belongs to `PassengerManager`;
+- passenger exchange policy belongs to `IPassengerService` / `DefaultPassengerService`;
+- passenger destination demand belongs to `IPassengerDemandProvider` / `RandomPassengerDemandProvider`;
 - rolling-stock catalogue data belongs to `Game/RollingStock`;
-- depot ownership belongs to `DepotController`.
+- depot ownership belongs to `DepotController`;
+- presentation belongs to screens/Myra/renderers;
+- persistence remains behind the existing save services.
 
-## Train diagnostics boundary
+## Passenger domain boundary
 
-Train movement establishes a temporary per-thread diagnostic context containing the train GUID. `DebugManager` uses that context to normalize raw messages beginning with `[TRAIN]` to `[TRAIN:<first-8-guid-chars>]`. This is a logging concern only; it does not change train identity or simulation state.
+`StationController` coordinates station detection and train dwell. When a train reaches a serviceable station and `ITrainStopDecision` says it should stop, the controller invokes `IPassengerService.ServiceTrainAtStation()` and starts the configured dwell period.
 
-## Dependency discipline
+`PassengerManager` owns the active passenger collection. `Passenger` stores origin, destination and runtime state (`WaitingAtStation`, `OnBoard`, `Arrived`). `Wagon` owns the concrete passenger list for that wagon and enforces capacity and route acceptance.
 
-1. Find the existing owner of state.
+The default demand provider selects destinations randomly from other stations. This is explicitly a replaceable placeholder for a future population/city/demand model.
+
+Transfers are not implemented. Passenger generation is time-based per station and bounded by station waiting capacity. Completed passengers can be removed from `PassengerManager`.
+
+## 0.1.5 movement/consist contract
+
+F7 changes only `Train.Direction`; it does not reorder `Composition.Vehicles`, move vehicles at the reversal instant or teleport the locomotive. Vehicle spacing remains unchanged. Curve following uses trajectory history and derives each vehicle's position/rotation from its own distance behind the head, so vehicles enter curves sequentially.
+
+Manual F6 shunting targets the train under the cursor and moves it toward a fixed `3 km/h`, bypassing the automatic RadioStop/collision stop path for that targeted train while held.
+
+## Safety and dependency discipline
+
+1. Find the existing owner of state before adding a new manager/service.
 2. Reuse existing managers/models rather than parallel globals.
-3. Keep platform APIs out of Core unless already abstracted.
-4. Keep presentation in the UI/screen layer.
-5. Keep simulation/domain behavior in game subsystems.
-6. Use the shared input and Myra boundaries rather than creating parallel routing systems.
-7. When changing movement/safety calculations, audit all consumers of braking, mass and Vmax.
-8. When changing a public constructor or data contract, inspect save/load and catalogue factories together.
+3. Keep presentation out of domain mutation.
+4. When changing acceleration, braking or Vmax, audit signal stopping and RadioStop.
+5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, route handling and the active HUD together.
+6. When changing constructors/data contracts, inspect save/load and catalogue factories.
