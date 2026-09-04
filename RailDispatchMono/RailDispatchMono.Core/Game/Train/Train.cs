@@ -164,14 +164,26 @@ public sealed partial class Train
             RebuildVehicleOffsets();
 
         float distanceBehind = GetMovementDistanceToVehicle(vehicleIndex);
+        float rotation;
 
         if (distanceBehind <= MovementEpsilon)
-            return (Position, GetRotation());
+        {
+            rotation = GetRotation();
+            return (Position, ApplyVehicleOrientation(vehicleIndex, rotation));
+        }
 
         if (TryGetTrajectoryTransformBehindHead(distanceBehind, out Vector2 trajectoryPosition, out float trajectoryRotation))
-            return (trajectoryPosition, trajectoryRotation);
+            return (trajectoryPosition, ApplyVehicleOrientation(vehicleIndex, trajectoryRotation));
 
-        return (Position + _vehicleOffsets[vehicleIndex], GetDirectionAngle(Direction));
+        rotation = GetDirectionAngle(Direction);
+        return (Position + _vehicleOffsets[vehicleIndex], ApplyVehicleOrientation(vehicleIndex, rotation));
+    }
+
+    private float ApplyVehicleOrientation(int vehicleIndex, float rotation)
+    {
+        if (Composition.Vehicles[vehicleIndex].Orientation == VehicleOrientation.Reverse)
+            rotation += MathF.PI;
+        return rotation;
     }
 
     public IReadOnlyList<(Vector2 Position, float Distance)> GetTrajectoryHistory()
