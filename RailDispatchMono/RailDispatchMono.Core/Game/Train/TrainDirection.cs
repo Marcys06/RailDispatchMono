@@ -41,6 +41,40 @@ public sealed partial class Train
         SeedTrajectoryFromVehiclePositions(vehiclePositions);
     }
 
+    /// <summary>
+    /// Rebinds the runtime geometry to the exact world positions already occupied
+    /// by the vehicles. Composition changes are state changes, not movement, so
+    /// this method must never calculate a new position from vehicle index/length.
+    /// </summary>
+    internal void PreserveVehiclePositions(IReadOnlyList<Vector2> vehiclePositions)
+    {
+        if (vehiclePositions.Count != Composition.Vehicles.Count)
+            throw new ArgumentException("Vehicle position count must match the composition.", nameof(vehiclePositions));
+
+        if (vehiclePositions.Count == 0)
+        {
+            ResetTrajectory();
+            return;
+        }
+
+        // The first vehicle remains the train head. Moving the train anchor to
+        // its already occupied position makes all subsequent offsets relative to
+        // the same physical state instead of reconstructing the consist from
+        // length/direction and teleporting vehicles.
+        Position = vehiclePositions[0];
+        DistanceAlongTrack = 0f;
+        TotalDistance = 0f;
+
+        _vehicleOffsets = new Vector2[vehiclePositions.Count];
+        for (int i = 0; i < vehiclePositions.Count; i++)
+            _vehicleOffsets[i] = vehiclePositions[i] - Position;
+
+        _lastSignal = null;
+        _lastSignalSpeed = _maxSpeed;
+        ResetCurveState();
+        SeedTrajectoryFromVehiclePositions(vehiclePositions);
+    }
+
     private Vector2[] CaptureCurrentVehiclePositions()
     {
         if (Composition.Vehicles.Count == 0)

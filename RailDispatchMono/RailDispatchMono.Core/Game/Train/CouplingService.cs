@@ -68,13 +68,22 @@ public sealed class CouplingService
         Train leadingTrain = firstTrain;
         Train trailingTrain = secondTrain;
 
+        // Coupling is a topology change, not a movement operation. Capture the
+        // exact world positions before changing either composition and restore
+        // those positions after the merge. No vehicle may be repositioned by
+        // composition length, direction, locomotive type, or list index.
+        var leadingVehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
+        var trailingVehicles = new List<Vehicle>(trailingTrain.Composition.Vehicles);
+        var leadingPositions = leadingTrain.GetVehiclePositions();
+        var trailingPositions = trailingTrain.GetVehiclePositions();
+        var mergedPositions = new List<Vector2>(leadingPositions.Count + trailingPositions.Count);
+        mergedPositions.AddRange(leadingPositions);
+        mergedPositions.AddRange(trailingPositions);
+
         firstTrain.Speed = 0f;
         secondTrain.Speed = 0f;
         firstTrain.RadioStop();
         secondTrain.RadioStop();
-
-        var leadingVehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
-        var trailingVehicles = new List<Vehicle>(trailingTrain.Composition.Vehicles);
 
         // Clear all old runtime links before rebuilding the merged chain. This
         // prevents stale links from blocking AddVehicle after a merge.
@@ -95,12 +104,16 @@ public sealed class CouplingService
         foreach (var vehicle in trailingVehicles)
             leadingTrain.Composition.AddVehicle(vehicle);
 
-        leadingTrain.RebuildVehicleOffsets();
+        // Rebuild only the logical runtime chain. Never rebuild geometric offsets
+        // from the new composition because that would teleport the suffix onto
+        // the leading train's coordinate system.
+        leadingTrain.Composition.RebuildRuntimeCouplings();
+        leadingTrain.PreserveVehiclePositions(mergedPositions);
         leadingTrain.Speed = 0f;
         manager.ResetSignalStateAfterChange(leadingTrain);
 
         manager.Remove(trailingTrain);
-        DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest.");
+        DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest without repositioning vehicles.");
         return CouplingOperationResult.Ok;
     }
 
@@ -133,6 +146,7 @@ public sealed class CouplingService
             return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
         int splitIndex = Math.Max(firstIndex, secondIndex);
+        var allPositions = train.GetVehiclePositions();
         var newHeadTransform = train.GetVehicleTransform(splitIndex);
         TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
         train.Speed = 0f;
@@ -142,17 +156,21 @@ public sealed class CouplingService
         connection.VehicleA.CouplingState.Set(connection.EndA, null);
         connection.VehicleB.CouplingState.Set(connection.EndB, null);
 
-        train.RebuildVehicleOffsets();
+        var remainingPositions = allPositions.GetRange(0, splitIndex);
+        var detachedPositions = allPositions.GetRange(splitIndex, allPositions.Count - splitIndex);
+
+        train.PreserveVehiclePositions(remainingPositions);
 
         var detached = new Train(newHeadTransform.Position, newDirection, 0f, splitComposition.Vehicles);
         detached.SetMap(manager.Map);
         detached.SetSignalController(train.GetSignalController() ?? new SignalController(manager.Map));
         detached.RadioStop();
+        detached.PreserveVehiclePositions(detachedPositions);
         manager.RegisterCouplingTrain(detached);
         manager.ResetSignalStateAfterChange(train);
         manager.ResetSignalStateAfterChange(detached);
 
-        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped and signal context rebuilt.");
+        DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped without repositioning vehicles.");
         return CouplingOperationResult.Ok;
     }
 
