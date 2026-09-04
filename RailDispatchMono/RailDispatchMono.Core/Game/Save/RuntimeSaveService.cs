@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 1;
-    public string GameVersion { get; set; } = "0.1.5pre";
+    public string GameVersion { get; set; } = "0.1.6d";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -217,7 +217,7 @@ public static class RuntimeSaveService
                     Station? destination = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.DestinationStationId);
                     if (origin == null || destination == null) continue;
                     var passenger = new Passenger(origin, destination);
-                    wagon.TryBoard(passenger, origin);
+                    wagon.RestorePassenger(passenger);
                 }
             }
         }
