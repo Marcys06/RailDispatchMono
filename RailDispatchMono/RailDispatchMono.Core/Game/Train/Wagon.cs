@@ -48,30 +48,30 @@ public sealed class Wagon : Vehicle
         return Route.IsEmpty || Route.CanServeStation(passenger.DestinationStation.Id);
     }
 
-    internal bool TryBoard(Passenger passenger, Guid trainId)
+    internal bool TryBoard(Passenger passenger)
     {
         if (!CanAcceptPassenger(passenger))
             return false;
 
         _passengers.Add(passenger);
         passenger.State = PassengerState.OnBoard;
-        passenger.CurrentTrainId = trainId;
+        passenger.CurrentWagonId = Id;
         passenger.CurrentStationId = null;
         return true;
     }
 
-    internal int TryAlightAt(Station station, Guid trainId)
+    internal int TryAlightAt(Station station)
     {
         int alighted = 0;
         for (int i = _passengers.Count - 1; i >= 0; i--)
         {
             var passenger = _passengers[i];
-            if (passenger.DestinationStation.Id != station.Id || passenger.CurrentTrainId != trainId)
+            if (passenger.DestinationStation.Id != station.Id)
                 continue;
 
             _passengers.RemoveAt(i);
             passenger.State = PassengerState.Arrived;
-            passenger.CurrentTrainId = null;
+            passenger.CurrentWagonId = null;
             passenger.CurrentStationId = station.Id;
             alighted++;
         }
