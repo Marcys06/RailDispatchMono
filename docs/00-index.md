@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.6d` development line**  
+**Documentation baseline: `0.1.6e` development line**  
 **Previous consolidated milestone: `0.1.5pre`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and call sites remain authoritative if documentation conflicts with implementation.
@@ -30,7 +30,7 @@ This directory contains maintained project documentation. Historical release not
 21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical `0.1.4pre` snapshot.
 22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
 
-## Current 0.1.6d focus
+## Current 0.1.6e focus
 
 The 0.1.6 line extends the completed rigid-consist, movement and coupling work of `0.1.5pre` and the existing station/passenger foundation.
 
@@ -42,9 +42,11 @@ The passenger is associated with a concrete `Wagon`, not with a `Train`. A train
 
 `0.1.6d` adds journey-continuity checks and a transfer-ready diagnostic seam. It does not implement automatic transfers or train selection by passengers. Economy remains out of scope.
 
+`0.1.6e` stabilizes coupling/decoupling: locomotive insertion rebuilds adjacent runtime connections, merging rebuilds the full runtime coupling chain from vehicle order, coupling candidates use only order-preserving `Rear → Front` boundaries, and decoupling determines the split from adjacent vehicle indices plus the actual runtime connection.
+
 ## Version policy
 
 - Consolidated `pre` snapshots become historical when a later development line starts.
-- Lettered stages such as `0.1.6a`–`0.1.6d` are development records in `docs/changelog/`.
+- Lettered stages such as `0.1.6a`–`0.1.6e` are development records in `docs/changelog/`.
 - Historical stages are not rewritten to reflect later implementation.
 - Maintained architecture/domain documentation is updated when the current contract changes.
