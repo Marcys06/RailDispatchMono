@@ -60,9 +60,42 @@ public sealed class Wagon : Vehicle
                Route.CanServeStation(passenger.DestinationStation.Id);
     }
 
+    /// <summary>
+    /// Checks whether this wagon can carry a passenger from its current route
+    /// position to the passenger's destination. This is intentionally exposed
+    /// as a route invariant so a future transfer service can detect a broken
+    /// journey without making the passenger depend on a train identity.
+    /// </summary>
+    public bool CanContinueJourneyTo(Guid destinationStationId) =>
+        Route.IsEmpty || Route.CanServeStation(destinationStationId);
+
     internal bool TryBoard(Passenger passenger, Station station)
     {
         if (!CanAcceptPassenger(passenger, station))
+            return false;
+
+        _passengers.Add(passenger);
+        passenger.State = PassengerState.OnBoard;
+        passenger.CurrentWagonId = Id;
+        passenger.CurrentStationId = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Restores a passenger already recorded as being inside this wagon.
+    /// Save/load restoration deliberately bypasses normal boarding validation:
+    /// the saved wagon state is authoritative and may represent a point between
+    /// the passenger's origin and destination stations.
+    /// </summary>
+    internal bool RestorePassenger(Passenger passenger)
+    {
+        if (passenger == null ||
+            passenger.State == PassengerState.Arrived ||
+            passenger.CurrentWagonId == Id ||
+            AvailablePassengerCapacity <= 0)
+            return false;
+
+        if (_passengers.Contains(passenger))
             return false;
 
         _passengers.Add(passenger);
