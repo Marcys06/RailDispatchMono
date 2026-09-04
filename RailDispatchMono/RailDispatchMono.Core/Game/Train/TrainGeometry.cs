@@ -89,7 +89,7 @@ public sealed partial class Train
         if (entrySide == TrackConnections.West && exitSide == TrackConnections.North)
         {
             _arcCenter = new Vector2(x, y);
-            _arcStartAngle = 0.0f;
+            _arcStartAngle = HalfPi;
             _arcSweepAngle = -HalfPi;
             return;
         }
@@ -220,7 +220,7 @@ public sealed partial class Train
 
         if (entrySide == TrackConnections.West && exitSide == TrackConnections.North)
         {
-            center = new Vector2(x, y); startAngle = 0f; sweepAngle = -HalfPi; return;
+            center = new Vector2(x, y); startAngle = HalfPi; sweepAngle = -HalfPi; return;
         }
         if (entrySide == TrackConnections.North && exitSide == TrackConnections.West)
         {
