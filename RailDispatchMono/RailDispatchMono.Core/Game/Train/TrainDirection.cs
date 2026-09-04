@@ -21,6 +21,10 @@ public sealed partial class Train
         _lastSignal = null;
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
+
+        if (vehiclePositions.Length > 0)
+            Position = vehiclePositions[GetTravelHeadVehicleIndex()];
+
         SeedTrajectoryFromVehiclePositions(vehiclePositions);
     }
 
@@ -32,6 +36,10 @@ public sealed partial class Train
         _lastSignal = null;
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
+
+        if (vehiclePositions.Length > 0)
+            Position = vehiclePositions[GetTravelHeadVehicleIndex()];
+
         SeedTrajectoryFromVehiclePositions(vehiclePositions);
     }
 
@@ -46,7 +54,7 @@ public sealed partial class Train
             return;
         }
 
-        Position = vehiclePositions[0];
+        Position = vehiclePositions[GetTravelHeadVehicleIndex()];
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
 
@@ -54,6 +62,14 @@ public sealed partial class Train
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         SeedTrajectoryFromVehiclePositions(vehiclePositions);
+    }
+
+    private int GetTravelHeadVehicleIndex()
+    {
+        if (Composition.Vehicles.Count == 0)
+            return 0;
+
+        return _isReversed ? Composition.Vehicles.Count - 1 : 0;
     }
 
     private void SeedInitialTrajectoryFromComposition()
@@ -96,17 +112,20 @@ public sealed partial class Train
             return;
         }
 
-        for (int i = vehiclePositions.Count - 1; i >= 0; i--)
+        var points = new List<TrajectoryPoint>(vehiclePositions.Count);
+        for (int i = 0; i < vehiclePositions.Count; i++)
         {
             float distance = -GetMovementDistanceToVehicle(i);
-            _trajectory.Add(new TrajectoryPoint(vehiclePositions[i], distance));
+            points.Add(new TrajectoryPoint(vehiclePositions[i], distance));
         }
 
+        points.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+        _trajectory.AddRange(points);
+
         float historyExtension = MathF.Max(Length * 25.0f, 60.0f);
-        int lastVehicleIndex = vehiclePositions.Count - 1;
-        float oldestDistance = -GetMovementDistanceToVehicle(lastVehicleIndex);
-        Vector2 oldestPosition = vehiclePositions[lastVehicleIndex];
-        Vector2 historyPosition = oldestPosition - DirectionToVector(Direction) * historyExtension;
+        TrajectoryPoint oldestPoint = _trajectory[0];
+        float oldestDistance = oldestPoint.Distance;
+        Vector2 historyPosition = oldestPoint.Position - DirectionToVector(Direction) * historyExtension;
         _trajectory.Insert(0, new TrajectoryPoint(
             historyPosition,
             oldestDistance - historyExtension));
@@ -117,10 +136,18 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        float distance = 0f;
-        for (int i = 0; i < vehicleIndex; i++)
-            distance += Composition.Vehicles[i].Parameters.Length;
-        return distance;
+        if (!_isReversed)
+        {
+            float distance = 0f;
+            for (int i = 0; i < vehicleIndex; i++)
+                distance += Composition.Vehicles[i].Parameters.Length;
+            return distance;
+        }
+
+        float reversedDistance = 0f;
+        for (int i = Composition.Vehicles.Count - 1; i > vehicleIndex; i--)
+            reversedDistance += Composition.Vehicles[i].Parameters.Length;
+        return reversedDistance;
     }
 
     internal SignalController? GetSignalController() => _signalController;
