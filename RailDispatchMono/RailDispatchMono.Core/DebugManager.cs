@@ -48,6 +48,21 @@ namespace RailDispatchMono.Core
         public static void SetShowCategory(bool e) => _showCategory = e;
         public static void Log(DebugCategory c, string message) { if (!IsDebugEnabled || !IsCategoryEnabled(c) || !TryAcquireOutputSlot()) return; WriteLog(c, NormalizeTrainMessage(message)); }
         public static void Log(string message) { if (!IsDebugEnabled || !TryAcquireOutputSlot()) return; WriteLog(DebugCategory.General, NormalizeTrainMessage(message)); }
+
+        /// <summary>
+        /// Sparse, high-value diagnostic output for state-transition snapshots.
+        /// It intentionally bypasses the normal 30/s console limiter so a coupling
+        /// snapshot cannot be lost because TrainMovement filled the output budget.
+        /// This must only be used for bounded diagnostic events, never per-frame logging.
+        /// </summary>
+        public static void Diagnostic(DebugCategory c, string message)
+        {
+            if (!IsDebugEnabled || !IsCategoryEnabled(c)) return;
+            WriteLog(c, NormalizeTrainMessage(message));
+        }
+
+        public static void TrainDiagnostic(string message) => Diagnostic(DebugCategory.Train, message);
+
         private static string NormalizeTrainMessage(string message)
         {
             if (!message.StartsWith("[TRAIN]", StringComparison.Ordinal) || !_currentTrainId.Value.HasValue)
