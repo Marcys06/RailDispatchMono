@@ -191,11 +191,6 @@ public sealed partial class Train
         if (distanceBehind <= MovementEpsilon)
             return false;
 
-        // Composition order is immutable. When travelling in the normal
-        // direction, following vehicles are physically ahead of the locomotive
-        // in world space, so their position must be projected forward along the
-        // track. When reversed, they are behind the locomotive in travel space,
-        // and the recorded trajectory is the authoritative path for them.
         if (!_isReversed)
             return TryGetForwardTrackTransform(distanceBehind, out position, out rotation);
 
@@ -323,7 +318,7 @@ public sealed partial class Train
             if (!_map.TryGetTrack(simulatedCell, out TrackCell? track) || track is null)
                 return false;
 
-            TrackConnections entrySide = GetOppositeDirection(simulatedDirection);
+            TrackConnections entrySide = simulatedDirection.GetOppositeDirection();
             TrackConnections exitSide;
 
             if (track.Geometry == TrackGeometry.Junction)
@@ -412,7 +407,7 @@ public sealed partial class Train
             if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
                 return false;
 
-            TrackConnections nextEntry = GetOppositeDirection(simulatedDirection);
+            TrackConnections nextEntry = simulatedDirection.GetOppositeDirection();
             TrackConnections nextExit = nextTrack.GetExitDirection(nextEntry);
             if (nextExit == TrackConnections.None)
                 return false;
@@ -507,15 +502,6 @@ public sealed partial class Train
         TrackConnections.South => new Vector2(0.0f, 1.0f),
         TrackConnections.West => new Vector2(-1.0f, 0.0f),
         _ => throw new ArgumentException("Direction must contain exactly one cardinal direction.", nameof(direction))
-    };
-
-    private static TrackConnections GetOppositeDirection(TrackConnections direction) => direction switch
-    {
-        TrackConnections.North => TrackConnections.South,
-        TrackConnections.East => TrackConnections.West,
-        TrackConnections.South => TrackConnections.North,
-        TrackConnections.West => TrackConnections.East,
-        _ => TrackConnections.None
     };
 
     private static TrackConnections GetCurveExitDirection(TrackConnections connections, TrackConnections entrySide)
