@@ -109,7 +109,15 @@ public sealed partial class TrainManager
         }
 
         Vector2 spawn = new(startPosition.X + 0.5f, startPosition.Y + 0.5f);
-        spawn += Train.DirectionToVector(initialDirection) * tailToLocomotive;
+        Vector2 directionVector = initialDirection switch
+        {
+            TrackConnections.North => new Vector2(0f, -1f),
+            TrackConnections.South => new Vector2(0f, 1f),
+            TrackConnections.East => new Vector2(1f, 0f),
+            TrackConnections.West => new Vector2(-1f, 0f),
+            _ => Vector2.Zero
+        };
+        spawn += directionVector * tailToLocomotive;
 
         var train = new Train(spawn, initialDirection, speed, vehicles);
         train.SetMap(_map);
