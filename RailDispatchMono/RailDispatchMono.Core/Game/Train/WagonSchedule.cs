@@ -98,7 +98,9 @@ public sealed class WagonSchedule
         Points.Clear();
         if (BaseStationIds.Count < 2) return;
 
-        var loop = BaseStationIds.Concat(BaseStationIds.Skip(1).Reverse()).ToList();
+        // A-B-C becomes A-B-C-B-A. The terminal A is added once at the end;
+        // the first occurrence remains the departure/initial terminal.
+        var loop = BaseStationIds.Concat(BaseStationIds.Reverse().Skip(1)).ToList();
         for (int i = 0; i < loop.Count; i++)
             Points.Add(new WagonSchedulePoint(loop[i], 0, 0));
     }
