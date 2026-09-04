@@ -156,7 +156,7 @@ public sealed class CouplingService
         manager.ResetSignalStateAfterChange(detached);
 
         DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped without repositioning vehicles.");
-        return CouplingOperationResult.Ok();
+        return CouplingOperationResult.Ok;
     }
 
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
