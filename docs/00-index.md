@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.6g` development line**  
+**Documentation baseline: `0.1.6pre`**  
 **Previous consolidated milestone: `0.1.5pre`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
@@ -28,29 +28,30 @@ This directory contains maintained project documentation. Historical release not
 19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical `0.1.2pre` snapshot.
 20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical `0.1.3pre` snapshot.
 21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical `0.1.4pre` snapshot.
-22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
+22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — historical `0.1.5pre` snapshot.
+23. [23-current-state-0.1.6pre.md](23-current-state-0.1.6pre.md) — authoritative current `0.1.6pre` snapshot.
 
-## Current 0.1.6g focus
+## Current 0.1.6pre focus
 
-The 0.1.6 line extends the completed rigid-consist, movement and coupling work of `0.1.5pre` and the existing station/passenger foundation.
+The `0.1.6` line is consolidated as `0.1.6pre`. It combines the wagon-aware passenger model with the stabilised rigid-consist, movement, F6/F7, curve, coupling/decoupling, runtime-safety and diagnostic contracts.
 
 The passenger vertical slice is:
 
 `Station → passenger generation → waiting → train arrival → alighting → boarding → dwell → departure`.
 
-The passenger is associated with a concrete `Wagon`, not with a `Train`. A train is only the current operational grouping of wagons. This is required because coupling and decoupling can move a wagon between trains without moving its passengers.
+A boarded passenger belongs to a concrete `Wagon`, not to a `Train`. Coupling and decoupling therefore change the operational train grouping without migrating passenger ownership.
 
-`0.1.6d` adds journey-continuity checks and a transfer-ready diagnostic seam. It does not implement automatic transfers or train selection by passengers. Economy remains out of scope.
+`0.1.6pre` also makes physical consist order explicit through `Vehicle.CompositionOrder`, while keeping `Composition.Vehicles` as the single authoritative ordered container. F7 never reverses that container.
 
-`0.1.6e` stabilizes coupling/decoupling: locomotive insertion rebuilds adjacent runtime connections, merging rebuilds the full runtime coupling chain from vehicle order, coupling candidates use only order-preserving `Rear → Front` boundaries, and decoupling determines the split from adjacent vehicle indices plus the actual runtime connection.
+Movement uses the active travel head, trajectory history and per-vehicle physical distance. Exact vehicle positions are preserved across F7 and coupling/decoupling. `SimulationScale` is the conversion boundary between physical metres and map-grid cells.
 
-`0.1.6f` makes consist order explicit through `Vehicle.CompositionOrder` without making it a second authoritative vehicle container.
+`CouplingService` owns coupling/decoupling mutations. Coupling rebuilds runtime connections from physical vehicle order and preserves exact world positions. `VehicleOrientation` is handled consistently by coupling geometry.
 
-`0.1.6g` preserves exact vehicle positions during coupling/decoupling, makes RadioStop a hard movement guard, centralizes opposite-direction lookup, uses `TrainComposition.EffectiveMaxSpeed` for the train Vmax cap, and keeps physical grid/metre conversion behind `SimulationScale`.
+`RadioStop` blocks normal automatic movement; F6 manual shunting is the explicit exception. `TrainComposition.EffectiveMaxSpeed` remains the consist capability, separate from signal restrictions.
 
 ## Version policy
 
+- `0.1.6pre` is the current consolidated pre-release snapshot.
+- Lettered `0.1.6a`–`0.1.6g` records remain historical and immutable.
 - Consolidated `pre` snapshots become historical when a later development line starts.
-- Lettered stages such as `0.1.6a`–`0.1.6g` are development records in `docs/changelog/`.
-- Historical stages are not rewritten to reflect later implementation.
 - Maintained architecture/domain documentation is updated when the current contract changes.
