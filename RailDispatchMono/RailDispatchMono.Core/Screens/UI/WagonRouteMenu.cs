@@ -345,7 +345,7 @@ public sealed class WagonRouteMenu
         _arrivalBoxes.Clear();
         _departureBoxes.Clear();
 
-        var loop = _baseRoute.Concat(_baseRoute.Skip(1).Reverse()).ToList();
+        var loop = _baseRoute.Concat(_baseRoute.Reverse().Skip(1)).ToList();
         int pointCount = loop.Count;
 
         for (int i = 0; i < pointCount; i++)
