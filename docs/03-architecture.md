@@ -2,9 +2,9 @@
 
 ## Current development line
 
-`0.1.6a` builds on the consolidated `0.1.5pre` architecture. The main 0.1.5 additions are now part of the normal domain contract: rolling-stock catalogue, consist performance, Depot train creation, rigid coupling/decoupling, manual shunting, F7 direction reversal and curve-aware per-vehicle transforms.
+`0.1.6e` is the current documented development baseline. It builds on the completed `0.1.5pre` movement/consist contract and the `0.1.6c`/`0.1.6d` passenger model.
 
-The station/passenger foundation is also an implemented domain subsystem and must not be treated as planned-only functionality.
+The important 0.1.6 rule is that a passenger belongs to a concrete `Wagon`, while `Train` is only the current operational grouping of wagons. Coupling and decoupling therefore do not migrate passenger ownership.
 
 ## Core rule
 
@@ -43,12 +43,13 @@ GameplayScreen
 
 - simulation/domain state belongs to `Game/` subsystems;
 - train lifecycle belongs to `TrainManager`;
-- ordered consist state/statistics belong to `TrainComposition`;
-- coupling validation and mutation belong to `CouplingService`;
-- station lifecycle, stop/dwell coordination and passenger-generation timing belong to `StationController`;
-- passenger collection/state belongs to `PassengerManager`;
-- passenger exchange policy belongs to `IPassengerService` / `DefaultPassengerService`;
+- ordered physical consist state belongs to `TrainComposition`;
+- coupling validation/mutation belongs to `CouplingService`;
+- station lifecycle, stop/dwell and passenger generation belong to `StationController`;
+- active passenger collection belongs to `PassengerManager`;
+- station passenger exchange policy belongs to `IPassengerService` / `DefaultPassengerService`;
 - passenger destination demand belongs to `IPassengerDemandProvider` / `RandomPassengerDemandProvider`;
+- wagon passenger ownership and service-route acceptance belong to `Wagon`;
 - rolling-stock catalogue data belongs to `Game/RollingStock`;
 - depot ownership belongs to `DepotController`;
 - presentation belongs to screens/Myra/renderers;
@@ -56,19 +57,46 @@ GameplayScreen
 
 ## Passenger domain boundary
 
-`StationController` coordinates station detection and train dwell. When a train reaches a serviceable station and `ITrainStopDecision` says it should stop, the controller invokes `IPassengerService.ServiceTrainAtStation()` and starts the configured dwell period.
+The implemented passenger flow is:
 
-`PassengerManager` owns the active passenger collection. `Passenger` stores origin, destination and runtime state (`WaitingAtStation`, `OnBoard`, `Arrived`). `Wagon` owns the concrete passenger list for that wagon and enforces capacity and route acceptance.
+`StationController → PassengerManager → PassengerService → Wagon`
 
-The default demand provider selects destinations randomly from other stations. This is explicitly a replaceable placeholder for a future population/city/demand model.
+with demand supplied through `IPassengerDemandProvider`.
 
-Transfers are not implemented. Passenger generation is time-based per station and bounded by station waiting capacity. Completed passengers can be removed from `PassengerManager`.
+`Passenger` has fixed origin/destination and runtime state. A boarded passenger records the concrete wagon (`CurrentWagonId`). `PassengerManager.GetOnBoard(Train)` is an operational view over passengers in the wagons currently forming that train; it is not the ownership boundary.
 
-## 0.1.5 movement/consist contract
+A configured wagon validates its current `TrainRoute` before accepting a passenger. `Wagon.CanContinueJourneyTo(...)` is the explicit route-continuity invariant used by the 0.1.6d model.
 
-F7 changes only `Train.Direction`; it does not reorder `Composition.Vehicles`, move vehicles at the reversal instant or teleport the locomotive. Vehicle spacing remains unchanged. Curve following uses trajectory history and derives each vehicle's position/rotation from its own distance behind the head, so vehicles enter curves sequentially.
+`PassengerManager.GetTransferCandidates(Train)` is a diagnostic/future-system seam only. It does not choose a train and does not perform automatic transfers.
 
-Manual F6 shunting targets the train under the cursor and moves it toward a fixed `3 km/h`, bypassing the automatic RadioStop/collision stop path for that targeted train while held.
+Runtime load restores an already-onboard passenger directly into its saved wagon instead of treating the restore as a new station boarding operation.
+
+## Consist and movement contract
+
+The `0.1.5pre` rigid-consist rules remain authoritative:
+
+- `Composition.Vehicles` is the physical order and is not reversed by F7, coupling or decoupling;
+- F7 changes only travel `Direction` and is accepted at `0 km/h`;
+- vehicle world positions and spacing are preserved at F7;
+- curve movement uses trajectory history and per-vehicle distance/tangent;
+- F6 is manual shunting toward a fixed `3 km/h` and bypasses automatic RadioStop/collision stopping for the targeted train while held;
+- coupling uses a fixed `6 km/h` limit;
+- decoupling requires speed below `6 km/h`.
+
+## Coupling contract in 0.1.6e
+
+`CouplingService` is authoritative. Runtime connections are attached to concrete vehicle ends.
+
+- locomotive insertion/replacement rebuilds adjacent runtime connections;
+- merging clears stale runtime connections and rebuilds the full chain from vehicle order;
+- coupling candidates use only order-preserving `Rear → Front` outer boundaries;
+- decoupling finds the split from adjacent vehicle indices plus the actual runtime connection;
+- locomotive–wagon coupling uses the same compatible coupler contract as wagon–wagon coupling;
+- no passenger migration occurs during merge/split.
+
+## Persistence
+
+Runtime save schema remains version `1`. Rolling-stock short labels are persisted. Runtime coupling connections and passenger runtime state are not persisted as independent runtime graphs; onboard passengers are restored into their saved concrete wagon when represented by the current save data.
 
 ## Safety and dependency discipline
 
@@ -76,5 +104,6 @@ Manual F6 shunting targets the train under the cursor and moves it toward a fixe
 2. Reuse existing managers/models rather than parallel globals.
 3. Keep presentation out of domain mutation.
 4. When changing acceleration, braking or Vmax, audit signal stopping and RadioStop.
-5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, route handling and the active HUD together.
-6. When changing constructors/data contracts, inspect save/load and catalogue factories.
+5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, `TrainRoute` and the active HUD together.
+6. When changing coupling, audit `TrainComposition`, `CouplingService`, vehicle-end connections and passenger ownership together.
+7. When changing constructors/data contracts, inspect save/load and catalogue factories.
