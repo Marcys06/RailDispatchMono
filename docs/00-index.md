@@ -1,9 +1,9 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.5pre`**  
-**Status: current consolidated documentation set**
+**Documentation baseline: `0.1.6a` development line**  
+**Previous consolidated milestone: `0.1.5pre`**
 
-This directory contains the authoritative project documentation. Historical release changes belong in `docs/changelog/` and are not duplicated in current-state snapshots.
+This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and call sites remain authoritative if documentation conflicts with implementation.
 
 ## Documentation index
 
@@ -13,38 +13,36 @@ This directory contains the authoritative project documentation. Historical rele
 4. [04-runtime-lifecycle.md](04-runtime-lifecycle.md) — game startup, update and shutdown flow.
 5. [05-screen-system.md](05-screen-system.md) — screen manager and screen lifecycle.
 6. [06-input.md](06-input.md) — input modes and controls.
-7. [07-game-domain.md](07-game-domain.md) — trains, rolling stock, railway, coupling and decoupling.
+7. [07-game-domain.md](07-game-domain.md) — railway, trains, rolling stock, stations, passengers and coupling.
 8. [08-settings-localization.md](08-settings-localization.md) — settings and localization.
 9. [09-content-platforms.md](09-content-platforms.md) — content and platform targets.
 10. [10-development-workflows.md](10-development-workflows.md) — build and development workflow.
 11. [11-ai-agent-rules.md](11-ai-agent-rules.md) — mandatory rules for AI-assisted development.
 12. [12-known-issues-and-cautions.md](12-known-issues-and-cautions.md) — current limitations and known risks.
-13. [13-code-index.md](13-code-index.md) — useful implementation entry points.
+13. [13-code-index.md](13-code-index.md) — implementation entry points.
 14. [14-documentation-maintenance.md](14-documentation-maintenance.md) — documentation maintenance rules.
 15. [15-ai-context.md](15-ai-context.md) — compact context packet for future AI sessions.
 16. [16-screens-and-ui.md](16-screens-and-ui.md) — current UI/screen inventory.
 17. [17-game-map-and-geometry.md](17-game-map-and-geometry.md) — map and geometry rules.
 18. [18-platform-hosts.md](18-platform-hosts.md) — platform-host responsibilities.
-19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical authoritative `0.1.2pre` snapshot.
-20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical authoritative `0.1.3pre` snapshot.
-21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical authoritative `0.1.4pre` snapshot.
+19. [19-current-state-0.1.2pre.md](19-current-state-0.1.2pre.md) — historical `0.1.2pre` snapshot.
+20. [20-current-state-0.1.3pre.md](20-current-state-0.1.3pre.md) — historical `0.1.3pre` snapshot.
+21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical `0.1.4pre` snapshot.
 22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
+
+## Current 0.1.6a focus
+
+The 0.1.6 line starts from the completed rigid-consist and movement work of `0.1.5pre` and the existing station/passenger foundation.
+
+The passenger vertical slice is already present:
+
+`Station → passenger generation → waiting → train arrival → alighting → boarding → dwell → departure`.
+
+Current passenger scope is intentionally basic: random destination demand, fixed origin/destination, three passenger states, wagon capacity/route acceptance and station dwell. Transfers, advanced demand, passenger economics and persistent passenger state are not implemented.
 
 ## Version policy
 
-- `0.1.2a`–`0.1.2k` are immutable historical development stages.
-- `0.1.2pre` is the authoritative stabilization snapshot for the 0.1.2 series.
-- `0.1.3a`–`0.1.3e` are immutable historical development stages.
-- `0.1.3pre` is the historical authoritative snapshot for the 0.1.3 series.
-- `0.1.4a`–`0.1.4i` are immutable lettered development stages recorded in changelogs.
-- `0.1.4pre` is the historical consolidated snapshot for the 0.1.4 series.
-- `0.1.5a`–`0.1.5f` are immutable lettered development stages recorded in changelogs.
-- `0.1.5pre` is the current consolidated snapshot for the 0.1.5 series.
-- Historical lettered stages are not rewritten when the series is consolidated.
-- Historical changes are documented in `CHANGELOG.md` and `docs/changelog/`.
-- If a historical commit has no reliable functional description, document it as `bugfix` rather than inventing behavior.
-- Failed lettered stages are not rewritten in place; their corrections belong to a later stage or the consolidated `pre` milestone.
-
-## Source of truth
-
-When documentation conflicts with code, inspect the current implementation and its call sites first. Update the affected authoritative documentation after confirmed architectural or behavioral changes. Current-state snapshots exist for consolidated `pre` milestones; detailed change history belongs in the changelog.
+- Consolidated `pre` snapshots become historical when a later development line starts.
+- Lettered stages such as `0.1.6a` are development records in `docs/changelog/`.
+- Historical stages are not rewritten to reflect later implementation.
+- Maintained architecture/domain documentation is updated when the current contract changes.
