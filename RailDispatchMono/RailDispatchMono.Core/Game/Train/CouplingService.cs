@@ -44,9 +44,6 @@ public sealed class CouplingService
         if (!CouplingGeometry.AreFacing(firstTrain, firstVehicleIndex, firstEnd, secondTrain, secondVehicleIndex, secondEnd, AlignmentDot))
             return CouplingCheckResult.Fail(CouplingFailureReason.Misaligned);
 
-        // Composition.Vehicles order is authoritative and must not be reversed.
-        // Therefore a merge boundary is always Rear -> Front. Front -> Front
-        // and Rear -> Rear would require reversing one consist's vehicle order.
         if (firstEnd != VehicleEnd.Rear || secondEnd != VehicleEnd.Front)
             return CouplingCheckResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
@@ -62,16 +59,9 @@ public sealed class CouplingService
         if (!check.Allowed)
             return CouplingOperationResult.Fail(check.Reason);
 
-        // The validated connection is Rear -> Front, so the first train is the
-        // ordered prefix and the second train is the ordered suffix. Do not use
-        // locomotive presence to override the physical boundary order.
         Train leadingTrain = firstTrain;
         Train trailingTrain = secondTrain;
 
-        // Coupling is a topology change, not a movement operation. Capture the
-        // exact world positions before changing either composition and restore
-        // those positions after the merge. No vehicle may be repositioned by
-        // composition length, direction, locomotive type, or list index.
         var leadingVehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
         var trailingVehicles = new List<Vehicle>(trailingTrain.Composition.Vehicles);
         var leadingPositions = leadingTrain.GetVehiclePositions();
@@ -85,8 +75,6 @@ public sealed class CouplingService
         firstTrain.RadioStop();
         secondTrain.RadioStop();
 
-        // Clear all old runtime links before rebuilding the merged chain. This
-        // prevents stale links from blocking AddVehicle after a merge.
         foreach (var vehicle in leadingVehicles)
         {
             vehicle.CouplingState.Set(VehicleEnd.Front, null);
@@ -104,9 +92,6 @@ public sealed class CouplingService
         foreach (var vehicle in trailingVehicles)
             leadingTrain.Composition.AddVehicle(vehicle);
 
-        // Rebuild only the logical runtime chain. Never rebuild geometric offsets
-        // from the new composition because that would teleport the suffix onto
-        // the leading train's coordinate system.
         leadingTrain.Composition.RebuildRuntimeCouplings();
         leadingTrain.PreserveVehiclePositions(mergedPositions);
         leadingTrain.Speed = 0f;
@@ -114,7 +99,7 @@ public sealed class CouplingService
 
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest without repositioning vehicles.");
-        return CouplingOperationResult.Ok;
+        return CouplingOperationResult.Ok();
     }
 
     public CouplingOperationResult Decouple(TrainManager manager, Train train, Vehicle firstVehicle, VehicleEnd firstEnd)
@@ -139,16 +124,16 @@ public sealed class CouplingService
         if (firstIndex < 0 || secondIndex < 0)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
 
-        // The runtime connection is authoritative. The split point depends on
-        // ordered vehicle indices, not on which physical end was selected.
-        // This also handles a locomotive/wagon connection consistently.
         if (Math.Abs(firstIndex - secondIndex) != 1)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
         int splitIndex = Math.Max(firstIndex, secondIndex);
         var allPositions = train.GetVehiclePositions();
         var newHeadTransform = train.GetVehicleTransform(splitIndex);
-        TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
+        float travelRotation = newHeadTransform.Rotation;
+        if (train.Composition.Vehicles[splitIndex].Orientation == VehicleOrientation.Reverse)
+            travelRotation -= MathF.PI;
+        TrackConnections newDirection = DirectionFromAngle(travelRotation);
         train.Speed = 0f;
         train.RadioStop();
         var splitComposition = train.Composition.Split(splitIndex);
@@ -171,7 +156,7 @@ public sealed class CouplingService
         manager.ResetSignalStateAfterChange(detached);
 
         DebugManager.Log($"[COUPLING] Train {train.Id.ToString()[..8]} decoupled; new train {detached.Id.ToString()[..8]} stopped without repositioning vehicles.");
-        return CouplingOperationResult.Ok;
+        return CouplingOperationResult.Ok();
     }
 
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
