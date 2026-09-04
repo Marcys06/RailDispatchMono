@@ -1,5 +1,6 @@
 using RailDispatchMono.Core.Game.Railway;
 using TrainNS = RailDispatchMono.Core.Game.Train;
+using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Passengers;
 
@@ -20,9 +21,9 @@ public sealed class DefaultPassengerService : IPassengerService
     public PassengerServiceResult ServiceTrainAtStation(TrainNS.Train train, Station station)
     {
         int before = 0;
-        foreach (var wagon in train.Composition.Vehicles)
+        foreach (var vehicle in train.Composition.Vehicles)
         {
-            if (wagon is Wagon passengerWagon)
+            if (vehicle is Wagon passengerWagon)
                 before += _passengerManager.GetOnBoard(passengerWagon)
                     .Count(p => p.DestinationStation.Id == station.Id);
         }
