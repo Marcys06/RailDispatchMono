@@ -210,10 +210,9 @@ public sealed partial class TrainManager
             var otherTrain = _trains[otherIndex];
             if (ReferenceEquals(otherTrain, train) || otherTrain.Composition.Vehicles.Count == 0) continue;
 
-            int otherLastIndex = otherTrain.Composition.Vehicles.Count - 1;
-
             // Only order-preserving boundaries are candidates: Rear -> Front.
-            // The reverse ordering is represented by iterating the other train.
+            // The reverse ordering is represented when the other train is
+            // processed by this loop.
             AddCandidateForEnd(result, train, lastIndex, VehicleEnd.Rear, otherTrain, 0, VehicleEnd.Front);
         }
 
