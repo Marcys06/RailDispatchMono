@@ -28,12 +28,7 @@ public sealed partial class Train
         get => _speed;
         set
         {
-            float maxSpeed = float.MaxValue;
-            foreach (var vehicle in Composition.Vehicles)
-            {
-                if (vehicle.Parameters.MaxSpeed < maxSpeed)
-                    maxSpeed = vehicle.Parameters.MaxSpeed;
-            }
+            float maxSpeed = Composition.EffectiveMaxSpeed;
             _speed = Math.Clamp(value, 0f, maxSpeed);
         }
     }
@@ -86,13 +81,8 @@ public sealed partial class Train
 
         RebuildVehicleOffsets();
 
-        _maxSpeed = float.MaxValue;
-        foreach (var vehicle in Composition.Vehicles)
-        {
-            if (vehicle.Parameters.MaxSpeed < _maxSpeed)
-                _maxSpeed = vehicle.Parameters.MaxSpeed;
-        }
-        _lastSignalSpeed = _maxSpeed;
+        _maxSpeed = Composition.EffectiveMaxSpeed;
+        _signalSpeedLimit = _maxSpeed;
         _targetSpeed = _maxSpeed;
 
         DistanceAlongTrack = 0f;
@@ -115,7 +105,7 @@ public sealed partial class Train
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
         _lastSignal = null;
-        _lastSignalSpeed = _maxSpeed;
+        _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         ResetTrajectory();
     }
@@ -125,7 +115,7 @@ public sealed partial class Train
         ValidateDirection(direction);
         Direction = direction;
         _lastSignal = null;
-        _lastSignalSpeed = _maxSpeed;
+        _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         ResetTrajectory();
     }
@@ -133,7 +123,7 @@ public sealed partial class Train
     public void ResetSignalState()
     {
         _lastSignal = null;
-        _lastSignalSpeed = _maxSpeed;
+        _signalSpeedLimit = Composition.EffectiveMaxSpeed;
     }
 
     public bool IsOnTrack()
@@ -175,17 +165,12 @@ public sealed partial class Train
 
         float distanceBehind = GetMovementDistanceToVehicle(vehicleIndex);
 
-        // The head uses the exact current tangent. Other vehicles use the same
-        // historical trajectory sample for both position and tangent, so they
-        // enter and leave curves one after another instead of rotating together.
         if (distanceBehind <= MovementEpsilon)
             return (Position, GetRotation());
 
         if (TryGetTrajectoryTransformBehindHead(distanceBehind, out Vector2 trajectoryPosition, out float trajectoryRotation))
             return (trajectoryPosition, trajectoryRotation);
 
-        // Before enough trajectory history exists, the consist is rigid on a
-        // straight section. This also keeps F7 position-invariant.
         return (Position + _vehicleOffsets[vehicleIndex], GetDirectionAngle(Direction));
     }
 
@@ -250,13 +235,13 @@ public sealed partial class Train
     private float _targetSpeed;
     private float _maxSpeed = 160f / 3.6f;
     private Signal? _lastSignal;
-    private float _lastSignalSpeed;
+    private float _signalSpeedLimit;
 
     public void SetSignalController(SignalController controller)
     {
         _signalController = controller;
         _lastSignal = null;
-        _lastSignalSpeed = _maxSpeed;
+        _signalSpeedLimit = Composition.EffectiveMaxSpeed;
     }
 
     public Signal? GetNextSignal()
@@ -306,7 +291,7 @@ public sealed partial class Train
                 return false;
 
             var available = nextTrack.GetAvailableDirections();
-            var opposite = GetOppositeDirection(direction);
+            var opposite = direction.GetOppositeDirection();
             var nextDirection = available.FirstOrDefault(d => d != opposite);
             if (nextDirection == TrackConnections.None)
                 return false;
@@ -340,20 +325,21 @@ public sealed partial class Train
 
     private float GetSpeedFromSignal(Signal? signal)
     {
-        if (signal == null) return _maxSpeed;
+        float effectiveMaxSpeed = Composition.EffectiveMaxSpeed;
+        if (signal == null) return effectiveMaxSpeed;
         float signalSpeed = signal.Aspect switch
         {
             SignalAspect.Stop => 0f,
             SignalAspect.StopStation => 0f,
-            SignalAspect.Clear => _maxSpeed,
-            SignalAspect.Warning => _maxSpeed * 0.5f,
+            SignalAspect.Clear => effectiveMaxSpeed,
+            SignalAspect.Warning => effectiveMaxSpeed * 0.5f,
             SignalAspect.Speed100 => 100f / 3.6f,
             SignalAspect.Speed40 => 40f / 3.6f,
             SignalAspect.Reserve1 => 120f / 3.6f,
             SignalAspect.Reserve2 => 80f / 3.6f,
             SignalAspect.Reserve3 => 60f / 3.6f,
             SignalAspect.Reserve4 => 30f / 3.6f,
-            _ => _maxSpeed
+            _ => effectiveMaxSpeed
         };
         float distance = GetSignalDistance(signal);
         float brakingRate = GetBrakingRate();
@@ -369,7 +355,7 @@ public sealed partial class Train
             float availableDistance = MathF.Max(
                 0f,
                 distance - stopOffsetMeters - frontHalfLengthMeters - Speed * reactionTime);
-            return MathF.Min(_maxSpeed,
+            return MathF.Min(effectiveMaxSpeed,
                 MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
         }
         if (Speed > signalSpeed && brakingRate > 0f)
@@ -378,7 +364,7 @@ public sealed partial class Train
             if (distance > requiredBrakingDistance)
                 return Speed;
         }
-        return MathF.Min(signalSpeed, _maxSpeed);
+        return MathF.Min(signalSpeed, effectiveMaxSpeed);
     }
 
     public MapPosition GetCurrentCell()
