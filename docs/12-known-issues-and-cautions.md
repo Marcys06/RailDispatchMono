@@ -1,70 +1,63 @@
 # Known issues and cautions
 
-## Current baseline: `0.1.5pre`
+## Current development line: `0.1.6a`
 
-`0.1.5pre` is the current consolidated 0.1.5 documentation and gameplay milestone. Lettered `0.1.5a`–`0.1.5f` entries remain historical development stages.
+The previous consolidated milestone is `0.1.5pre`. The 0.1.6 line currently starts with documentation alignment; no new passenger gameplay feature is claimed by `0.1.6a` itself.
 
-## Myra integration
+## Passenger system — current boundary
 
-- Myra `1.6.5` is referenced by Core.
-- `MyraUIManager` owns the shared Myra `Desktop` and active root.
-- Main Menu, Settings, About, Pause, gameplay HUD and Depot builder are Myra surfaces.
-- The gameplay HUD's train/station information has one current Myra implementation; do not reintroduce duplicate legacy presentation.
-- Remaining world-specific UI is not automatically considered migrated merely because the HUD is Myra-based.
+The station/passenger foundation is implemented and operational at the domain level:
 
-## Persistence
+- `Station` stores stop, dwell and passenger-generation parameters;
+- `StationController` detects station visits, controls dwell and invokes passenger service;
+- `PassengerManager` owns active passengers;
+- `Passenger` has fixed origin/destination and three states;
+- `Wagon` owns boarded passengers and enforces capacity/route acceptance;
+- `DefaultPassengerService` performs alighting before boarding;
+- `RandomPassengerDemandProvider` supplies temporary random destinations.
 
-- Save data uses separate JSON files inside each save directory.
-- `metadata.json` identifies the save and stores metadata.
-- Save schema is versioned through `schemaVersion`.
-- Runtime save schema remains version `1`; `ShortName` loading is backward-compatible when the field is absent.
-- Auto-save is intentionally disabled.
-- Invalid/incomplete save data must produce a user-facing notification rather than silent partial loading.
-- Individual runtime coupling connections are not persisted.
+Do not describe this as a complete passenger simulation. Transfers, timetable-aware route choice, population/demand modelling, fares/revenue, satisfaction, passenger persistence and visual platform crowds are not implemented.
+
+## Station cautions
+
+Station stopping is currently based on `ITrainStopDecision`, train position/cell geometry, speed and the station's configured dwell time. The controller uses a station-visit guard so a train is not repeatedly serviced while remaining inside the same station area.
+
+Passenger generation is timer-based and independent per station. Waiting passengers are bounded by `PassengerWaitingCapacity`.
 
 ## Train and rolling stock
 
 - `TrainManager` is the authoritative train lifecycle owner.
-- `TrainComposition` is the authoritative ordered vehicle collection for a train.
-- Locomotive acceleration/braking use total consist mass with the non-linear exponent `1.30`.
-- Locomotive power can reduce Vmax for heavy consists; wagon Vmax remains an additional cap.
-- Signal stopping and RadioStop must use effective consist braking, not a raw locomotive value.
-- Train diagnostics beginning with `[TRAIN]` are normalized to `[TRAIN:<first-8-guid-chars>]` while a train update is active.
+- `TrainComposition` owns ordered vehicles and derived consist statistics.
+- Acceleration/braking use the non-linear total-mass factor with exponent `1.30`.
+- Locomotive power can reduce Vmax for heavy consists.
+- Signal stopping and RadioStop use effective consist braking.
+- `F6` manual shunting targets the train under the cursor and moves toward `3 km/h` while bypassing automatic RadioStop/collision stopping for that train.
+- `F7` reverses travel direction only at `0 km/h`; it does not reorder or reposition vehicles.
+- Curves use trajectory history and per-vehicle tangents.
 
 ## Coupling and decoupling
 
-Rigid runtime coupling and decoupling are implemented through `CouplingService`.
+Rigid runtime coupling/decoupling is implemented through `CouplingService`.
 
-Current command contract:
+- `C` couples the nearest valid outer-boundary candidate at a fixed `6 km/h` limit.
+- `X` acts on a wagon under the cursor and requires train speed `< 6 km/h`.
+- Vehicle order is preserved across merge/split operations.
+- Compatible adjacent vehicles in a composition receive runtime coupling connections automatically.
+- Individual coupling connections are not persisted.
+- Dynamic slack, impact forces, coupling animation, brake-pipe propagation and full longitudinal dynamics are not implemented.
 
-- `C` couples the nearest valid outer-boundary candidate;
-- `X` decouples the last coupling created by `C`, with fallback to the first remaining runtime connection;
-- `F6` / `F7` / `F8` select `3` / `4` / `5 km/h` shunting limits, with `5 km/h` as default.
+## Persistence
 
-Coupling requires compatible free coupler ends, boundary positions, sufficient proximity and end alignment. Successful coupling and decoupling stop the affected consists through `RadioStop` before changing runtime composition.
+Runtime save schema remains version `1`. Rolling-stock `ShortName` is persisted and older saves without it remain compatible. Passenger state and runtime coupling connections are not currently persisted.
 
-The current command path is intentionally temporary. There is no vehicle/end selection UI yet, and no user-facing failure-reason panel. Dynamic coupling forces, slack, impact shock, animation/delay, brake-pipe propagation and individual connection persistence are also not implemented.
+## UI
+
+Myra uses one shared `Desktop` through `MyraUIManager`. Gameplay HUD, station/train information and Depot builder are presentation surfaces; domain state remains owned by the corresponding game subsystems.
 
 ## Verification
 
-There is no dedicated automated Core test project in the current repository. Runtime coupling/decoupling changes require solution build and live gameplay verification in the user's .NET/MonoGame environment.
+There is no dedicated automated Core test project. Runtime changes require the normal solution build and live gameplay verification in the user's .NET/MonoGame environment.
 
-## Startup and pause
+## Rule for future work
 
-- Main Menu is the application entry point.
-- New Game creates a new empty game state immediately.
-- Pause is a state owned by `GameplayScreen`, not a popup screen.
-- `MyraPauseView` is the pause presentation and dispatch surface.
-- Resume, Save, Load and Quit use the gameplay-owned action path.
-
-## Remaining UI migration
-
-Junction/signal radial interaction UI, legacy floating/tooltips where still used, dedicated train/station detail windows and wagon-route detail/editor UI remain separate from the consolidated Myra surfaces. Do not infer migration from the presence of the Myra gameplay HUD alone.
-
-## Diagnostics
-
-Duplicate log lines do not by themselves prove duplicated simulation updates. Inspect logger subscriptions/call sites and screen/update traversal before changing game-loop logic. Train movement diagnostics now carry a short train GUID prefix for correlation; coupling operations use `[COUPLING]` diagnostics.
-
-## Rule for future agents
-
-When a reported bug contradicts this document, inspect current source and call sites first. Historical lettered stages are immutable; corrections belong to the current development line. Update the maintained documentation and changelog whenever an architectural or behavioral contract changes.
+When extending passengers or stations, inspect `StationController`, `PassengerManager`, `Passenger`, `Wagon`, `TrainRoute`, `ITrainStopDecision`, `IPassengerService` and `IPassengerDemandProvider` together before adding new ownership or parallel managers.
