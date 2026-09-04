@@ -50,14 +50,28 @@ public sealed partial class Train
         DistanceAlongTrack = 0f;
         TotalDistance = 0f;
 
-        _vehicleOffsets = new Vector2[vehiclePositions.Count];
-        for (int i = 0; i < vehiclePositions.Count; i++)
-            _vehicleOffsets[i] = vehiclePositions[i] - Position;
-
         _lastSignal = null;
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         SeedTrajectoryFromVehiclePositions(vehiclePositions);
+    }
+
+    private void SeedInitialTrajectoryFromComposition()
+    {
+        if (Composition.Vehicles.Count == 0)
+            return;
+
+        var positions = new Vector2[Composition.Vehicles.Count];
+        Vector2 direction = DirectionToVector(Direction);
+        float distance = 0f;
+
+        for (int i = 0; i < positions.Length; i++)
+        {
+            positions[i] = Position - direction * distance;
+            distance += Composition.Vehicles[i].Parameters.Length;
+        }
+
+        SeedTrajectoryFromVehiclePositions(positions);
     }
 
     private Vector2[] CaptureCurrentVehiclePositions()
