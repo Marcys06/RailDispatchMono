@@ -21,6 +21,7 @@ public sealed class CouplingService
             return CouplingCheckResult.Fail(CouplingFailureReason.SameTrain);
         if (ReferenceEquals(firstTrain, secondTrain))
             return CouplingCheckResult.Fail(CouplingFailureReason.SameTrain);
+
         if (firstVehicleIndex < 0 || firstVehicleIndex >= firstTrain.Composition.Vehicles.Count ||
             secondVehicleIndex < 0 || secondVehicleIndex >= secondTrain.Composition.Vehicles.Count)
             return CouplingCheckResult.Fail(CouplingFailureReason.NotTrainBoundary);
@@ -43,6 +44,12 @@ public sealed class CouplingService
         if (!CouplingGeometry.AreFacing(firstTrain, firstVehicleIndex, firstEnd, secondTrain, secondVehicleIndex, secondEnd, AlignmentDot))
             return CouplingCheckResult.Fail(CouplingFailureReason.Misaligned);
 
+        // Composition.Vehicles order is authoritative and must not be reversed.
+        // Therefore a merge boundary is always Rear -> Front. Front -> Front
+        // and Rear -> Rear would require reversing one consist's vehicle order.
+        if (firstEnd != VehicleEnd.Rear || secondEnd != VehicleEnd.Front)
+            return CouplingCheckResult.Fail(CouplingFailureReason.NotTrainBoundary);
+
         return CouplingCheckResult.Success;
     }
 
@@ -55,39 +62,39 @@ public sealed class CouplingService
         if (!check.Allowed)
             return CouplingOperationResult.Fail(check.Reason);
 
-        if (!TryGetBoundaryOrder(firstTrain, firstVehicleIndex, firstEnd, secondTrain, secondVehicleIndex, secondEnd,
-                out Train leadingTrain, out Train trailingTrain))
-            return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
+        // The validated connection is Rear -> Front, so the first train is the
+        // ordered prefix and the second train is the ordered suffix. Do not use
+        // locomotive presence to override the physical boundary order.
+        Train leadingTrain = firstTrain;
+        Train trailingTrain = secondTrain;
 
         firstTrain.Speed = 0f;
         secondTrain.Speed = 0f;
         firstTrain.RadioStop();
         secondTrain.RadioStop();
 
-        var connection = new CouplingConnection(
-            firstTrain.Composition.Vehicles[firstVehicleIndex], firstEnd,
-            secondTrain.Composition.Vehicles[secondVehicleIndex], secondEnd);
+        var leadingVehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
+        var trailingVehicles = new List<Vehicle>(trailingTrain.Composition.Vehicles);
 
-        firstTrain.Composition.Vehicles[firstVehicleIndex].CouplingState.Set(firstEnd, connection);
-        secondTrain.Composition.Vehicles[secondVehicleIndex].CouplingState.Set(secondEnd, connection);
-
-        if (ReferenceEquals(leadingTrain, firstTrain))
+        // Clear all old runtime links before rebuilding the merged chain. This
+        // prevents stale links from blocking AddVehicle after a merge.
+        foreach (var vehicle in leadingVehicles)
         {
-            foreach (var vehicle in trailingTrain.Composition.Vehicles)
-                leadingTrain.Composition.AddVehicle(vehicle);
+            vehicle.CouplingState.Set(VehicleEnd.Front, null);
+            vehicle.CouplingState.Set(VehicleEnd.Rear, null);
         }
-        else
+        foreach (var vehicle in trailingVehicles)
         {
-            var vehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
-            leadingTrain.Composition.Clear();
-            foreach (var vehicle in trailingTrain.Composition.Vehicles)
-                leadingTrain.Composition.AddVehicle(vehicle);
-            foreach (var vehicle in vehicles)
-                leadingTrain.Composition.AddVehicle(vehicle);
+            vehicle.CouplingState.Set(VehicleEnd.Front, null);
+            vehicle.CouplingState.Set(VehicleEnd.Rear, null);
         }
 
-        // The leading train remains the physical reference. Rebuild the rigid
-        // vehicle offsets from its current direction and logical composition.
+        leadingTrain.Composition.Clear();
+        foreach (var vehicle in leadingVehicles)
+            leadingTrain.Composition.AddVehicle(vehicle);
+        foreach (var vehicle in trailingVehicles)
+            leadingTrain.Composition.AddVehicle(vehicle);
+
         leadingTrain.RebuildVehicleOffsets();
         leadingTrain.Speed = 0f;
         manager.ResetSignalStateAfterChange(leadingTrain);
@@ -114,20 +121,18 @@ public sealed class CouplingService
             return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
 
         Vehicle secondVehicle = ReferenceEquals(connection.VehicleA, firstVehicle) ? connection.VehicleB : connection.VehicleA;
-        VehicleEnd secondEnd = ReferenceEquals(connection.VehicleA, firstVehicle) ? connection.EndB : connection.EndA;
         int firstIndex = IndexOf(train, firstVehicle);
         int secondIndex = IndexOf(train, secondVehicle);
         if (firstIndex < 0 || secondIndex < 0)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotCoupled);
 
-        int splitIndex;
-        if (firstIndex + 1 == secondIndex && firstEnd == VehicleEnd.Rear && secondEnd == VehicleEnd.Front)
-            splitIndex = secondIndex;
-        else if (secondIndex + 1 == firstIndex && secondEnd == VehicleEnd.Rear && firstEnd == VehicleEnd.Front)
-            splitIndex = firstIndex;
-        else
+        // The runtime connection is authoritative. The split point depends on
+        // ordered vehicle indices, not on which physical end was selected.
+        // This also handles a locomotive/wagon connection consistently.
+        if (Math.Abs(firstIndex - secondIndex) != 1)
             return CouplingOperationResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
+        int splitIndex = Math.Max(firstIndex, secondIndex);
         var newHeadTransform = train.GetVehicleTransform(splitIndex);
         TrackConnections newDirection = DirectionFromAngle(newHeadTransform.Rotation);
         train.Speed = 0f;
@@ -154,39 +159,6 @@ public sealed class CouplingService
     private static bool IsBoundary(Train train, int index, VehicleEnd end) =>
         (index == 0 && end == VehicleEnd.Front) ||
         (index == train.Composition.Vehicles.Count - 1 && end == VehicleEnd.Rear);
-
-    private static bool TryGetBoundaryOrder(
-        Train firstTrain, int firstIndex, VehicleEnd firstEnd,
-        Train secondTrain, int secondIndex, VehicleEnd secondEnd,
-        out Train leading, out Train trailing)
-    {
-        bool firstHasLocomotive = firstTrain.Composition.Locomotive != null;
-        bool secondHasLocomotive = secondTrain.Composition.Locomotive != null;
-        if (firstHasLocomotive != secondHasLocomotive)
-        {
-            leading = firstHasLocomotive ? firstTrain : secondTrain;
-            trailing = firstHasLocomotive ? secondTrain : firstTrain;
-            return true;
-        }
-
-        if (firstIndex == firstTrain.Composition.Vehicles.Count - 1 && firstEnd == VehicleEnd.Rear &&
-            secondIndex == 0 && secondEnd == VehicleEnd.Front)
-        {
-            leading = firstTrain;
-            trailing = secondTrain;
-            return true;
-        }
-        if (secondIndex == secondTrain.Composition.Vehicles.Count - 1 && secondEnd == VehicleEnd.Rear &&
-            firstIndex == 0 && firstEnd == VehicleEnd.Front)
-        {
-            leading = secondTrain;
-            trailing = firstTrain;
-            return true;
-        }
-        leading = null!;
-        trailing = null!;
-        return false;
-    }
 
     private static bool AreCompatible(CouplerType first, CouplerType second) =>
         first != CouplerType.None && second != CouplerType.None && first == second;
