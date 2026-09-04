@@ -2,9 +2,9 @@
 
 ## Current development line
 
-**RailDispatchMono `0.1.6g`** is the current documented development line. The previous consolidated milestone is `0.1.5pre`.
+**RailDispatchMono `0.1.6pre`** is the current consolidated development snapshot. The previous consolidated milestone is `0.1.5pre`.
 
-Preserve the 0.1.5 rigid-consist, movement, F6/F7, curve and coupling contracts. The 0.1.6 line adds wagon-owned passenger state and stabilises coupling/decoupling without introducing automatic transfers or economy.
+Preserve the rigid-consist, movement, F6/F7, curve and coupling contracts. The 0.1.6 line adds wagon-owned passenger state and stabilises coupling/decoupling, runtime safety and diagnostics without introducing automatic transfers or economy.
 
 ## Passenger/station contract
 
@@ -22,7 +22,7 @@ Runtime load restores an onboard passenger directly into its saved wagon. It mus
 
 `CouplingService` is authoritative. `Composition.Vehicles` is physical order and is never reversed by coupling or decoupling.
 
-In `0.1.6g`:
+Current `0.1.6pre` contract:
 
 - locomotive insertion/replacement rebuilds adjacent runtime connections;
 - merge clears stale runtime connections and rebuilds the chain from vehicle order;
@@ -31,11 +31,14 @@ In `0.1.6g`:
 - locomotive–wagon and wagon–wagon compatible couplers use the same runtime contract;
 - passengers remain with their wagons;
 - coupling/decoupling preserve exact vehicle world positions at the operation instant;
-- `CouplingGeometry` accounts for intrinsic `VehicleOrientation`.
+- `CouplingGeometry` accounts for intrinsic `VehicleOrientation`;
+- bounded coupling diagnostics capture the state required to diagnose post-merge movement.
 
 ## Movement controls
 
 F6 is manual shunting toward `3 km/h` and bypasses automatic RadioStop/collision stopping for the targeted train while held. F7 changes travel direction only at `0 km/h`; it does not reverse the vehicle list or teleport vehicles.
+
+The active travel head is derived from direction/reversal state. Vehicle movement distance and trajectory sampling use that head and the physical distance of each vehicle behind it.
 
 `RadioStop` is a hard guard for normal automatic `Train.Update(...)` movement. Signal limits are separate from the consist capability and do not overwrite `TrainComposition.EffectiveMaxSpeed`.
 
@@ -62,7 +65,7 @@ Android, DesktopGL, WindowsDX and iOS remain repository platform hosts. The chec
 
 ## Verification
 
-There is no dedicated automated Core test project. Use the normal solution build and live gameplay verification.
+Live gameplay has verified F7 reversal without locomotive/wagon interpenetration and stable wagon+locomotive coupling state before/after runtime connection rebuild. There is no dedicated automated Core test project and no CI check run establishing build success.
 
 ## AI rule
 
