@@ -55,10 +55,6 @@ public sealed class TrainComposition
 
     private static void InitializeAdjacentCoupling(Vehicle previous, Vehicle next)
     {
-        // A consist is a physical chain. When vehicles are inserted into a
-        // composition, establish the runtime connection between adjacent
-        // vehicles immediately. This allows X/decoupling to work even when the
-        // consist was created as a complete formation rather than assembled by C.
         if (previous.CouplingState.IsOccupied(VehicleEnd.Rear) ||
             next.CouplingState.IsOccupied(VehicleEnd.Front))
             return;
@@ -80,6 +76,23 @@ public sealed class TrainComposition
         next.CouplingState.Set(VehicleEnd.Front, connection);
     }
 
+    /// <summary>
+    /// Rebuilds runtime couplings from the authoritative vehicle order.
+    /// This is used after replacing/reordering vehicles so stale connections
+    /// cannot block a valid adjacent locomotive/wagon connection.
+    /// </summary>
+    public void RebuildRuntimeCouplings()
+    {
+        foreach (var vehicle in _vehicles)
+        {
+            vehicle.CouplingState.Set(VehicleEnd.Front, null);
+            vehicle.CouplingState.Set(VehicleEnd.Rear, null);
+        }
+
+        for (int i = 1; i < _vehicles.Count; i++)
+            InitializeAdjacentCoupling(_vehicles[i - 1], _vehicles[i]);
+    }
+
     public void SetLocomotive(LocomotiveDefinition definition)
     {
         if (definition == null) throw new ArgumentNullException(nameof(definition));
@@ -89,6 +102,8 @@ public sealed class TrainComposition
             _vehicles[locomotiveIndex] = locomotive;
         else
             _vehicles.Insert(0, locomotive);
+
+        RebuildRuntimeCouplings();
     }
 
     public void AddWagon(WagonDefinition definition)
