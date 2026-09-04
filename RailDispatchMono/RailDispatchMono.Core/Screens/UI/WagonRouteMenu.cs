@@ -43,22 +43,12 @@ public sealed class WagonRouteMenu
         _graphicsDevice = graphicsDevice;
         _desktop = new Desktop
         {
-            BoundsFetcher = () => new Rectangle(
-                0,
-                0,
-                _graphicsDevice.Viewport.Width,
-                _graphicsDevice.Viewport.Height)
+            BoundsFetcher = () => new Rectangle(0, 0, _graphicsDevice.Viewport.Width, _graphicsDevice.Viewport.Height)
         };
     }
 
-    public void SetFont(SpriteFont font)
-    {
-        // Myra uses its own stylesheet font. Keep the method for the existing S-menu API.
-    }
-
-    public void LoadContent()
-    {
-    }
+    public void SetFont(SpriteFont font) { }
+    public void LoadContent() { }
 
     public void Open(Vector2 screenPosition, Wagon wagon, StationController stations)
     {
@@ -138,11 +128,7 @@ public sealed class WagonRouteMenu
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var main = new Grid
-        {
-            RowSpacing = 10,
-            ColumnSpacing = 14
-        };
+        var main = new Grid { RowSpacing = 10, ColumnSpacing = 14 };
         main.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 360));
         main.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
         main.RowsProportions.Add(new Proportion(ProportionType.Part, 1));
@@ -176,14 +162,10 @@ public sealed class WagonRouteMenu
         section.Widgets.Add(routeScroll);
 
         var addButton = CreateButton("DODAJ STACJĘ", 150);
-        addButton.Click += (_, _) => ToggleAvailableStations();
+        addButton.Click += (_, _) => RebuildAvailableStations();
         section.Widgets.Add(addButton);
 
-        _availableStationsPanel = new VerticalStackPanel
-        {
-            Spacing = 4,
-            IsVisible = false
-        };
+        _availableStationsPanel = new VerticalStackPanel { Spacing = 4 };
         section.Widgets.Add(new ScrollViewer
         {
             Height = 180,
@@ -211,19 +193,10 @@ public sealed class WagonRouteMenu
         header.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
         header.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
         header.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
-
-        var numberHeader = new Label { Text = "#" };
-        Grid.SetColumn(numberHeader, 0);
-        header.Widgets.Add(numberHeader);
-        var stationHeader = new Label { Text = "STACJA" };
-        Grid.SetColumn(stationHeader, 1);
-        header.Widgets.Add(stationHeader);
-        var arrivalHeader = new Label { Text = "PRZYJAZD" };
-        Grid.SetColumn(arrivalHeader, 2);
-        header.Widgets.Add(arrivalHeader);
-        var departureHeader = new Label { Text = "ODJAZD" };
-        Grid.SetColumn(departureHeader, 3);
-        header.Widgets.Add(departureHeader);
+        AddGridLabel(header, "#", 0);
+        AddGridLabel(header, "STACJA", 1);
+        AddGridLabel(header, "PRZYJAZD", 2);
+        AddGridLabel(header, "ODJAZD", 3);
         section.Widgets.Add(header);
 
         var scroll = new ScrollViewer
@@ -234,11 +207,7 @@ public sealed class WagonRouteMenu
         _timetablePanel = (VerticalStackPanel)scroll.Content;
         section.Widgets.Add(scroll);
 
-        _validationLabel = new Label
-        {
-            Text = _validationMessage,
-            Wrap = true
-        };
+        _validationLabel = new Label { Text = _validationMessage, Wrap = true };
         section.Widgets.Add(_validationLabel);
 
         Grid.SetColumn(section, 1);
@@ -284,22 +253,17 @@ public sealed class WagonRouteMenu
             int index = i;
             var row = new HorizontalStackPanel { Spacing = 4 };
             row.Widgets.Add(new Label { Text = $"{index + 1}.", Width = 28 });
-
             var station = FindStation(_baseRoute[index]);
-            row.Widgets.Add(new Label
-            {
-                Text = station?.Name ?? "BRAK STACJI",
-                Width = 165
-            });
+            row.Widgets.Add(new Label { Text = station?.Name ?? "BRAK STACJI", Width = 165, Wrap = true });
 
             var up = CreateButton("GÓRA", 58);
-            up.IsEnabled = index > 0;
-            up.Click += (_, _) => MoveRoute(index, -1);
+            if (index > 0)
+                up.Click += (_, _) => MoveRoute(index, -1);
             row.Widgets.Add(up);
 
             var down = CreateButton("DÓŁ", 58);
-            down.IsEnabled = index < _baseRoute.Count - 1;
-            down.Click += (_, _) => MoveRoute(index, 1);
+            if (index < _baseRoute.Count - 1)
+                down.Click += (_, _) => MoveRoute(index, 1);
             row.Widgets.Add(down);
 
             var remove = CreateButton("USUŃ", 58);
@@ -333,12 +297,6 @@ public sealed class WagonRouteMenu
 
         if (_availableStationsPanel.Widgets.Count == 0)
             _availableStationsPanel.Widgets.Add(new Label { Text = "Brak dostępnych stacji." });
-    }
-
-    private void ToggleAvailableStations()
-    {
-        if (_availableStationsPanel != null)
-            _availableStationsPanel.IsVisible = !_availableStationsPanel.IsVisible;
     }
 
     private void AddRouteStation(Guid stationId)
@@ -396,48 +354,24 @@ public sealed class WagonRouteMenu
             var station = FindStation(loop[i]);
             bool terminal = i == 0 || i == pointCount - 1;
 
-            var row = new Grid
-            {
-                ColumnSpacing = 8,
-                RowSpacing = 2
-            };
+            var row = new Grid { ColumnSpacing = 8, RowSpacing = 2 };
             row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 42));
             row.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
             row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
             row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
 
-            var number = new Label { Text = (index + 1).ToString(CultureInfo.InvariantCulture) };
-            Grid.SetColumn(number, 0);
-            row.Widgets.Add(number);
+            AddGridLabel(row, (index + 1).ToString(CultureInfo.InvariantCulture), 0);
+            AddGridLabel(row, terminal ? $"{station?.Name ?? "BRAK"} [TERMINAL]" : station?.Name ?? "BRAK", 1);
 
-            var stationLabel = new Label
-            {
-                Text = terminal
-                    ? $"{station?.Name ?? "BRAK"}  [TERMINAL]"
-                    : station?.Name ?? "BRAK",
-                Wrap = true
-            };
-            Grid.SetColumn(stationLabel, 1);
-            row.Widgets.Add(stationLabel);
-
-            var arrival = new TextBox
-            {
-                Text = GetPendingTime(_pendingArrivals, index),
-                Width = 100
-            };
+            var arrival = new TextBox { Text = GetPendingTime(_pendingArrivals, index), Width = 100 };
             Grid.SetColumn(arrival, 2);
             row.Widgets.Add(arrival);
             _arrivalBoxes.Add(arrival);
 
-            var departure = new TextBox
-            {
-                Text = GetPendingTime(_pendingDepartures, index),
-                Width = 100
-            };
+            var departure = new TextBox { Text = GetPendingTime(_pendingDepartures, index), Width = 100 };
             Grid.SetColumn(departure, 3);
             row.Widgets.Add(departure);
             _departureBoxes.Add(departure);
-
             _timetablePanel.Widgets.Add(row);
         }
 
@@ -448,20 +382,36 @@ public sealed class WagonRouteMenu
             _validationLabel.Text = _validationMessage;
     }
 
+    private static Grid CreateTimetableGrid()
+    {
+        var grid = new Grid { ColumnSpacing = 8, RowSpacing = 2 };
+        grid.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 42));
+        grid.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
+        grid.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+        grid.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+        return grid;
+    }
+
+    private static void AddGridLabel(Grid grid, string text, int column)
+    {
+        var label = new Label { Text = text, Wrap = true };
+        Grid.SetColumn(label, column);
+        grid.Widgets.Add(label);
+    }
+
     private void CaptureTimetableTexts()
     {
+        if (_arrivalBoxes.Count == 0 && _departureBoxes.Count == 0)
+            return;
+
         _pendingArrivals.Clear();
         _pendingDepartures.Clear();
-        _pendingArrivals.AddRange(_arrivalBoxes.Select(b => b.Text ?? string.Empty));
-        _pendingDepartures.AddRange(_departureBoxes.Select(b => b.Text ?? string.Empty));
+        _pendingArrivals.AddRange(_arrivalBoxes.Select(x => x.Text ?? string.Empty));
+        _pendingDepartures.AddRange(_departureBoxes.Select(x => x.Text ?? string.Empty));
     }
 
     private static string GetPendingTime(List<string> values, int index)
-    {
-        return index >= 0 && index < values.Count && !string.IsNullOrWhiteSpace(values[index])
-            ? values[index]
-            : "00:00";
-    }
+        => index >= 0 && index < values.Count && !string.IsNullOrWhiteSpace(values[index]) ? values[index] : "00:00";
 
     private void SaveSchedule()
     {
@@ -538,21 +488,19 @@ public sealed class WagonRouteMenu
         => _stations?.Stations.FirstOrDefault(s => s.Id == id);
 
     private static Button CreateButton(string text, int width)
-    {
-        return new Button
+        => new Button
         {
             Width = width,
             Height = 32,
             HorizontalAlignment = HorizontalAlignment.Left,
             Content = new Label { Text = text }
         };
-    }
 
     private static string FormatTime(int seconds)
     {
         if (seconds < 0)
             seconds = 0;
-        return TimeSpan.FromSeconds(seconds).ToString("hh\\:mm", CultureInfo.InvariantCulture);
+        return TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm", CultureInfo.InvariantCulture);
     }
 
     private static bool TryParseTime(string? text, out int seconds)
@@ -562,7 +510,7 @@ public sealed class WagonRouteMenu
             return false;
 
         string value = text.Trim();
-        string[] formats = { "hh\\:mm", "h\\:mm", "hhmm", "hmm" };
+        string[] formats = { @"hh\:mm", @"h\:mm", "hhmm", "hmm" };
         if (!TimeSpan.TryParseExact(value, formats, CultureInfo.InvariantCulture, out TimeSpan time))
             return false;
 
