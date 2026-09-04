@@ -1,6 +1,6 @@
 # Game domain
 
-## Current development line: `0.1.6e`
+## Current development line: `0.1.6g`
 
 The domain combines the completed `0.1.5pre` rigid-consist/movement model with the `0.1.6` wagon-aware passenger model and coupling/decoupling stabilisation.
 
@@ -62,7 +62,9 @@ Runtime restoration of an already-onboard passenger targets its saved concrete w
 
 ### Performance
 
-Acceleration and braking use the non-linear consist mass factor. Locomotive power can reduce effective Vmax for heavy consists; vehicle Vmax remains an additional cap.
+Acceleration and braking use the non-linear consist mass factor. Train Vmax is derived from `TrainComposition.EffectiveMaxSpeed`; signal restrictions are maintained as a separate runtime target and never overwrite the composition capability.
+
+Physical distance conversion is centralized through `SimulationScale`: train speed is maintained in metres/second and movement distance is converted with `SimulationScale.MetersToGrid(...)`. Legacy grid-length conversion to metres also uses `SimulationScale`.
 
 ### F6/F7
 
@@ -70,7 +72,9 @@ Acceleration and braking use the non-linear consist mass factor. Locomotive powe
 - `F7` changes travel `Direction` only at `0 km/h`.
 - F7 never reverses `Composition.Vehicles`, never reorders vehicles and does not teleport the locomotive.
 - Vehicle positions and spacing are preserved at the reversal instant.
+- `CompositionOrder` describes physical vehicle order and is independent from travel direction.
 - Curve movement uses trajectory history and each vehicle's own distance behind the head to derive position and local tangent.
+- `RadioStop` is a hard movement guard for normal automatic updates; manual F6 shunting explicitly clears/bypasses it for the targeted train.
 
 ## Coupling and decoupling
 
@@ -82,7 +86,9 @@ Acceleration and braking use the non-linear consist mass factor. Locomotive powe
 - Locomotive insertion/replacement rebuilds adjacent runtime connections.
 - Decoupling identifies the split from adjacent vehicle indices and the actual runtime connection.
 - `Composition.Vehicles` is never reversed by coupling or decoupling.
-- Coupling/decoupling do not migrate passengers.
+- Coupling/decoupling preserve the exact world position of every vehicle at the operation instant.
+- `CouplingGeometry` applies `VehicleOrientation` consistently when deriving physical front/rear directions and endpoints.
+- Coupling and decoupling do not migrate passengers.
 
 No slack action, impact forces, coupling animation, brake-pipe propagation or full longitudinal vehicle dynamics are implemented.
 
