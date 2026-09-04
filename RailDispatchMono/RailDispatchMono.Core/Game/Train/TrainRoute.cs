@@ -63,12 +63,14 @@ public sealed class TrainRoute
 
     public bool ServesStation(Guid stationId) => StationIds.Contains(stationId);
 
-    /// <summary>Returns true only for the current or a future stop.</summary>
-    public bool CanServeStation(Guid stationId)
-    {
-        int index = StationIds.IndexOf(stationId);
-        return index >= 0 && index >= CurrentStopIndex;
-    }
+    /// <summary>
+    /// A passenger destination is valid when the wagon's route serves that
+    /// station anywhere in its loop. We deliberately do not require the
+    /// destination to be after CurrentStopIndex: on a return leg such as
+    /// A-B-A, A has already been visited in the route list but is still the
+    /// valid destination for passengers boarding at B.
+    /// </summary>
+    public bool CanServeStation(Guid stationId) => StationIds.Contains(stationId);
 
     public string ToJson(bool indented = true) =>
         JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = indented });
