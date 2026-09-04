@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.7b] — Timetable editor UI
+**Data:** 2026-09-04
+
+### UI
+
+- `S` remains the single entry point for wagon timetable editing.
+- The timetable editor is split into clear route and timetable sections.
+- Route operations use explicit buttons rather than implicit clickable text.
+- Base-route stations can be added, removed and reordered with `GÓRA` / `DÓŁ` controls.
+- The timetable table uses separate `STACJA`, `PRZYJAZD` and `ODJAZD` columns.
+- The active time field is visually distinct.
+- Long station names and status messages are constrained so they do not overlap neighbouring controls.
+- Save, delete-timetable and cancel actions are separated from timetable rows.
+- Longer routes use scrolling instead of growing the editor beyond the screen.
+
+### Model compatibility
+
+- The `0.1.7a` timetable model is retained unchanged.
+- A wagon still owns its repeating timetable.
+- Base route `A-B-C-D` still expands to `A-B-C-D-C-B-A`.
+- Arrival and departure remain independently editable for every control point.
+
+### Verification
+
+A normal solution build and live UI verification are still required. The repository has no automated CI build available for this snapshot.
+
 ## [0.1.7a] — Wagon loop timetables
 **Data:** 2026-09-04
 
