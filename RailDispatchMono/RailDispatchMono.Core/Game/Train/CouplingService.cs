@@ -70,13 +70,13 @@ public sealed class CouplingService
         mergedPositions.AddRange(leadingPositions);
         mergedPositions.AddRange(trailingPositions);
 
-        DebugManager.Train($"[COUPLING] BEGIN first={ShortId(firstTrain)} second={ShortId(secondTrain)} " +
-                           $"firstEnd={firstEnd} secondEnd={secondEnd} " +
-                           $"firstIndex={firstVehicleIndex} secondIndex={secondVehicleIndex}");
+        DebugManager.TrainDiagnostic($"[COUPLING] BEGIN first={ShortId(firstTrain)} second={ShortId(secondTrain)} " +
+                                     $"firstEnd={firstEnd} secondEnd={secondEnd} " +
+                                     $"firstIndex={firstVehicleIndex} secondIndex={secondVehicleIndex}");
         LogTrainState("FIRST-BEFORE", firstTrain, leadingVehicles, leadingPositions);
         LogTrainState("SECOND-BEFORE", secondTrain, trailingVehicles, trailingPositions);
-        DebugManager.Train($"[COUPLING] MERGE INPUT positions={mergedPositions.Count} " +
-                           $"leadingCount={leadingVehicles.Count} trailingCount={trailingVehicles.Count}");
+        DebugManager.TrainDiagnostic($"[COUPLING] MERGE INPUT positions={mergedPositions.Count} " +
+                                     $"leadingCount={leadingVehicles.Count} trailingCount={trailingVehicles.Count}");
 
         firstTrain.Speed = 0f;
         secondTrain.Speed = 0f;
@@ -100,13 +100,13 @@ public sealed class CouplingService
         foreach (var vehicle in trailingVehicles)
             leadingTrain.Composition.AddVehicle(vehicle);
 
-        DebugManager.Train($"[COUPLING] MERGED compositionCount={leadingTrain.Composition.Vehicles.Count} " +
-                           $"direction={leadingTrain.Direction} reversed={leadingTrain.IsReversed} " +
-                           $"position={Fmt(leadingTrain.Position)}");
+        DebugManager.TrainDiagnostic($"[COUPLING] MERGED compositionCount={leadingTrain.Composition.Vehicles.Count} " +
+                                     $"direction={leadingTrain.Direction} reversed={leadingTrain.IsReversed} " +
+                                     $"position={Fmt(leadingTrain.Position)}");
         LogComposition("MERGED-BEFORE-PRESERVE", leadingTrain);
 
         leadingTrain.Composition.RebuildRuntimeCouplings();
-        DebugManager.Train("[COUPLING] RUNTIME CONNECTIONS REBUILT");
+        DebugManager.TrainDiagnostic("[COUPLING] RUNTIME CONNECTIONS REBUILT");
         LogComposition("MERGED-AFTER-LINKS", leadingTrain);
 
         leadingTrain.PreserveVehiclePositions(mergedPositions);
@@ -117,9 +117,9 @@ public sealed class CouplingService
         LogTrajectory("MERGED-AFTER-PRESERVE", leadingTrain);
 
         manager.Remove(trailingTrain);
-        DebugManager.Train($"[COUPLING] END survivor={ShortId(leadingTrain)} removed={ShortId(trailingTrain)} " +
-                           $"position={Fmt(leadingTrain.Position)} direction={leadingTrain.Direction} " +
-                           $"reversed={leadingTrain.IsReversed} speed={leadingTrain.Speed:F3}");
+        DebugManager.TrainDiagnostic($"[COUPLING] END survivor={ShortId(leadingTrain)} removed={ShortId(trailingTrain)} " +
+                                     $"position={Fmt(leadingTrain.Position)} direction={leadingTrain.Direction} " +
+                                     $"reversed={leadingTrain.IsReversed} speed={leadingTrain.Speed:F3}");
         return CouplingOperationResult.Ok;
     }
 
@@ -182,19 +182,19 @@ public sealed class CouplingService
 
     private static void LogTrainState(string phase, Train train, IReadOnlyList<Vehicle> vehicles, IReadOnlyList<Vector2> positions)
     {
-        DebugManager.Train($"[COUPLING] {phase} train={ShortId(train)} " +
-                           $"direction={train.Direction} reversed={train.IsReversed} " +
-                           $"position={Fmt(train.Position)} speed={train.Speed:F3} " +
-                           $"length={train.Length:F3} vehicles={vehicles.Count}");
+        DebugManager.TrainDiagnostic($"[COUPLING] {phase} train={ShortId(train)} " +
+                                     $"direction={train.Direction} reversed={train.IsReversed} " +
+                                     $"position={Fmt(train.Position)} speed={train.Speed:F3} " +
+                                     $"length={train.Length:F3} vehicles={vehicles.Count}");
 
         for (int i = 0; i < vehicles.Count; i++)
         {
             var vehicle = vehicles[i];
             Vector2 position = i < positions.Count ? positions[i] : Vector2.Zero;
-            DebugManager.Train($"[COUPLING] {phase} vehicle[{i}] id={ShortId(vehicle.Id)} " +
-                               $"type={vehicle.GetType().Name} order={vehicle.CompositionOrder} " +
-                               $"orientation={vehicle.Orientation} length={vehicle.Parameters.Length:F3} " +
-                               $"position={Fmt(position)} distance={train.GetDistanceToVehicle(i):F3}");
+            DebugManager.TrainDiagnostic($"[COUPLING] {phase} vehicle[{i}] id={ShortId(vehicle.Id)} " +
+                                         $"type={vehicle.GetType().Name} order={vehicle.CompositionOrder} " +
+                                         $"orientation={vehicle.Orientation} length={vehicle.Parameters.Length:F3} " +
+                                         $"position={Fmt(position)} distance={train.GetDistanceToVehicle(i):F3}");
         }
     }
 
@@ -204,22 +204,22 @@ public sealed class CouplingService
         {
             var vehicle = train.Composition.Vehicles[i];
             var transform = train.GetVehicleTransform(i);
-            DebugManager.Train($"[COUPLING] {phase} vehicle[{i}] id={ShortId(vehicle.Id)} " +
-                               $"order={vehicle.CompositionOrder} type={vehicle.GetType().Name} " +
-                               $"orientation={vehicle.Orientation} position={Fmt(transform.Position)} " +
-                               $"rotation={transform.Rotation:F3} distance={train.GetDistanceToVehicle(i):F3}");
+            DebugManager.TrainDiagnostic($"[COUPLING] {phase} vehicle[{i}] id={ShortId(vehicle.Id)} " +
+                                         $"order={vehicle.CompositionOrder} type={vehicle.GetType().Name} " +
+                                         $"orientation={vehicle.Orientation} position={Fmt(transform.Position)} " +
+                                         $"rotation={transform.Rotation:F3} distance={train.GetDistanceToVehicle(i):F3}");
         }
     }
 
     private static void LogTrajectory(string phase, Train train)
     {
         var history = train.GetTrajectoryHistory();
-        DebugManager.Train($"[COUPLING] {phase} trajectoryPoints={history.Count} " +
-                           $"lastDistance={(history.Count > 0 ? history[^1].Distance : 0f):F3}");
+        DebugManager.TrainDiagnostic($"[COUPLING] {phase} trajectoryPoints={history.Count} " +
+                                     $"lastDistance={(history.Count > 0 ? history[^1].Distance : 0f):F3}");
         for (int i = 0; i < history.Count; i++)
         {
             var point = history[i];
-            DebugManager.Train($"[COUPLING] {phase} trajectory[{i}] distance={point.Distance:F3} position={Fmt(point.Position)}");
+            DebugManager.TrainDiagnostic($"[COUPLING] {phase} trajectory[{i}] distance={point.Distance:F3} position={Fmt(point.Position)}");
         }
     }
 
