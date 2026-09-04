@@ -152,7 +152,10 @@ public sealed partial class Train
     {
         if (Composition.Vehicles.Count == 0) return Direction;
         int lastIndex = Composition.Vehicles.Count - 1;
-        return VectorToDirection(GetVehicleTransform(lastIndex).Rotation);
+        float rotation = GetVehicleTransform(lastIndex).Rotation;
+        if (Composition.Vehicles[lastIndex].Orientation == VehicleOrientation.Reverse)
+            rotation -= MathF.PI;
+        return VectorToDirection(rotation);
     }
 
     public (Vector2 Position, float Rotation) GetVehicleTransform(int vehicleIndex)
@@ -258,123 +261,3 @@ public sealed partial class Train
         {
             if (!visited.Add(current))
                 return false;
-
-            var signals = _signalController.GetSignalsAt(current);
-            Signal? candidate = null;
-            if (signals != null)
-                candidate = signals.FirstOrDefault(s => s.Direction == direction);
-
-            if (candidate != null)
-            {
-                signal = candidate;
-                distance = SimulationScale.GridToMeters(MathF.Max(0f, travelled));
-                return true;
-            }
-
-            if (!_map.TryGetTrack(current, out var track) || track == null)
-                return false;
-
-            var next = GetNextCell(current, direction);
-            if (next.X < 0 || next.X >= _map.Size.Width || next.Y < 0 || next.Y >= _map.Size.Height)
-                return false;
-            if (!_map.TryGetTrack(next, out var nextTrack) || nextTrack == null)
-                return false;
-
-            var available = nextTrack.GetAvailableDirections();
-            var opposite = direction.GetOppositeDirection();
-            var nextDirection = available.FirstOrDefault(d => d != opposite);
-            if (nextDirection == TrackConnections.None)
-                return false;
-
-            travelled += 1f;
-            current = next;
-            direction = nextDirection;
-        }
-
-        return false;
-    }
-
-    private float GetSignalDistance(Signal signal)
-    {
-        if (TryFindNextSignal(out var nextSignal, out var distance) && nextSignal == signal)
-            return distance;
-        return SimulationScale.GridToMeters(MathF.Max(0f, GetDistanceToBoundary()));
-    }
-
-    private float GetBrakingRate()
-    {
-        var locomotive = Composition.Locomotive;
-        if (locomotive == null)
-            return 20f;
-        float baseBraking = locomotive.Parameters.Braking;
-        if (baseBraking <= 0f)
-            return 20f;
-        float massFactor = GetMassPerformanceFactor();
-        return MathF.Max(0.01f, baseBraking * massFactor);
-    }
-
-    private float GetSpeedFromSignal(Signal? signal)
-    {
-        float effectiveMaxSpeed = Composition.EffectiveMaxSpeed;
-        if (signal == null) return effectiveMaxSpeed;
-        float signalSpeed = signal.Aspect switch
-        {
-            SignalAspect.Stop => 0f,
-            SignalAspect.StopStation => 0f,
-            SignalAspect.Clear => effectiveMaxSpeed,
-            SignalAspect.Warning => effectiveMaxSpeed * 0.5f,
-            SignalAspect.Speed100 => 100f / 3.6f,
-            SignalAspect.Speed40 => 40f / 3.6f,
-            SignalAspect.Reserve1 => 120f / 3.6f,
-            SignalAspect.Reserve2 => 80f / 3.6f,
-            SignalAspect.Reserve3 => 60f / 3.6f,
-            SignalAspect.Reserve4 => 30f / 3.6f,
-            _ => effectiveMaxSpeed
-        };
-        float distance = GetSignalDistance(signal);
-        float brakingRate = GetBrakingRate();
-        if (signal.Aspect == SignalAspect.Stop || signal.Aspect == SignalAspect.StopStation)
-        {
-            const float reactionTime = 0.15f;
-            const float stopOffsetCells = 0.8f;
-            float stopOffsetMeters = SimulationScale.GridToMeters(stopOffsetCells);
-            float frontHalfLengthCells = Composition.Vehicles.Count > 0
-                ? Composition.Vehicles[0].Parameters.Length * 0.5f
-                : 0f;
-            float frontHalfLengthMeters = SimulationScale.GridToMeters(frontHalfLengthCells);
-            float availableDistance = MathF.Max(
-                0f,
-                distance - stopOffsetMeters - frontHalfLengthMeters - Speed * reactionTime);
-            return MathF.Min(effectiveMaxSpeed,
-                MathF.Sqrt(MathF.Max(0f, 2f * brakingRate * availableDistance)));
-        }
-        if (Speed > signalSpeed && brakingRate > 0f)
-        {
-            float requiredBrakingDistance = MathF.Max(0f, (Speed * Speed - signalSpeed * signalSpeed) / (2f * brakingRate));
-            if (distance > requiredBrakingDistance)
-                return Speed;
-        }
-        return MathF.Min(signalSpeed, effectiveMaxSpeed);
-    }
-
-    public MapPosition GetCurrentCell()
-    {
-        return new MapPosition((int)MathF.Floor(Position.X), (int)MathF.Floor(Position.Y));
-    }
-
-    public float GetDistanceToBoundary()
-    {
-        MapPosition cell = GetCurrentCell();
-        float result = Direction switch
-        {
-            TrackConnections.East => (cell.X + 1.0f) - Position.X,
-            TrackConnections.West => Position.X - cell.X,
-            TrackConnections.South => (cell.Y + 1.0f) - Position.Y,
-            TrackConnections.North => Position.Y - cell.Y,
-            _ => 0.0f
-        };
-        if (result < 0.0f) result = 0.0f;
-        if (result < MovementEpsilon && result > 0) result = MovementEpsilon;
-        return result;
-    }
-}
