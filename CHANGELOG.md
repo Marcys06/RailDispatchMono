@@ -2,6 +2,30 @@
 
 This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
 
+## [0.1.6d] — Passenger journey continuity
+**Data:** 2026-09-04
+
+- Fixed `Wagon` namespace resolution in `DefaultPassengerService` (CS0246).
+- Fixed the changed `Wagon.TryBoard(...)` API usage in runtime save/load (CS1501).
+- Passenger ownership remains tied to the concrete wagon rather than the train.
+- Added `Wagon.CanContinueJourneyTo(...)` as a route-continuity invariant.
+- Added `PassengerManager.GetTransferCandidates(Train)` as a future transfer-system seam without implementing automatic transfers or train selection.
+- Coupling and decoupling do not migrate passengers between wagons.
+- Runtime load restores an already onboard passenger directly into its saved wagon instead of applying normal boarding-at-station validation.
+- Runtime save metadata now reports game version `0.1.6d`.
+
+Detailed notes: `docs/changelog/0.1.6d.md`.
+
+## [0.1.6c] — Wagon-aware passenger boarding
+
+- Boarding is performed against a concrete `Wagon`.
+- A configured wagon checks its current `TrainRoute` before accepting a passenger.
+- Passenger state keeps `CurrentWagonId`.
+- `PassengerManager.GetOnBoard(Train)` is only an operational view over the wagons currently forming the train.
+- Runtime passenger restoration uses the concrete wagon.
+
+Detailed notes: `docs/changelog/0.1.6c.md`.
+
 ## [0.1.5pre] — Final 0.1.5 pre-release
 **Data:** 2026-09-03
 
