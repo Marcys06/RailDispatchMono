@@ -2,6 +2,8 @@ using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Train;
 using System.Linq;
 
+using TrainClass = RailDispatchMono.Core.Game.Train.Train;
+
 namespace RailDispatchMono.Core.Game.Passengers;
 
 /// <summary>
@@ -18,7 +20,7 @@ public sealed class DefaultPassengerService : IPassengerService
         _passengerManager = passengerManager;
     }
 
-    public PassengerServiceResult ServiceTrainAtStation(Train train, Station station)
+    public PassengerServiceResult ServiceTrainAtStation(TrainClass train, Station station)
     {
         int before = 0;
         foreach (var vehicle in train.Composition.Vehicles)
