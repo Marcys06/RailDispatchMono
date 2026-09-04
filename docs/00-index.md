@@ -1,9 +1,9 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.6e` development line**  
+**Documentation baseline: `0.1.6g` development line**  
 **Previous consolidated milestone: `0.1.5pre`**
 
-This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and call sites remain authoritative if documentation conflicts with implementation.
+This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
 ## Documentation index
 
@@ -30,7 +30,7 @@ This directory contains maintained project documentation. Historical release not
 21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical `0.1.4pre` snapshot.
 22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
 
-## Current 0.1.6e focus
+## Current 0.1.6g focus
 
 The 0.1.6 line extends the completed rigid-consist, movement and coupling work of `0.1.5pre` and the existing station/passenger foundation.
 
@@ -44,9 +44,13 @@ The passenger is associated with a concrete `Wagon`, not with a `Train`. A train
 
 `0.1.6e` stabilizes coupling/decoupling: locomotive insertion rebuilds adjacent runtime connections, merging rebuilds the full runtime coupling chain from vehicle order, coupling candidates use only order-preserving `Rear → Front` boundaries, and decoupling determines the split from adjacent vehicle indices plus the actual runtime connection.
 
+`0.1.6f` makes consist order explicit through `Vehicle.CompositionOrder` without making it a second authoritative vehicle container.
+
+`0.1.6g` preserves exact vehicle positions during coupling/decoupling, makes RadioStop a hard movement guard, centralizes opposite-direction lookup, uses `TrainComposition.EffectiveMaxSpeed` for the train Vmax cap, and keeps physical grid/metre conversion behind `SimulationScale`.
+
 ## Version policy
 
 - Consolidated `pre` snapshots become historical when a later development line starts.
-- Lettered stages such as `0.1.6a`–`0.1.6e` are development records in `docs/changelog/`.
+- Lettered stages such as `0.1.6a`–`0.1.6g` are development records in `docs/changelog/`.
 - Historical stages are not rewritten to reflect later implementation.
 - Maintained architecture/domain documentation is updated when the current contract changes.
