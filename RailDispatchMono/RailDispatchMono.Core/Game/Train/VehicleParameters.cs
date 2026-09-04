@@ -1,5 +1,6 @@
 namespace RailDispatchMono.Core.Game.Train;
 
+using RailDispatchMono.Core.Game.Simulation;
 using System;
 
 public class VehicleParameters
@@ -37,7 +38,7 @@ public class VehicleParameters
         Mass = Math.Max(0.001f, mass);
         Length = Math.Max(0f, length);
         MassTons = Mass / 1000f;
-        LengthMeters = Length * 10f;
+        LengthMeters = SimulationScale.GridToMeters(Length);
 
         MassCoefficient = Math.Max(0.000001f, massCoefficient);
         TechnicalCondition = Math.Max(0.5f, Math.Min(1.5f, technicalCondition));
