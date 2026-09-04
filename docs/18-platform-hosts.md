@@ -32,6 +32,10 @@ The repository contains `RailDispatchMono.WindowsDX/Program.cs`. Treat this as t
 
 The repository contains `RailDispatchMono.iOS/Program.cs`. Treat this as the iOS host entry point. Shared game logic should remain in Core.
 
+## Solution membership
+
+The checked-in `RailDispatchMono.slnx` and `RailDispatchMono/RailDispatchMono.sln` currently enumerate only `RailDispatchMono.Core` and `RailDispatchMono.DesktopGL`. The Android, WindowsDX and iOS host projects are still present as independent project files and reference Core. Their absence from the desktop solution is not sufficient evidence that they are obsolete, so they are retained.
+
 ## Platform-specific modifications
 
 A platform change normally belongs in the platform project when it concerns:
