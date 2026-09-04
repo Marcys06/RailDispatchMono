@@ -1,92 +1,73 @@
 # Code index
 
-This index is a navigation aid based on source files confirmed in the repository. It should be expanded when additional source areas are audited.
+This index points to the current implementation boundaries. Read callers and consumers before modifying a listed component.
 
-## Application/game root
+## Application and screens
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/RailDispatchMonoGame.cs` | Main shared MonoGame `Game` implementation and game-loop delegation. |
-| `RailDispatchMono/RailDispatchMono.Core/RailDispatchMono.Core.csproj` | Shared Core project configuration; currently `net9.0` with MonoGame and Myra dependencies. |
-| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraUIManager.cs` | Shared Myra initialization boundary and single `Desktop` owner. |
-| `RailDispatchMono/RailDispatchMono.Core/DebugManager.cs` | Central diagnostics logger; train-scoped `[TRAIN]` messages receive a short GUID prefix during train updates. |
+- `RailDispatchMono/RailDispatchMono.Core/RailDispatchMonoGame.cs` — shared MonoGame game loop.
+- `RailDispatchMono/RailDispatchMono.Core/ScreenManagers/ScreenManager.cs` — screen lifecycle, input routing and drawing.
+- `RailDispatchMono/RailDispatchMono.Core/Screens/GameplayScreen.cs` — primary gameplay screen; owns map/simulation services and gameplay pause/persistence flow.
+- `RailDispatchMono/RailDispatchMono.Core/Screens/DepotScreen.cs` — full-screen Depot builder.
 
-## Screen architecture
+## Train domain
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Screens/GameScreen.cs` | Base screen lifecycle, transition state and input/draw hooks. |
-| `RailDispatchMono/RailDispatchMono.Core/Screens/GameplayScreen.cs` | Primary gameplay screen; owns map/simulation services and opens Depot. Hardcoded test-train creation is not part of the current gameplay flow. |
-| `RailDispatchMono/RailDispatchMono.Core/Screens/DepotScreen.cs` | Full-screen depot train-builder screen; creates player consists through `TrainManager`. |
-| `RailDispatchMono/RailDispatchMono.Core/ScreenManagers/ScreenManager.cs` | Screen collection, lifecycle orchestration, input routing and drawing. |
-| `RailDispatchMono/RailDispatchMono.Core/Screens/UI/InputManager.cs` | UI/world input management; emits depot selection events and does not directly own train creation. |
+- `Game/Train/Train.cs` — train state, speed, direction and gameplay-facing train model.
+- `Game/Train/TrainMovement.cs` — acceleration/braking and movement integration.
+- `Game/Train/TrainManualShunting.cs` — F6 manual shunting.
+- `Game/Train/TrainDirection.cs` — F7 travel-direction reversal.
+- `Game/Train/TrainGeometry.cs` — rigid offsets, trajectory/curve movement and per-vehicle transform calculation.
+- `Game/Train/TrainManager.cs` — authoritative train lifecycle.
+- `Game/Train/TrainManager.Coupling.cs` — C/X/F6 command path and candidate handling.
+- `Game/Train/TrainComposition.cs` — authoritative ordered vehicle collection and derived consist statistics.
+- `Game/Train/Vehicle.cs` — base vehicle and static/runtime coupling state.
+- `Game/Train/Wagon.cs` — wagon state including passenger collection, capacity and service route.
 
-## Myra UI
+## Coupling
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraUIManager.cs` | Single shared Myra `Desktop` and active-root owner. |
-| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraGameplayView.cs` | Gameplay HUD. |
-| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraDepotView.cs` | Depot train-builder presentation. |
-| `RailDispatchMono/RailDispatchMono.Core/UI/Myra/MyraPauseView.cs` | Gameplay pause presentation. |
+- `Game/Train/CouplingService.cs` — authoritative coupling/decoupling validation and mutation.
+- `Game/Train/CouplingConnection.cs` — concrete vehicle-end connection.
+- `Game/Train/CouplingSpecification.cs` — physical coupler compatibility.
+- `Game/Train/VehicleCouplingState.cs` — runtime per-end connection state.
 
-## Train and railway domain
+## Railway and stations
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Train.cs` | Train state, speed and gameplay-facing train model; exposes effective braking capability for safety-facing calculations. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainMovement.cs` | Train acceleration/braking and movement integration. Consist mass applies a non-linear `1.30` exponent and establishes train-scoped diagnostics during updates. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.cs` | Authoritative train lifecycle and composition-based creation. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainManager.Coupling.cs` | Runtime coupling/decoupling command path, candidate discovery and split-train registration. Current commands: `C`, `X`, `F6`, `F7`, `F8`. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/CouplingService.cs` | Authoritative coupling/decoupling validation and runtime composition mutation. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/CouplingConnection.cs` | Concrete connection between two vehicle ends. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleCouplingState.cs` | Runtime per-vehicle coupling-end state. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/TrainComposition.cs` | Ordered vehicle list and derived composition statistics, including total mass and power/load-limited Vmax. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Vehicle.cs` | Base railway vehicle abstraction and static coupling metadata plus runtime coupling state. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/VehicleParameters.cs` | Internal physics parameters plus physical mass/length metadata. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/LocomotiveParameters.cs` | Locomotive-specific physical parameters, including `PowerMW`. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Locomotive.cs` | Locomotive vehicle and short display label. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Train/Wagon.cs` | Passenger/freight/service wagon, passenger state and short display label. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Railway/Depot.cs` | Depot building domain object. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Railway/DepotController.cs` | Depot collection/ownership. |
+- `Game/Railway/Station.cs` — station identity, geometry and passenger/stop parameters.
+- `Game/Railway/StationController.cs` — station lifecycle, train stop/dwell and passenger-generation coordinator.
+- `Game/Railway/ITrainStopDecision.cs` — stop decision boundary.
+- `Game/Railway/DefaultTrainStopDecision.cs` — default stop policy.
+- `Game/Railway/TrackRoute.cs` — railway route representation.
+- `Game/Railway/BlockController.cs` — block occupancy/authority.
+- `Game/Railway/SignalController.cs` — signal state/safety coordination.
+- `Game/Railway/DepotController.cs` — depot ownership.
 
-## Rendering
+## Passenger subsystem
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/TrainRenderer.cs` | Top-down rolling-stock rendering: electric/diesel locomotive colors, wagon colors and centered white vehicle labels normalized for both travel directions. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/Rendering/DepotRenderer.cs` | World-space Depot rendering and placement preview; follows the camera/world coordinate contract used by railway rendering. |
+- `Game/Passengers/Passenger.cs` — fixed origin/destination passenger model.
+- `Game/Passengers/PassengerState.cs` — waiting/on-board/arrived state enum.
+- `Game/Passengers/PassengerManager.cs` — active passenger collection, boarding, alighting and exchange notifications.
+- `Game/Passengers/IPassengerService.cs` — station service boundary.
+- `Game/Passengers/DefaultPassengerService.cs` — alight-before-board implementation.
+- `Game/Passengers/IPassengerDemandProvider.cs` — destination-demand abstraction.
+- `Game/Passengers/RandomPassengerDemandProvider.cs` — temporary random destination provider.
 
-## Rolling stock catalogue
+## Rendering and UI
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/RollingStockCatalog.cs` | Registered locomotive/wagon definitions, power values and short labels. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/LocomotiveDefinition.cs` | Locomotive catalogue definition, power and vehicle factory. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/WagonDefinition.cs` | Wagon catalogue definition, short label and vehicle factory. |
-| `RailDispatchMono/RailDispatchMono.Core/Game/RollingStock/TractionType.cs` | Electric/diesel classification. |
-
-## Input and settings
-
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Inputs/InputState.cs` | Device snapshots, edge detection and semantic input. |
-| `RailDispatchMono/RailDispatchMono.Core/Settings/RailDispatchMonoSettings.cs` | Observable game settings model. |
+- `Game/Rendering/TrainRenderer.cs` — rolling-stock rendering and per-vehicle transforms.
+- `Game/Rendering/StationRenderer.cs` — station world rendering.
+- `Game/Rendering/FloatingTextManager.cs` — passenger exchange feedback among other floating notifications.
+- `UI/Myra/MyraUIManager.cs` — single shared Myra Desktop/root boundary.
+- `UI/Myra/MyraGameplayView.cs` — gameplay HUD including train/station information.
+- `UI/Myra/MyraDepotView.cs` — Depot train builder.
 
 ## Persistence
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Core/Game/Save/RuntimeSaveService.cs` | Runtime train/map save-load boundary; persists rolling-stock short labels while retaining schema version 1 compatibility. |
+- `Game/Save/RuntimeSaveService.cs` — runtime train/map save-load boundary.
+- Passenger runtime state and individual coupling connections are not currently persisted.
 
-## Platform hosts
+## AI workflow
 
-| Path | Role |
-|---|---|
-| `RailDispatchMono/RailDispatchMono.Android/MainActivity.cs` | Android application entry/activity. |
-| `RailDispatchMono/RailDispatchMono.Android/AndroidManifest.xml` | Android application manifest. |
-| `RailDispatchMono/RailDispatchMono.Android/RailDispatchMono.Android.csproj` | Android target project configuration. |
+For passenger/station changes, inspect the full chain:
 
-## How to use this index
+`StationController → PassengerManager → PassengerService/DemandProvider → Wagon/TrainRoute → Gameplay HUD`.
 
-Use it to choose where to start reading, not as a substitute for reading dependencies. Before modifying a listed component, search for its callers and consumers. For coupling/decoupling changes, inspect `TrainManager.Coupling.cs`, `CouplingService`, `TrainComposition`, vehicle coupling state and the active input path together.
+For movement/coupling changes, inspect `TrainManager.Coupling.cs`, `CouplingService`, `TrainComposition`, `TrainGeometry`, `TrainMovement`, `VehicleCouplingState` and affected safety controllers together.
