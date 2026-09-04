@@ -15,8 +15,8 @@ namespace RailDispatchMono.Core.Game.Save;
 
 public sealed class RuntimeSaveData
 {
-    public int SchemaVersion { get; set; } = 1;
-    public string GameVersion { get; set; } = "0.1.6d";
+    public int SchemaVersion { get; set; } = 2;
+    public string GameVersion { get; set; } = "0.1.7a";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -53,6 +53,8 @@ public sealed class VehicleSaveData
     public VehicleOrientation Orientation { get; set; }
     public int PassengerCapacity { get; set; }
     public List<Guid> ServiceRoute { get; set; } = new();
+    public WagonSchedule? Schedule { get; set; }
+    public WagonScheduleRuntime? ScheduleRuntime { get; set; }
     public List<PassengerSaveData> Passengers { get; set; } = new();
 }
 
@@ -122,6 +124,19 @@ public static class RuntimeSaveService
                 {
                     savedVehicle.PassengerCapacity = wagon.PassengerCapacity;
                     savedVehicle.ServiceRoute = wagon.ServiceRoute.ToList();
+                    savedVehicle.Schedule = wagon.Schedule?.Clone();
+                    savedVehicle.ScheduleRuntime = new WagonScheduleRuntime
+                    {
+                        ScheduleId = wagon.ScheduleRuntime.ScheduleId,
+                        CycleNumber = wagon.ScheduleRuntime.CycleNumber,
+                        CurrentPointIndex = wagon.ScheduleRuntime.CurrentPointIndex,
+                        State = wagon.ScheduleRuntime.State,
+                        DelaySeconds = wagon.ScheduleRuntime.DelaySeconds,
+                        LastObservedArrivalSeconds = wagon.ScheduleRuntime.LastObservedArrivalSeconds,
+                        LastObservedDay = wagon.ScheduleRuntime.LastObservedDay,
+                        DwellUntilSeconds = wagon.ScheduleRuntime.DwellUntilSeconds
+                    };
+
                     foreach (Passenger passenger in wagon.Passengers)
                     {
                         var snapshot = new PassengerSaveData
@@ -142,7 +157,7 @@ public static class RuntimeSaveService
         Directory.CreateDirectory(SaveSlotContext.ActiveSlotDirectory!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
         File.WriteAllText(Path.Combine(SaveSlotContext.ActiveSlotDirectory!, "passengers.json"),
-            JsonSerializer.Serialize(new { schemaVersion = 1, passengers }, Options));
+            JsonSerializer.Serialize(new { schemaVersion = 2, passengers }, Options));
     }
 
     public static void Load(TrainManager trainManager, SignalController signals, BlockController blocks, StationController stations, GameClock clock)
@@ -150,7 +165,8 @@ public static class RuntimeSaveService
         if (!File.Exists(FilePath)) throw new FileNotFoundException("trains.json is missing.", FilePath);
         var data = JsonSerializer.Deserialize<RuntimeSaveData>(File.ReadAllText(FilePath), Options)
             ?? throw new InvalidDataException("trains.json is empty or invalid.");
-        if (data.SchemaVersion != 1) throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
+        if (data.SchemaVersion != 1 && data.SchemaVersion != 2)
+            throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
 
         trainManager.ClearAll();
         trainManager.Update(0f);
@@ -189,6 +205,21 @@ public static class RuntimeSaveService
                     ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p, savedVehicle.ShortName)
                     : new Wagon(p, savedVehicle.ShortName, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
                 vehicle.Orientation = savedVehicle.Orientation;
+                if (vehicle is Wagon wagon && savedVehicle.Schedule != null)
+                {
+                    wagon.SetSchedule(savedVehicle.Schedule);
+                    if (savedVehicle.ScheduleRuntime != null)
+                    {
+                        wagon.ScheduleRuntime.ScheduleId = savedVehicle.ScheduleRuntime.ScheduleId;
+                        wagon.ScheduleRuntime.CycleNumber = savedVehicle.ScheduleRuntime.CycleNumber;
+                        wagon.ScheduleRuntime.CurrentPointIndex = savedVehicle.ScheduleRuntime.CurrentPointIndex;
+                        wagon.ScheduleRuntime.State = savedVehicle.ScheduleRuntime.State;
+                        wagon.ScheduleRuntime.DelaySeconds = savedVehicle.ScheduleRuntime.DelaySeconds;
+                        wagon.ScheduleRuntime.LastObservedArrivalSeconds = savedVehicle.ScheduleRuntime.LastObservedArrivalSeconds;
+                        wagon.ScheduleRuntime.LastObservedDay = savedVehicle.ScheduleRuntime.LastObservedDay;
+                        wagon.ScheduleRuntime.DwellUntilSeconds = savedVehicle.ScheduleRuntime.DwellUntilSeconds;
+                    }
+                }
                 vehicles.Add(vehicle);
             }
 
