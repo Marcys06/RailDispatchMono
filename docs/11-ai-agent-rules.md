@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.6g`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.6pre`.
 
 ## 1. Never invent architecture
 
@@ -75,10 +75,20 @@ The application enters through Main Menu. New Game creates a new empty game stat
 - Wagon routes describe passenger-service destinations and do not directly control locomotive movement.
 - Rigid coupling/decoupling is a domain operation owned by `CouplingService` and exposed through the current `TrainManager` command path.
 - `TrainComposition` is the single authoritative ordered vehicle container; `CompositionOrder` is metadata only.
+- F7 changes travel direction without reversing or reordering `Composition.Vehicles` and preserves exact vehicle positions.
+- Movement derives vehicle position from the active travel head, physical vehicle distance and trajectory history.
 - `TrainComposition.EffectiveMaxSpeed` is the authoritative consist Vmax capability; signal limits are runtime restrictions layered on top.
 - `SimulationScale` is the single conversion boundary between physical metres and map-grid cells.
 - `RadioStop` must prevent normal automatic movement while active; F6 manual shunting is the explicit exception.
+- Coupling/decoupling preserve exact vehicle positions and rebuild runtime coupling state from physical composition order.
 
-## 18. Myra contract
+## 18. Diagnostics contract
+
+- Diagnostics should describe authoritative state transitions, not produce per-frame noise.
+- Coupling diagnostics may use the dedicated bounded `TrainDiagnostic` path for snapshots that must not be lost behind the normal global log-rate limiter.
+- Useful coupling snapshots include train direction/reversal state, position, speed, physical vehicle order, `CompositionOrder`, orientation, length, world position, distance to travel head, transform and trajectory state.
+- Diagnostic logging must remain bounded and event-driven.
+
+## 19. Myra contract
 
 - Myra `1.6.5` is consumed through the shared Core project.
