@@ -2,6 +2,18 @@
 
 This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
 
+## [0.1.6e] — Coupling/decoupling stabilisation
+
+- `TrainComposition.SetLocomotive(...)` rebuilds adjacent runtime coupling connections after locomotive insertion/replacement.
+- Coupling no longer uses locomotive presence to determine merge order; `Composition.Vehicles` remains the physical order.
+- Coupling candidates are restricted to order-preserving `Rear → Front` outer boundaries.
+- Merging clears stale runtime connections and rebuilds the complete runtime coupling chain from vehicle order.
+- Decoupling derives the split from adjacent vehicle indices and the actual runtime connection, including locomotive–wagon connections.
+- Coupling limit remains fixed at `6 km/h`; decoupling remains below `6 km/h`.
+- Coupling/decoupling do not migrate passengers between wagons.
+
+Detailed notes: `docs/changelog/0.1.6e.md`.
+
 ## [0.1.6d] — Passenger journey continuity
 **Data:** 2026-09-04
 
