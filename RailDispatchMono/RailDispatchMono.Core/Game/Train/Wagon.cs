@@ -15,6 +15,8 @@ public sealed class Wagon : Vehicle
     public IReadOnlyList<Passenger> Passengers => _passengers;
     public TrainRoute Route { get; }
     public IReadOnlyList<Guid> ServiceRoute => Route.StationIds;
+    public WagonSchedule? Schedule { get; private set; }
+    public WagonScheduleRuntime ScheduleRuntime { get; } = new();
     public int PassengerCount => _passengers.Count;
     public int AvailablePassengerCapacity => Math.Max(0, PassengerCapacity - _passengers.Count);
 
@@ -35,6 +37,35 @@ public sealed class Wagon : Vehicle
             foreach (var stationId in serviceRoute)
                 Route.AddStation(stationId);
         }
+    }
+
+    public void SetSchedule(WagonSchedule? schedule)
+    {
+        Schedule = schedule;
+        if (schedule == null)
+        {
+            ScheduleRuntime.Reset(Guid.Empty);
+            return;
+        }
+        if (ScheduleRuntime.ScheduleId != schedule.Id)
+            ScheduleRuntime.Reset(schedule.Id);
+    }
+
+    public void RecordScheduleArrival(Guid stationId, int actualSeconds, int day)
+    {
+        if (Schedule == null || !Schedule.Enabled) return;
+        int pointIndex = -1;
+        for (int i = 0; i < Schedule.Points.Count; i++)
+        {
+            if (Schedule.Points[i].StationId != stationId) continue;
+            if (i > ScheduleRuntime.CurrentPointIndex || ScheduleRuntime.State == WagonScheduleState.Completed)
+            {
+                pointIndex = i;
+                break;
+            }
+        }
+        if (pointIndex >= 0)
+            ScheduleRuntime.RecordArrival(Schedule, pointIndex, actualSeconds, day);
     }
 
     /// <summary>
@@ -60,12 +91,6 @@ public sealed class Wagon : Vehicle
                Route.CanServeStation(passenger.DestinationStation.Id);
     }
 
-    /// <summary>
-    /// Checks whether this wagon can carry a passenger from its current route
-    /// position to the passenger's destination. This is intentionally exposed
-    /// as a route invariant so a future transfer service can detect a broken
-    /// journey without making the passenger depend on a train identity.
-    /// </summary>
     public bool CanContinueJourneyTo(Guid destinationStationId) =>
         Route.IsEmpty || Route.CanServeStation(destinationStationId);
 
@@ -81,12 +106,6 @@ public sealed class Wagon : Vehicle
         return true;
     }
 
-    /// <summary>
-    /// Restores a passenger already recorded as being inside this wagon.
-    /// Save/load restoration deliberately bypasses normal boarding validation:
-    /// the saved wagon state is authoritative and may represent a point between
-    /// the passenger's origin and destination stations.
-    /// </summary>
     internal bool RestorePassenger(Passenger passenger)
     {
         if (passenger == null ||
