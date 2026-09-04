@@ -37,20 +37,32 @@ public sealed class Wagon : Vehicle
         }
     }
 
-    public bool CanAcceptPassenger(Passenger passenger)
+    /// <summary>
+    /// Determines whether this concrete wagon can take the passenger at the
+    /// specified station. A configured route must currently be at the station
+    /// and must contain the passenger's destination at or after that stop.
+    /// Empty routes remain permissive for backwards compatibility.
+    /// </summary>
+    public bool CanAcceptPassenger(Passenger passenger, Station station)
     {
-        if (passenger == null || WagonType != WagonType.Passenger || AvailablePassengerCapacity <= 0)
+        if (passenger == null || station == null ||
+            WagonType != WagonType.Passenger || AvailablePassengerCapacity <= 0)
             return false;
 
-        // An empty route is intentionally treated as "not yet configured" for
-        // compatibility with test consists. Once a route exists, passengers
-        // whose destination has already been passed are not allowed to board.
-        return Route.IsEmpty || Route.CanServeStation(passenger.DestinationStation.Id);
+        if (passenger.State != PassengerState.WaitingAtStation ||
+            passenger.CurrentStationId != station.Id)
+            return false;
+
+        if (Route.IsEmpty)
+            return true;
+
+        return Route.CurrentStationId == station.Id &&
+               Route.CanServeStation(passenger.DestinationStation.Id);
     }
 
-    internal bool TryBoard(Passenger passenger)
+    internal bool TryBoard(Passenger passenger, Station station)
     {
-        if (!CanAcceptPassenger(passenger))
+        if (!CanAcceptPassenger(passenger, station))
             return false;
 
         _passengers.Add(passenger);
