@@ -73,6 +73,21 @@ public sealed partial class Train
             float distance = -GetMovementDistanceToVehicle(i);
             _trajectory.Add(new TrajectoryPoint(vehiclePositions[i], distance));
         }
+
+        // When the consist starts moving after F7, the target distance for the
+        // last vehicle immediately moves past the oldest seeded point. Without
+        // an extrapolated history point, GetVehicleTransform() falls back to a
+        // rigid offset and that can place the last wagon on the wrong side of the
+        // consist. Extend the already occupied path in the direction opposite to
+        // travel so every vehicle has continuous history from the first frame.
+        float historyExtension = MathF.Max(Length * 25.0f, 60.0f);
+        int lastVehicleIndex = vehiclePositions.Count - 1;
+        float oldestDistance = -GetMovementDistanceToVehicle(lastVehicleIndex);
+        Vector2 oldestPosition = vehiclePositions[lastVehicleIndex];
+        Vector2 historyPosition = oldestPosition - DirectionToVector(Direction) * historyExtension;
+        _trajectory.Insert(0, new TrajectoryPoint(
+            historyPosition,
+            oldestDistance - historyExtension));
     }
 
     internal float GetMovementDistanceToVehicle(int vehicleIndex)
