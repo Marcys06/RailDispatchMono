@@ -26,10 +26,20 @@ public sealed class PassengerManager
         return passenger;
     }
 
-    public IEnumerable<Passenger> GetWaitingAt(Station station) => _passengers.Where(p => p.State == PassengerState.WaitingAtStation && p.CurrentStationId == station.Id);
-    public IEnumerable<Passenger> GetOnBoard(TrainClass train) => _passengers.Where(p => p.State == PassengerState.OnBoard && p.CurrentTrainId == train.Id);
+    public IEnumerable<Passenger> GetWaitingAt(Station station) =>
+        _passengers.Where(p => p.State == PassengerState.WaitingAtStation && p.CurrentStationId == station.Id);
+
+    public IEnumerable<Passenger> GetOnBoard(TrainClass train) =>
+        train.Composition.Vehicles
+            .OfType<Wagon>()
+            .SelectMany(GetOnBoard);
+
+    public IEnumerable<Passenger> GetOnBoard(Wagon wagon) =>
+        _passengers.Where(p => p.State == PassengerState.OnBoard && p.CurrentWagonId == wagon.Id);
+
     public int GetWaitingCount(Station station) => GetWaitingAt(station).Count();
     public int GetOnBoardCount(TrainClass train) => GetOnBoard(train).Count();
+    public int GetOnBoardCount(Wagon wagon) => GetOnBoard(wagon).Count();
 
     public int BoardPassengers(TrainClass train, Station station)
     {
@@ -45,9 +55,9 @@ public sealed class PassengerManager
             foreach (var passenger in waiting)
             {
                 if (!wagon.CanAcceptPassenger(passenger))
-                    break;
+                    continue;
 
-                if (wagon.TryBoard(passenger, train.Id))
+                if (wagon.TryBoard(passenger))
                 {
                     boarded++;
                     wagonBoarded++;
@@ -74,7 +84,7 @@ public sealed class PassengerManager
             if (train.Composition.Vehicles[wagonIndex] is not Wagon wagon)
                 continue;
 
-            int wagonAlighted = wagon.TryAlightAt(station, train.Id);
+            int wagonAlighted = wagon.TryAlightAt(station);
             alighted += wagonAlighted;
 
             if (wagonAlighted > 0)
