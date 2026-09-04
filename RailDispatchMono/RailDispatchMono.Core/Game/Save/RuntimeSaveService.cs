@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 2;
-    public string GameVersion { get; set; } = "0.1.7a";
+    public string GameVersion { get; set; } = "0.1.7c";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
