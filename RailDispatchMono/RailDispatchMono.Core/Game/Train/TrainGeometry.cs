@@ -67,7 +67,7 @@ public sealed partial class Train
 
         if (_trajectory.Count > 0)
         {
-            TrajectoryPoint last = _trajectory[_trajectory.Count - 1];
+            TrajectoryPoint last = _trajectory[^1];
             if ((last.Position - position).LengthSquared() < MovementEpsilon * MovementEpsilon)
                 return;
         }
@@ -294,15 +294,6 @@ public sealed partial class Train
         bool secondHorizontal = second == TrackConnections.East || second == TrackConnections.West;
         return firstHorizontal != secondHorizontal;
     }
-
-    private static MapPosition GetNextCell(MapPosition cell, TrackConnections direction) => direction switch
-    {
-        TrackConnections.North => new MapPosition(cell.X, cell.Y - 1),
-        TrackConnections.East => new MapPosition(cell.X + 1, cell.Y),
-        TrackConnections.South => new MapPosition(cell.X, cell.Y + 1),
-        TrackConnections.West => new MapPosition(cell.X - 1, cell.Y),
-        _ => cell
-    };
 
     private static TrackConnections VectorToDirection(float angle)
     {
