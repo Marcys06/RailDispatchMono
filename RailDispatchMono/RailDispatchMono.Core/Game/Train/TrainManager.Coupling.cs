@@ -66,7 +66,7 @@ public sealed partial class TrainManager
             return;
         }
 
-        train.SetDirectionPreservingVehiclePositions(GetOppositeDirection(train.Direction));
+        train.SetDirectionPreservingVehiclePositions(train.Direction.GetOppositeDirection());
         ResetSignalStateAfterChange(train);
 
         DebugManager.Log($"[TRAIN] Command F7: travel direction reversed for train {train.Id.ToString()[..8]}; composition order and vehicle coordinates unchanged, direction={train.Direction}, reversed={train.IsReversed}.");
@@ -88,15 +88,6 @@ public sealed partial class TrainManager
         train.ResetSignalState();
         train.SetEffectiveSignalSpeed(currentLimit);
     }
-
-    private static TrackConnections GetOppositeDirection(TrackConnections direction) => direction switch
-    {
-        TrackConnections.North => TrackConnections.South,
-        TrackConnections.South => TrackConnections.North,
-        TrackConnections.East => TrackConnections.West,
-        TrackConnections.West => TrackConnections.East,
-        _ => TrackConnections.None
-    };
 
     private void ExecuteCouplingCommand()
     {
@@ -210,9 +201,6 @@ public sealed partial class TrainManager
             var otherTrain = _trains[otherIndex];
             if (ReferenceEquals(otherTrain, train) || otherTrain.Composition.Vehicles.Count == 0) continue;
 
-            // Only order-preserving boundaries are candidates: Rear -> Front.
-            // The reverse ordering is represented when the other train is
-            // processed by this loop.
             AddCandidateForEnd(result, train, lastIndex, VehicleEnd.Rear, otherTrain, 0, VehicleEnd.Front);
         }
 
