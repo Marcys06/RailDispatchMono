@@ -1,8 +1,8 @@
 # Game domain
 
-## Current development line: `0.1.6a`
+## Current development line: `0.1.6e`
 
-The current implementation builds on the completed `0.1.5pre` train/movement line. The domain now includes rolling-stock definitions, mass/power performance, station handling, a basic passenger vertical slice and rigid consist coupling/decoupling.
+The domain combines the completed `0.1.5pre` rigid-consist/movement model with the `0.1.6` wagon-aware passenger model and coupling/decoupling stabilisation.
 
 ## Railway subsystem
 
@@ -20,99 +20,75 @@ The current implementation builds on the completed `0.1.5pre` train/movement lin
 - `PassengerGenerationBatchSize`;
 - `PassengerWaitingCapacity`.
 
-`StationController` owns the station collection and coordinates train detection, stop decisions, dwell state, passenger generation and station service. It uses `ITrainStopDecision` to determine whether a train should stop.
-
-A train is serviced only after it has reached the station and is sufficiently slow. During dwell, the train is held at zero speed. A completed station visit is tracked so the same train is not serviced repeatedly until it leaves the station area.
+`StationController` owns station lifecycle, train stop/dwell coordination, passenger-generation timing and station service. `ITrainStopDecision` remains the stop-decision boundary.
 
 ## Passenger subsystem
 
-The passenger subsystem is implemented under `Game/Passengers` and currently represents a basic operational vertical slice rather than a full passenger/economy simulation.
+The passenger subsystem is an implemented operational vertical slice, not a complete transport-economy simulation.
 
-### Passenger model
+### Passenger ownership
 
-`Passenger` stores:
+`PassengerManager` owns the active passenger collection. A `Passenger` has fixed origin/destination and runtime state. When onboard, the passenger is associated with a concrete `Wagon` through `CurrentWagonId`.
 
-- unique ID;
-- origin `Station`;
-- destination `Station`;
-- state;
-- current station ID;
-- current train ID;
-- creation timestamp.
+`Train` is only the current operational grouping of wagons. `PassengerManager.GetOnBoard(Train)` is therefore a view over passengers in the train's current wagons, not the ownership model.
 
-`PassengerState` currently has three states:
+### Boarding
 
-- `WaitingAtStation`;
-- `OnBoard`;
-- `Arrived`.
+Boarding is performed against a concrete `Wagon`. The wagon checks capacity and, when a `TrainRoute` is configured, verifies that the route can serve the passenger's destination. `Wagon.CanContinueJourneyTo(...)` is the explicit route-continuity invariant introduced in 0.1.6d.
 
-Passengers have fixed origin and destination. Transfers are not implemented.
+`DefaultPassengerService` performs alighting before boarding. Coupling and decoupling never migrate passengers between wagons.
 
-### Passenger manager
+### Journey continuity and transfers
 
-`PassengerManager` owns the active passenger collection and provides waiting/on-board queries plus boarding and alighting operations. It also raises `PassengerExchange` events and forwards exchange notifications to `FloatingTextManager`.
+`PassengerManager.GetTransferCandidates(Train)` is a future transfer-system/diagnostic seam. It does not select a train and does not move passengers automatically.
 
-Completed passengers can be removed with `RemoveCompletedPassengers()`.
+Not implemented:
 
-### Station passenger generation
-
-`StationController.Update()` advances a generation timer independently for each station. When the timer expires, it requests destinations from `IPassengerDemandProvider` and creates passengers up to the station's configured batch size and waiting capacity.
-
-The default `RandomPassengerDemandProvider` chooses uniformly from all other registered stations. This is deliberately isolated behind the interface so a future city/population/demand model can replace it without changing station or wagon ownership.
-
-### Wagon passenger state
-
-`Wagon` owns its concrete passenger list and exposes capacity/count information. A passenger can board only a passenger wagon with free capacity and, when a service route is configured, a route that can serve the passenger's destination.
-
-At a station, `DefaultPassengerService` performs alighting first and boarding second. The resulting exchange is reported as `PassengerServiceResult`.
-
-### Current passenger limitations
-
-Not implemented yet:
-
-- transfers;
-- route choice between competing trains;
-- timetable-aware passenger decisions;
+- automatic transfers;
+- passenger train selection;
+- timetable-aware route choice;
 - population/city demand model;
 - fares, revenue or operating economics;
-- passenger satisfaction/wait-time scoring;
-- persistent passenger state in runtime saves;
-- passenger-specific classes/types beyond the current fixed model;
-- visual crowds/individual passenger entities on platforms.
+- satisfaction/wait-time scoring;
+- visual platform crowds.
 
-## Train subsystem
+### Save/load
 
-`TrainManager` owns train lifecycle. `TrainComposition` is the authoritative ordered vehicle collection and owns derived mass, length, wagon count and Vmax data. `Vehicle` owns static coupling metadata and runtime coupling state.
+Runtime restoration of an already-onboard passenger targets its saved concrete wagon directly. It does not run normal station-boarding validation against the current station.
 
-## 0.1.5 consist and movement contract
+## Train and rolling stock
 
-### Mass-dependent performance
+`TrainManager` owns train lifecycle. `TrainComposition` owns the authoritative ordered vehicle collection and derived consist statistics. `Vehicle` owns static coupling metadata and runtime coupling state. `Wagon` additionally owns its passenger collection and service route.
 
-Acceleration and braking use locomotive capability multiplied by the non-linear consist mass factor:
+### Performance
 
-`factor = 1 / (totalMass / locomotiveMass)^1.30`
-
-Locomotive power can independently reduce Vmax for heavy consists; wagon Vmax remains an additional cap.
-
-### Rigid coupling/decoupling
-
-`CouplingService` is authoritative for validation and mutation. Connections link concrete vehicle ends. Coupling is limited to compatible outer train boundaries and a fixed `6 km/h` coupling/shunting limit. `X` targets a wagon under the cursor and decouples only below `6 km/h`.
-
-Vehicle order is preserved when consists are merged or split. Adjacent compatible vehicles in a newly built composition automatically receive runtime coupling connections.
-
-No slack, impact forces, coupling animation, brake-pipe propagation or persistence of individual coupling connections is implemented.
+Acceleration and braking use the non-linear consist mass factor. Locomotive power can reduce effective Vmax for heavy consists; vehicle Vmax remains an additional cap.
 
 ### F6/F7
 
-`F6` is manual shunting toward a fixed `3 km/h` for the train under the cursor and bypasses automatic RadioStop/collision stopping for that targeted train while held.
+- `F6` is manual shunting toward a fixed `3 km/h` for the train under the cursor and bypasses automatic RadioStop/collision stopping for that targeted train while held.
+- `F7` changes travel `Direction` only at `0 km/h`.
+- F7 never reverses `Composition.Vehicles`, never reorders vehicles and does not teleport the locomotive.
+- Vehicle positions and spacing are preserved at the reversal instant.
+- Curve movement uses trajectory history and each vehicle's own distance behind the head to derive position and local tangent.
 
-`F7` reverses only the train travel direction and is accepted at `0 km/h`. `Composition.Vehicles`, world positions and inter-vehicle spacing are unchanged at the reversal instant.
+## Coupling and decoupling
 
-Curve following uses trajectory history. Each vehicle obtains its own historical position and local tangent, so vehicles enter and leave curves sequentially rather than rotating simultaneously with the head.
+`CouplingService` is the authoritative mutation boundary.
 
-## Save/load
+- Coupling is limited to compatible outer train boundaries and a fixed `6 km/h` limit.
+- Candidates are order-preserving `Rear → Front` boundaries.
+- Merge clears stale runtime connections and rebuilds the full connection chain from the new vehicle order.
+- Locomotive insertion/replacement rebuilds adjacent runtime connections.
+- Decoupling identifies the split from adjacent vehicle indices and the actual runtime connection.
+- `Composition.Vehicles` is never reversed by coupling or decoupling.
+- Coupling/decoupling do not migrate passengers.
 
-Runtime save schema remains version `1`. Rolling-stock short labels are persisted and old saves without the field remain compatible. Runtime coupling connections and passenger state are not currently persisted.
+No slack action, impact forces, coupling animation, brake-pipe propagation or full longitudinal vehicle dynamics are implemented.
+
+## Persistence
+
+Runtime save schema remains version `1`. Rolling-stock short labels are persisted. Runtime coupling connections are not persisted as a runtime graph. Current passenger restoration uses the concrete saved wagon when onboard state is represented in the save.
 
 ## Domain ownership rule
 
