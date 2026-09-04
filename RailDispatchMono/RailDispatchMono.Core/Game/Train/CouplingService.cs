@@ -44,6 +44,11 @@ public sealed class CouplingService
         if (!CouplingGeometry.AreFacing(firstTrain, firstVehicleIndex, firstEnd, secondTrain, secondVehicleIndex, secondEnd, AlignmentDot))
             return CouplingCheckResult.Fail(CouplingFailureReason.Misaligned);
 
+        // A rear-to-front coupling joins trains travelling in the same direction.
+        // The composition order stays static; only the travel head changes with F7.
+        if (firstTrain.IsReversed != secondTrain.IsReversed)
+            return CouplingCheckResult.Fail(CouplingFailureReason.Misaligned);
+
         if (firstEnd != VehicleEnd.Rear || secondEnd != VehicleEnd.Front)
             return CouplingCheckResult.Fail(CouplingFailureReason.NotTrainBoundary);
 
@@ -61,14 +66,44 @@ public sealed class CouplingService
 
         Train leadingTrain = firstTrain;
         Train trailingTrain = secondTrain;
+        bool reversed = leadingTrain.IsReversed;
 
         var leadingVehicles = new List<Vehicle>(leadingTrain.Composition.Vehicles);
         var trailingVehicles = new List<Vehicle>(trailingTrain.Composition.Vehicles);
         var leadingPositions = leadingTrain.GetVehiclePositions();
         var trailingPositions = trailingTrain.GetVehiclePositions();
+
+        // Snap the trailing consist rigidly to the actual coupling point. This
+        // removes the small visual overlap/gap allowed by CouplingDistance.
+        Vector2 leadingCouplingPoint = CouplingGeometry.GetEndpoint(leadingTrain, firstVehicleIndex, firstEnd);
+        Vector2 trailingCouplingPoint = CouplingGeometry.GetEndpoint(trailingTrain, secondVehicleIndex, secondEnd);
+        Vector2 trailingCorrection = leadingCouplingPoint - trailingCouplingPoint;
+        if (trailingCorrection.LengthSquared() > 0.00000001f)
+        {
+            for (int i = 0; i < trailingPositions.Count; i++)
+                trailingPositions[i] += trailingCorrection;
+        }
+
+        var mergedVehicles = new List<Vehicle>(leadingVehicles.Count + trailingVehicles.Count);
         var mergedPositions = new List<Vector2>(leadingPositions.Count + trailingPositions.Count);
-        mergedPositions.AddRange(leadingPositions);
-        mergedPositions.AddRange(trailingPositions);
+        if (!reversed)
+        {
+            mergedVehicles.AddRange(leadingVehicles);
+            mergedVehicles.AddRange(trailingVehicles);
+            mergedPositions.AddRange(leadingPositions);
+            mergedPositions.AddRange(trailingPositions);
+        }
+        else
+        {
+            // For reversed travel, PreserveVehiclePositions expects the travel
+            // head at the end of the static composition. Therefore the static
+            // composition is [trailing][leading], while the travel order is
+            // [leading][trailing].
+            mergedVehicles.AddRange(trailingVehicles);
+            mergedVehicles.AddRange(leadingVehicles);
+            mergedPositions.AddRange(trailingPositions);
+            mergedPositions.AddRange(leadingPositions);
+        }
 
         DebugManager.TrainDiagnostic($"[COUPLING] BEGIN first={ShortId(firstTrain)} second={ShortId(secondTrain)} " +
                                      $"firstEnd={firstEnd} secondEnd={secondEnd} " +
@@ -76,7 +111,8 @@ public sealed class CouplingService
         LogTrainState("FIRST-BEFORE", firstTrain, leadingVehicles, leadingPositions);
         LogTrainState("SECOND-BEFORE", secondTrain, trailingVehicles, trailingPositions);
         DebugManager.TrainDiagnostic($"[COUPLING] MERGE INPUT positions={mergedPositions.Count} " +
-                                     $"leadingCount={leadingVehicles.Count} trailingCount={trailingVehicles.Count}");
+                                     $"leadingCount={leadingVehicles.Count} trailingCount={trailingVehicles.Count} " +
+                                     $"reversed={reversed}");
 
         firstTrain.Speed = 0f;
         secondTrain.Speed = 0f;
@@ -95,9 +131,7 @@ public sealed class CouplingService
         }
 
         leadingTrain.Composition.Clear();
-        foreach (var vehicle in leadingVehicles)
-            leadingTrain.Composition.AddVehicle(vehicle);
-        foreach (var vehicle in trailingVehicles)
+        foreach (var vehicle in mergedVehicles)
             leadingTrain.Composition.AddVehicle(vehicle);
 
         DebugManager.TrainDiagnostic($"[COUPLING] MERGED compositionCount={leadingTrain.Composition.Vehicles.Count} " +
