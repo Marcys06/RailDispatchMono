@@ -2,43 +2,43 @@
 
 ## Purpose
 
-The `docs/` directory preserves architectural context, implementation contracts and development rules. Release history is maintained separately in `CHANGELOG.md` and `docs/changelog/`.
+`docs/` preserves maintained architecture, implementation contracts and development rules. Release history is maintained in `CHANGELOG.md` and `docs/changelog/`.
 
 ## Current development line
 
-The current development line is `0.1.6a`. The previous consolidated milestone is `0.1.5pre`.
+The maintained documentation baseline is `0.1.6e`. The previous consolidated milestone is `0.1.5pre`.
 
-Current-state snapshots are reserved for consolidated `pre` milestones. Lettered development stages are documented in `docs/changelog/`.
+Lettered `0.1.6x` stages are historical development records and belong in `docs/changelog/`. Maintained architecture/domain documents must describe the latest current contract.
+
+## 0.1.6 documentation contract
+
+The passenger foundation is implemented. The authoritative ownership chain is:
+
+`StationController → PassengerManager → IPassengerService → Wagon`
+
+with destination demand supplied through `IPassengerDemandProvider`.
+
+A passenger belongs to a concrete wagon. A train is only an operational grouping of wagons. Coupling and decoupling therefore must not migrate passengers. `CurrentWagonId`, wagon route validation, `Wagon.CanContinueJourneyTo(...)`, transfer-candidate diagnostics and direct wagon restoration on runtime load must remain documented consistently.
+
+The 0.1.6e coupling contract is also authoritative: locomotive insertion rebuilds adjacent runtime connections; merge clears stale connections and rebuilds the chain from vehicle order; coupling candidates use order-preserving `Rear → Front` boundaries; decoupling uses adjacent indices plus the actual runtime connection.
 
 ## Documentation locations
 
-- `docs/*.md` — maintained architecture, domain, workflow, AI and current-state documentation.
-- `docs/changelog/*.md` — detailed historical/development release notes.
+- `docs/*.md` — maintained architecture, domain, workflow, AI, UI and current-state documentation;
+- `docs/changelog/*.md` — detailed historical/development release notes;
 - `CHANGELOG.md` — high-level release history.
-
-## 0.1.6 passenger documentation rule
-
-The station/passenger foundation is implemented and must be documented as existing functionality, not as future work. The authoritative chain is:
-
-`StationController → PassengerManager → IPassengerService / IPassengerDemandProvider → Wagon / TrainRoute`.
-
-When changing this subsystem, update the domain, AI-context, code-index, UI and known-issues documentation when their contracts change. Keep future passenger features clearly separated from implemented behavior.
-
-## 0.1.5 documentation rule
-
-The completed `0.1.5pre` contract includes rigid consist movement, F6 manual shunting, F7 direction reversal, curve trajectory/per-vehicle orientation, rigid coupling/decoupling, rolling-stock catalogue/performance and Depot creation. Do not reintroduce the former F6/F7/F8 coupling-speed selector description.
 
 ## Audit procedure
 
 1. inspect implementation;
-2. search usages and constructors;
-3. inspect affected platform projects;
-4. verify persistence and compatibility contracts;
-5. verify rendering/input coordinate assumptions;
-6. update affected maintained docs;
-7. update the current development changelog;
-8. update `CHANGELOG.md` when the release history changes.
+2. inspect callers and consumers;
+3. inspect constructors and data contracts;
+4. inspect save/load compatibility;
+5. inspect input/rendering boundaries;
+6. update all maintained docs affected by the contract change;
+7. update the lettered changelog entry;
+8. update `CHANGELOG.md` when release history changes.
 
 ## Source of truth
 
-If documentation conflicts with code, inspect the current implementation and call sites first. Historical changelog entries are not rewritten to match later behavior.
+If documentation conflicts with code, inspect current implementation and call sites first. Historical changelog entries are not rewritten to describe later behavior.
