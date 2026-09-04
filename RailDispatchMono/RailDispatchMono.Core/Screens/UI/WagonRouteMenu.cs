@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Myra.Graphics2D.UI;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Train;
 using System;
@@ -11,237 +12,473 @@ using System.Linq;
 namespace RailDispatchMono.Core.Screens.UI;
 
 /// <summary>
-/// Existing S-menu, extended into the wagon timetable editor. The wagon owns
-/// the timetable; the train is only the current operational grouping.
+/// Single timetable editor exposed through the existing S workflow.
+/// The UI is rendered and managed by Myra; the wagon remains the owner of the schedule.
 /// </summary>
 public sealed class WagonRouteMenu
 {
     private readonly GraphicsDevice _graphicsDevice;
-    private SpriteFont? _font;
-    private Texture2D? _pixel;
+    private readonly Desktop _desktop;
+
     private Wagon? _wagon;
     private StationController? _stations;
-    private Vector2 _position;
-    private MouseState _previousMouse;
-    private KeyboardState _previousKeyboard;
-    private bool _consumeOpeningUpdate;
-    private int _activeTimeField = -1;
-    private bool _activeDeparture;
-    private readonly List<string> _arrivals = new();
-    private readonly List<string> _departures = new();
-    private string _status = "";
+    private Window? _window;
+    private VerticalStackPanel? _routePanel;
+    private VerticalStackPanel? _availableStationsPanel;
+    private VerticalStackPanel? _timetablePanel;
+    private Label? _validationLabel;
 
-    public bool IsOpen => _wagon != null && _stations != null;
+    private readonly List<Guid> _baseRoute = new();
+    private readonly List<TextBox> _arrivalBoxes = new();
+    private readonly List<TextBox> _departureBoxes = new();
+    private string _validationMessage = string.Empty;
+    private bool _suppressRouteRebuild;
+
+    public bool IsOpen => _wagon != null && _stations != null && _window != null;
     public event Action<Wagon>? RouteChanged;
 
     public WagonRouteMenu(GraphicsDevice graphicsDevice)
     {
         _graphicsDevice = graphicsDevice;
-        _previousMouse = Mouse.GetState();
-        _previousKeyboard = Keyboard.GetState();
+        _desktop = new Desktop
+        {
+            BoundsFetcher = () => new Rectangle(
+                0,
+                0,
+                _graphicsDevice.Viewport.Width,
+                _graphicsDevice.Viewport.Height)
+        };
     }
 
-    public void SetFont(SpriteFont font) => _font = font;
+    public void SetFont(SpriteFont font)
+    {
+        // Myra uses its own stylesheet font. Keep the method for the existing S-menu API.
+    }
 
     public void LoadContent()
     {
-        if (_pixel != null) return;
-        _pixel = new Texture2D(_graphicsDevice, 1, 1);
-        _pixel.SetData(new[] { Color.White });
     }
 
     public void Open(Vector2 screenPosition, Wagon wagon, StationController stations)
     {
         _wagon = wagon;
         _stations = stations;
-        _position = screenPosition + new Vector2(12f, 12f);
-        _previousMouse = Mouse.GetState();
-        _previousKeyboard = Keyboard.GetState();
-        _consumeOpeningUpdate = true;
-        _activeTimeField = -1;
-        _status = "";
+        _baseRoute.Clear();
+        _arrivalBoxes.Clear();
+        _departureBoxes.Clear();
+        _validationMessage = string.Empty;
 
-        _arrivals.Clear();
-        _departures.Clear();
-        var schedule = wagon.Schedule;
-        if (schedule != null && schedule.BaseStationIds.Count >= 2)
-        {
-            foreach (var point in schedule.Points)
-            {
-                _arrivals.Add(FormatTime(point.ArrivalSeconds));
-                _departures.Add(FormatTime(point.DepartureSeconds));
-            }
-        }
+        if (wagon.Schedule?.BaseStationIds.Count >= 2)
+            _baseRoute.AddRange(wagon.Schedule.BaseStationIds);
         else
-        {
-            var loop = wagon.Route.StationIds.Concat(wagon.Route.StationIds.Skip(1).Reverse()).ToList();
-            EnsureTimeFields(loop.Count);
-        }
-        ClampToViewport();
+            _baseRoute.AddRange(wagon.Route.StationIds);
+
+        BuildEditor();
     }
 
     public void Close()
     {
+        _desktop.Root = null;
+        _window = null;
+        _routePanel = null;
+        _availableStationsPanel = null;
+        _timetablePanel = null;
+        _validationLabel = null;
+        _arrivalBoxes.Clear();
+        _departureBoxes.Clear();
         _wagon = null;
         _stations = null;
-        _consumeOpeningUpdate = false;
-        _activeTimeField = -1;
     }
-
-    private void Changed() => RouteChanged?.Invoke(_wagon!);
 
     public void Update(MouseState mouse)
     {
-        if (!IsOpen || _wagon == null || _stations == null) return;
-
-        if (_consumeOpeningUpdate)
-        {
-            _previousMouse = mouse;
-            _previousKeyboard = Keyboard.GetState();
-            _consumeOpeningUpdate = false;
+        if (!IsOpen)
             return;
-        }
 
-        KeyboardState keyboard = Keyboard.GetState();
-        HandleKeyboard(keyboard);
-
-        bool leftPressed = mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released;
-        bool rightPressed = mouse.RightButton == ButtonState.Pressed && _previousMouse.RightButton == ButtonState.Released;
-        if (rightPressed)
-        {
+        // Myra's MonoGame integration receives the platform input through MyraEnvironment.Game.
+        // Rendering the desktop is sufficient for the existing integration used by the project.
+        if (Keyboard.GetState().IsKeyDown(Keys.Escape))
             Close();
-            return;
-        }
-
-        if (leftPressed)
-        {
-            if (ButtonRect(0, 0, 650, 34).Contains(mouse.Position))
-            {
-                Close();
-                return;
-            }
-
-            var baseRoute = GetBaseRoute();
-            if (ButtonRect(5, 44, 650, 30).Contains(mouse.Position))
-            {
-                SaveSchedule();
-                _previousMouse = mouse;
-                _previousKeyboard = keyboard;
-                return;
-            }
-
-            int routeY = 84;
-            for (int i = 0; i < baseRoute.Count; i++)
-            {
-                if (ButtonRect(5, routeY, 320, 28).Contains(mouse.Position))
-                {
-                    baseRoute.RemoveAt(i);
-                    ApplyBaseRoute(baseRoute);
-                    _previousMouse = mouse;
-                    _previousKeyboard = keyboard;
-                    return;
-                }
-                routeY += 31;
-            }
-
-            int addY = routeY + 4;
-            foreach (var station in _stations.Stations)
-            {
-                if (baseRoute.Contains(station.Id)) continue;
-                if (ButtonRect(5, addY, 320, 28).Contains(mouse.Position))
-                {
-                    baseRoute.Add(station.Id);
-                    ApplyBaseRoute(baseRoute);
-                    _previousMouse = mouse;
-                    _previousKeyboard = keyboard;
-                    return;
-                }
-                addY += 31;
-            }
-
-            var loop = baseRoute.Concat(baseRoute.Skip(1).Reverse()).ToList();
-            int timeY = 84;
-            for (int i = 0; i < loop.Count; i++)
-            {
-                if (TimeRect(335, timeY, 140, 28).Contains(mouse.Position))
-                {
-                    _activeTimeField = i;
-                    _activeDeparture = false;
-                    _previousMouse = mouse;
-                    _previousKeyboard = keyboard;
-                    return;
-                }
-                if (TimeRect(485, timeY, 140, 28).Contains(mouse.Position))
-                {
-                    _activeTimeField = i;
-                    _activeDeparture = true;
-                    _previousMouse = mouse;
-                    _previousKeyboard = keyboard;
-                    return;
-                }
-                timeY += 31;
-            }
-
-            if (ButtonRect(335, 44, 290, 30).Contains(mouse.Position))
-            {
-                SaveSchedule();
-                _previousMouse = mouse;
-                _previousKeyboard = keyboard;
-                return;
-            }
-
-            var menuRect = new Rectangle((int)_position.X, (int)_position.Y, 660, (int)GetHeight());
-            if (!menuRect.Contains(mouse.Position))
-            {
-                Close();
-                return;
-            }
-        }
-
-        _previousMouse = mouse;
-        _previousKeyboard = keyboard;
     }
 
-    private void HandleKeyboard(KeyboardState keyboard)
+    public void Draw(SpriteBatch spriteBatch)
     {
-        if (_activeTimeField < 0 || _activeTimeField >= _arrivals.Count) return;
-        string current = _activeDeparture ? _departures[_activeTimeField] : _arrivals[_activeTimeField];
-        foreach (Keys key in Enum.GetValues(typeof(Keys)))
+        if (!IsOpen)
+            return;
+
+        _desktop.Render();
+    }
+
+    private void BuildEditor()
+    {
+        if (_wagon == null || _stations == null)
+            return;
+
+        var root = new Panel
         {
-            int digit = key switch
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+
+        _window = new Window
+        {
+            Title = $"ROZKŁAD WAGONU — {_wagon.ShortName}",
+            Width = Math.Min(1180, Math.Max(900, _graphicsDevice.Viewport.Width - 80)),
+            Height = Math.Min(780, Math.Max(620, _graphicsDevice.Viewport.Height - 80)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var main = new Grid
+        {
+            RowSpacing = 10,
+            ColumnSpacing = 14
+        };
+        main.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 360));
+        main.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
+        main.RowsProportions.Add(new Proportion(ProportionType.Part, 1));
+        main.RowsProportions.Add(new Proportion(ProportionType.Auto));
+
+        BuildRouteSection(main);
+        BuildTimetableSection(main);
+        BuildActions(main);
+
+        _window.Content = main;
+        root.Widgets.Add(_window);
+        _desktop.Root = root;
+    }
+
+    private void BuildRouteSection(Grid main)
+    {
+        var section = new VerticalStackPanel
+        {
+            Spacing = 8
+        };
+
+        section.Widgets.Add(new Label
+        {
+            Text = "TRASA",
+            FontScale = 1.15f
+        });
+        section.Widgets.Add(new Label
+        {
+            Text = "Kolejność bazowa. Pętla zostanie rozwinięta A-B-C-B-A."
+        });
+
+        var routeScroll = new ScrollViewer
+        {
+            Height = 430,
+            Content = new VerticalStackPanel { Spacing = 5 }
+        };
+        _routePanel = (VerticalStackPanel)routeScroll.Content;
+        section.Widgets.Add(routeScroll);
+
+        var routeButtons = new HorizontalStackPanel { Spacing = 6 };
+        var addButton = CreateButton("DODAJ STACJĘ", 150);
+        addButton.Click += (_, _) => ToggleAvailableStations();
+        routeButtons.Widgets.Add(addButton);
+        section.Widgets.Add(routeButtons);
+
+        _availableStationsPanel = new VerticalStackPanel
+        {
+            Spacing = 4,
+            IsVisible = false
+        };
+        var availableScroll = new ScrollViewer
+        {
+            Height = 180,
+            Content = _availableStationsPanel
+        };
+        section.Widgets.Add(availableScroll);
+
+        Grid.SetColumn(section, 0);
+        Grid.SetRow(section, 0);
+        Grid.SetRowSpan(section, 1);
+        main.Widgets.Add(section);
+
+        RebuildRoutePanel();
+    }
+
+    private void BuildTimetableSection(Grid main)
+    {
+        var section = new VerticalStackPanel
+        {
+            Spacing = 8
+        };
+
+        section.Widgets.Add(new Label
+        {
+            Text = "ROZKŁAD",
+            FontScale = 1.15f
+        });
+        section.Widgets.Add(new Label
+        {
+            Text = "Każdy punkt ma niezależny PRZYJAZD i ODJAZD. Terminale A/D mają dłuższy postój."
+        });
+
+        var header = new Grid { ColumnSpacing = 8 };
+        header.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 42));
+        header.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
+        header.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+        header.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+        header.Widgets.Add(new Label { Text = "#" });
+        Grid.SetColumn(header.GetChild(0), 0);
+        var stationHeader = new Label { Text = "STACJA" };
+        Grid.SetColumn(stationHeader, 1);
+        header.Widgets.Add(stationHeader);
+        var arrivalHeader = new Label { Text = "PRZYJAZD" };
+        Grid.SetColumn(arrivalHeader, 2);
+        header.Widgets.Add(arrivalHeader);
+        var departureHeader = new Label { Text = "ODJAZD" };
+        Grid.SetColumn(departureHeader, 3);
+        header.Widgets.Add(departureHeader);
+        section.Widgets.Add(header);
+
+        var scroll = new ScrollViewer
+        {
+            Height = 485,
+            Content = new VerticalStackPanel { Spacing = 5 }
+        };
+        _timetablePanel = (VerticalStackPanel)scroll.Content;
+        section.Widgets.Add(scroll);
+
+        _validationLabel = new Label
+        {
+            Text = _validationMessage,
+            Wrap = true
+        };
+        section.Widgets.Add(_validationLabel);
+
+        Grid.SetColumn(section, 1);
+        Grid.SetRow(section, 0);
+        main.Widgets.Add(section);
+
+        RebuildTimetablePanel();
+    }
+
+    private void BuildActions(Grid main)
+    {
+        var actions = new HorizontalStackPanel
+        {
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+
+        var save = CreateButton("ZAPISZ", 120);
+        save.Click += (_, _) => SaveSchedule();
+        actions.Widgets.Add(save);
+
+        var cancel = CreateButton("ANULUJ", 120);
+        cancel.Click += (_, _) => Close();
+        actions.Widgets.Add(cancel);
+
+        var delete = CreateButton("USUŃ ROZKŁAD", 150);
+        delete.Click += (_, _) => DeleteSchedule();
+        actions.Widgets.Add(delete);
+
+        Grid.SetColumn(actions, 0);
+        Grid.SetRow(actions, 1);
+        Grid.SetColumnSpan(actions, 2);
+        main.Widgets.Add(actions);
+    }
+
+    private void RebuildRoutePanel()
+    {
+        if (_routePanel == null || _stations == null)
+            return;
+
+        _routePanel.Widgets.Clear();
+        for (int i = 0; i < _baseRoute.Count; i++)
+        {
+            int index = i;
+            var row = new HorizontalStackPanel { Spacing = 4 };
+            row.Widgets.Add(new Label
             {
-                Keys.D0 or Keys.NumPad0 => 0,
-                Keys.D1 or Keys.NumPad1 => 1,
-                Keys.D2 or Keys.NumPad2 => 2,
-                Keys.D3 or Keys.NumPad3 => 3,
-                Keys.D4 or Keys.NumPad4 => 4,
-                Keys.D5 or Keys.NumPad5 => 5,
-                Keys.D6 or Keys.NumPad6 => 6,
-                Keys.D7 or Keys.NumPad7 => 7,
-                Keys.D8 or Keys.NumPad8 => 8,
-                Keys.D9 or Keys.NumPad9 => 9,
-                _ => -1
-            };
-            if (digit < 0 || !IsKeyPressed(keyboard, key)) continue;
-            current = current == "00:00" ? digit.ToString(CultureInfo.InvariantCulture) : current + digit.ToString(CultureInfo.InvariantCulture);
+                Text = $"{index + 1}.",
+                Width = 28
+            });
+
+            var station = FindStation(_baseRoute[index]);
+            row.Widgets.Add(new Label
+            {
+                Text = station?.Name ?? "BRAK STACJI",
+                Width = 165
+            });
+
+            var up = CreateButton("GÓRA", 58);
+            up.IsEnabled = index > 0;
+            up.Click += (_, _) => MoveRoute(index, -1);
+            row.Widgets.Add(up);
+
+            var down = CreateButton("DÓŁ", 58);
+            down.IsEnabled = index < _baseRoute.Count - 1;
+            down.Click += (_, _) => MoveRoute(index, 1);
+            row.Widgets.Add(down);
+
+            var remove = CreateButton("USUŃ", 58);
+            remove.Click += (_, _) => RemoveRouteStation(index);
+            row.Widgets.Add(remove);
+
+            _routePanel.Widgets.Add(row);
         }
 
-        if (IsKeyPressed(keyboard, Keys.Back))
-            current = current.Length > 0 ? current[..^1] : "";
-        if (IsKeyPressed(keyboard, Keys.Enter))
-            current = NormalizeTimeText(current);
+        if (_baseRoute.Count == 0)
+        {
+            _routePanel.Widgets.Add(new Label
+            {
+                Text = "Brak stacji. Kliknij DODAJ STACJĘ."
+            });
+        }
 
-        if (_activeDeparture) _departures[_activeTimeField] = current;
-        else _arrivals[_activeTimeField] = current;
+        RebuildAvailableStations();
     }
+
+    private void RebuildAvailableStations()
+    {
+        if (_availableStationsPanel == null || _stations == null)
+            return;
+
+        _availableStationsPanel.Widgets.Clear();
+        foreach (var station in _stations.Stations)
+        {
+            if (_baseRoute.Contains(station.Id))
+                continue;
+
+            var button = CreateButton($"DODAJ: {station.Name}", 300);
+            Guid id = station.Id;
+            button.Click += (_, _) => AddRouteStation(id);
+            _availableStationsPanel.Widgets.Add(button);
+        }
+
+        if (_availableStationsPanel.Widgets.Count == 0)
+            _availableStationsPanel.Widgets.Add(new Label { Text = "Brak dostępnych stacji." });
+    }
+
+    private void ToggleAvailableStations()
+    {
+        if (_availableStationsPanel == null)
+            return;
+        _availableStationsPanel.IsVisible = !_availableStationsPanel.IsVisible;
+    }
+
+    private void AddRouteStation(Guid stationId)
+    {
+        if (_baseRoute.Contains(stationId))
+            return;
+
+        _baseRoute.Add(stationId);
+        RebuildRouteAndTimetable();
+    }
+
+    private void RemoveRouteStation(int index)
+    {
+        if (index < 0 || index >= _baseRoute.Count)
+            return;
+
+        _baseRoute.RemoveAt(index);
+        RebuildRouteAndTimetable();
+    }
+
+    private void MoveRoute(int index, int direction)
+    {
+        int target = index + direction;
+        if (index < 0 || target < 0 || index >= _baseRoute.Count || target >= _baseRoute.Count)
+            return;
+
+        (_baseRoute[index], _baseRoute[target]) = (_baseRoute[target], _baseRoute[index]);
+        RebuildRouteAndTimetable();
+    }
+
+    private void RebuildRouteAndTimetable()
+    {
+        if (_suppressRouteRebuild)
+            return;
+
+        RebuildRoutePanel();
+        RebuildTimetablePanel();
+    }
+
+    private void RebuildTimetablePanel()
+    {
+        if (_timetablePanel == null || _stations == null)
+            return;
+
+        _arrivalBoxes.Clear();
+        _departureBoxes.Clear();
+        _timetablePanel.Widgets.Clear();
+
+        var loop = _baseRoute
+            .Concat(_baseRoute.Skip(1).Reverse())
+            .ToList();
+
+        var existingArrival = ReadCurrentTimes(_arrivalBoxes);
+        var existingDeparture = ReadCurrentTimes(_departureBoxes);
+
+        for (int i = 0; i < loop.Count; i++)
+        {
+            int index = i;
+            var station = FindStation(loop[i]);
+            bool terminal = i == 0 || i == loop.Count - 1;
+
+            var row = new Grid
+            {
+                ColumnSpacing = 8,
+                RowSpacing = 2
+            };
+            row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 42));
+            row.ColumnsProportions.Add(new Proportion(ProportionType.Part, 1));
+            row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+            row.ColumnsProportions.Add(new Proportion(ProportionType.Pixels, 105));
+
+            var number = new Label { Text = (index + 1).ToString(CultureInfo.InvariantCulture) };
+            Grid.SetColumn(number, 0);
+            row.Widgets.Add(number);
+
+            var stationLabel = new Label
+            {
+                Text = terminal
+                    ? $"{station?.Name ?? "BRAK"}  [TERMINAL]"
+                    : station?.Name ?? "BRAK"
+            };
+            Grid.SetColumn(stationLabel, 1);
+            row.Widgets.Add(stationLabel);
+
+            var arrival = new TextBox
+            {
+                Text = i < existingArrival.Count ? existingArrival[i] : "00:00",
+                Width = 100
+            };
+            Grid.SetColumn(arrival, 2);
+            row.Widgets.Add(arrival);
+            _arrivalBoxes.Add(arrival);
+
+            var departure = new TextBox
+            {
+                Text = i < existingDeparture.Count ? existingDeparture[i] : "00:00",
+                Width = 100
+            };
+            Grid.SetColumn(departure, 3);
+            row.Widgets.Add(departure);
+            _departureBoxes.Add(departure);
+
+            _timetablePanel.Widgets.Add(row);
+        }
+
+        if (_validationLabel != null)
+            _validationLabel.Text = _validationMessage;
+    }
+
+    private List<string> ReadCurrentTimes(List<TextBox> boxes)
+        => boxes.Select(b => b.Text ?? string.Empty).ToList();
 
     private void SaveSchedule()
     {
-        if (_wagon == null || _stations == null) return;
-        var baseRoute = GetBaseRoute();
-        if (baseRoute.Count < 2)
+        if (_wagon == null)
+            return;
+
+        if (_baseRoute.Count < 2)
         {
-            _status = "Rozkład wymaga co najmniej dwóch stacji.";
+            SetValidation("BŁĄD: rozkład wymaga co najmniej dwóch stacji.");
             return;
         }
 
@@ -249,179 +486,90 @@ public sealed class WagonRouteMenu
         {
             Id = _wagon.Schedule?.Id ?? Guid.NewGuid(),
             Name = _wagon.ShortName + " — rozkład",
-            BaseStationIds = baseRoute.ToList(),
+            BaseStationIds = _baseRoute.ToList(),
             Enabled = true
         };
         schedule.BuildLoopFromBaseRoute();
-        EnsureTimeFields(schedule.Points.Count);
 
         for (int i = 0; i < schedule.Points.Count; i++)
         {
-            if (!TryParseTime(_arrivals[i], out int arrival) || !TryParseTime(_departures[i], out int departure))
+            if (!TryParseTime(_arrivalBoxes[i].Text, out int arrival))
             {
-                _status = $"Nieprawidłowy czas w punkcie {i + 1}. Użyj HH:MM.";
+                SetValidation($"BŁĄD: nieprawidłowy PRZYJAZD w punkcie {i + 1}. Użyj HH:MM.");
                 return;
             }
+
+            if (!TryParseTime(_departureBoxes[i].Text, out int departure))
+            {
+                SetValidation($"BŁĄD: nieprawidłowy ODJAZD w punkcie {i + 1}. Użyj HH:MM.");
+                return;
+            }
+
             schedule.Points[i].ArrivalSeconds = arrival;
             schedule.Points[i].DepartureSeconds = departure;
         }
 
         if (!schedule.IsValid(out string error))
         {
-            _status = error;
+            SetValidation("BŁĄD: " + error);
             return;
         }
 
         _wagon.Route.Clear();
-        foreach (Guid stationId in baseRoute)
+        foreach (Guid stationId in _baseRoute)
             _wagon.Route.AddStation(stationId);
+
         _wagon.SetSchedule(schedule);
-        _status = "Rozkład zapisany.";
-        Changed();
+        RouteChanged?.Invoke(_wagon);
         Close();
     }
 
-    private List<Guid> GetBaseRoute()
+    private void DeleteSchedule()
     {
-        if (_wagon?.Schedule?.BaseStationIds.Count >= 2)
-            return _wagon.Schedule.BaseStationIds.ToList();
-        return _wagon?.Route.StationIds.ToList() ?? new List<Guid>();
+        if (_wagon == null)
+            return;
+
+        _wagon.SetSchedule(null);
+        RouteChanged?.Invoke(_wagon);
+        Close();
     }
 
-    private void ApplyBaseRoute(List<Guid> baseRoute)
+    private void SetValidation(string message)
     {
-        var oldArrivals = _arrivals.ToList();
-        var oldDepartures = _departures.ToList();
-        var loop = baseRoute.Concat(baseRoute.Skip(1).Reverse()).ToList();
-        _arrivals.Clear();
-        _departures.Clear();
-        for (int i = 0; i < loop.Count; i++)
+        _validationMessage = message;
+        if (_validationLabel != null)
+            _validationLabel.Text = message;
+    }
+
+    private Station? FindStation(Guid id)
+        => _stations?.Stations.FirstOrDefault(s => s.Id == id);
+
+    private static Button CreateButton(string text, int width)
+    {
+        return new Button
         {
-            _arrivals.Add(i < oldArrivals.Count ? oldArrivals[i] : "00:00");
-            _departures.Add(i < oldDepartures.Count ? oldDepartures[i] : "00:00");
-        }
-        _status = "Trasa zmieniona — uzupełnij czasy.";
+            Width = width,
+            Height = 32,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Content = new Label { Text = text }
+        };
     }
 
-    private void EnsureTimeFields(int count)
-    {
-        while (_arrivals.Count < count) _arrivals.Add("00:00");
-        while (_departures.Count < count) _departures.Add("00:00");
-        while (_arrivals.Count > count) _arrivals.RemoveAt(_arrivals.Count - 1);
-        while (_departures.Count > count) _departures.RemoveAt(_departures.Count - 1);
-    }
-
-    public void Draw(SpriteBatch spriteBatch)
-    {
-        if (!IsOpen || _wagon == null || _stations == null || _font == null || _pixel == null) return;
-        ClampToViewport();
-        float width = 660f, height = GetHeight();
-        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-        spriteBatch.Draw(_pixel, new Rectangle((int)_position.X, (int)_position.Y, (int)width, (int)height), new Color(18, 18, 18, 248));
-        spriteBatch.Draw(_pixel, new Rectangle((int)_position.X, (int)_position.Y, (int)width, 3), Color.Yellow);
-        DrawString(spriteBatch, "ROZKŁAD WAGONU  [S]", 8, 8, Color.Yellow, 0.75f);
-        DrawString(spriteBatch, $"Wagon: {_wagon.ShortName}", 8, 27, Color.White, 0.6f);
-        DrawButton(spriteBatch, ButtonRect(0, 44, 650, 30), "ZAPISZ ROZKŁAD", false);
-
-        var baseRoute = GetBaseRoute();
-        int routeY = 84;
-        DrawString(spriteBatch, "TRASA BAZOWA — kliknij stację, aby usunąć", 8, routeY - 18, Color.LightGray, 0.55f);
-        for (int i = 0; i < baseRoute.Count; i++)
-        {
-            var station = _stations.Stations.FirstOrDefault(s => s.Id == baseRoute[i]);
-            DrawButton(spriteBatch, ButtonRect(0, routeY, 320, 28), $"{(char)('A' + i)}. {station?.Name ?? "BRAK"}  [USUŃ]", false);
-            routeY += 31;
-        }
-
-        int addY = routeY + 4;
-        foreach (var station in _stations.Stations)
-        {
-            if (baseRoute.Contains(station.Id)) continue;
-            DrawButton(spriteBatch, ButtonRect(0, addY, 320, 28), $"+ {station.Name}", false);
-            addY += 31;
-        }
-
-        var loop = baseRoute.Concat(baseRoute.Skip(1).Reverse()).ToList();
-        int timeY = 84;
-        DrawString(spriteBatch, "PUNKTY KONTROLNE", 335, timeY - 18, Color.LightGray, 0.55f);
-        DrawString(spriteBatch, "PRZYJAZD", 335, timeY - 2, Color.LightGray, 0.45f);
-        DrawString(spriteBatch, "ODJAZD", 485, timeY - 2, Color.LightGray, 0.45f);
-        timeY += 16;
-        for (int i = 0; i < loop.Count; i++)
-        {
-            var station = _stations.Stations.FirstOrDefault(s => s.Id == loop[i]);
-            bool terminal = i == 0 || i == loop.Count - 1;
-            DrawString(spriteBatch, $"{i + 1}. {station?.Name ?? "BRAK"}{(terminal ? " *" : "")}", 335, timeY + 7, Color.White, 0.52f);
-            DrawTimeField(spriteBatch, TimeRect(335, timeY, 140, 28), _arrivals.ElementAtOrDefault(i) ?? "00:00", _activeTimeField == i && !_activeDeparture);
-            DrawTimeField(spriteBatch, TimeRect(485, timeY, 140, 28), _departures.ElementAtOrDefault(i) ?? "00:00", _activeTimeField == i && _activeDeparture);
-            timeY += 31;
-        }
-
-        DrawString(spriteBatch, "* terminal: dłuższy postój/manewry ustawiasz różnicą przyjazd → odjazd", 335, timeY + 4, Color.LightGray, 0.43f);
-        DrawString(spriteBatch, "Kliknij pole czasu i wpisuj cyfry. Enter normalizuje zapis.", 335, timeY + 22, Color.LightGray, 0.43f);
-        if (!string.IsNullOrEmpty(_status))
-            DrawString(spriteBatch, _status, 8, Math.Max(timeY + 45, addY + 8), Color.Yellow, 0.48f);
-        spriteBatch.End();
-    }
-
-    private float GetHeight()
-    {
-        var baseRoute = GetBaseRoute();
-        int loopCount = Math.Max(2, baseRoute.Count * 2 - 1);
-        int rows = Math.Max(loopCount, baseRoute.Count + (_stations?.Stations.Count ?? 0) + 2);
-        return Math.Min(850f, 105f + rows * 31f);
-    }
-
-    private Rectangle ButtonRect(int x, int y, int width, int height) =>
-        new((int)_position.X + 5 + x, (int)_position.Y + y, width, height);
-
-    private Rectangle TimeRect(int x, int y, int width, int height) =>
-        new((int)_position.X + x, (int)_position.Y + y, width, height);
-
-    private void DrawTimeField(SpriteBatch batch, Rectangle rect, string text, bool active)
-    {
-        batch.Draw(_pixel!, rect, active ? new Color(80, 80, 35, 250) : new Color(45, 45, 45, 250));
-        DrawString(batch, text, rect.X + 8, rect.Y + 7, Color.White, 0.55f);
-    }
-
-    private void DrawButton(SpriteBatch batch, Rectangle rect, string text, bool selected)
-    {
-        batch.Draw(_pixel!, rect, selected ? new Color(70, 90, 35, 245) : new Color(45, 45, 45, 245));
-        DrawString(batch, text, rect.X + 6, rect.Y + 6, Color.White, 0.5f);
-    }
-
-    private void DrawString(SpriteBatch batch, string text, float x, float y, Color color, float scale) =>
-        batch.DrawString(_font!, text, _position + new Vector2(x, y), color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-
-    private bool IsKeyPressed(KeyboardState keyboard, Keys key) =>
-        keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
-
-    private static string FormatTime(int seconds)
-    {
-        if (seconds < 0) seconds = 0;
-        return TimeSpan.FromSeconds(seconds).ToString("hh\\:mm", CultureInfo.InvariantCulture);
-    }
-
-    private static string NormalizeTimeText(string text)
-    {
-        if (TryParseTime(text, out int seconds)) return FormatTime(seconds);
-        return text;
-    }
-
-    private static bool TryParseTime(string text, out int seconds)
+    private static bool TryParseTime(string? text, out int seconds)
     {
         seconds = 0;
-        if (!TimeSpan.TryParseExact(text.Trim(), new[] { "hh\\:mm", "h\\:mm", "hh\\:mm\\:ss", "h\\:mm\\:ss" }, CultureInfo.InvariantCulture, out TimeSpan value))
+        if (string.IsNullOrWhiteSpace(text))
             return false;
-        if (value < TimeSpan.Zero || value.TotalSeconds >= 24 * 60 * 60) return false;
-        seconds = (int)value.TotalSeconds;
-        return true;
-    }
 
-    private void ClampToViewport()
-    {
-        float width = 660f, height = GetHeight();
-        _position.X = MathHelper.Clamp(_position.X, 4f, Math.Max(4f, _graphicsDevice.Viewport.Width - width - 4f));
-        _position.Y = MathHelper.Clamp(_position.Y, 4f, Math.Max(4f, _graphicsDevice.Viewport.Height - Math.Min(height, _graphicsDevice.Viewport.Height - 8f) - 4f));
+        string value = text.Trim();
+        string[] formats = { "hh\\:mm", "h\\:mm", "hhmm", "hmm" };
+        if (!TimeSpan.TryParseExact(value, formats, CultureInfo.InvariantCulture, out TimeSpan time))
+            return false;
+
+        if (time < TimeSpan.Zero || time.TotalSeconds >= 24 * 60 * 60)
+            return false;
+
+        seconds = (int)time.TotalSeconds;
+        return true;
     }
 }
