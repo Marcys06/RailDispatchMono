@@ -4,36 +4,31 @@
 
 The `docs/` directory preserves architectural context, implementation contracts and development rules. Release history is maintained separately in `CHANGELOG.md` and `docs/changelog/`.
 
-## Current baseline
+## Current development line
 
-The current project baseline is `0.1.5pre`.
+The current development line is `0.1.6a`. The previous consolidated milestone is `0.1.5pre`.
 
-Only consolidated `pre` milestones receive current-state snapshots:
-
-- `19-current-state-0.1.2pre.md`
-- `20-current-state-0.1.3pre.md`
-- `21-current-state-0.1.4pre.md`
-- `22-current-state-0.1.5pre.md`
-
-Lettered stages do not receive current-state files.
+Current-state snapshots are reserved for consolidated `pre` milestones. Lettered development stages are documented in `docs/changelog/`.
 
 ## Documentation locations
 
-- `docs/*.md` — maintained architecture, domain, workflow and AI documentation plus consolidated pre-release snapshots.
-- `docs/changelog/*.md` — detailed historical release notes.
+- `docs/*.md` — maintained architecture, domain, workflow, AI and current-state documentation.
+- `docs/changelog/*.md` — detailed historical/development release notes.
 - `CHANGELOG.md` — high-level release history.
 
-## When to update documentation
+## 0.1.6 passenger documentation rule
 
-Update maintained documentation when a change affects project structure, dependencies, lifecycle, screen routing, input semantics, coordinate systems, settings/persistence, localization, content loading, platform bootstrapping, domain ownership, rendering contracts, diagnostics or public APIs. Every release change also gets a changelog entry.
+The station/passenger foundation is implemented and must be documented as existing functionality, not as future work. The authoritative chain is:
 
-## Change discipline
+`StationController → PassengerManager → IPassengerService / IPassengerDemandProvider → Wagon / TrainRoute`.
 
-Historical lettered stages remain immutable. Do not rewrite a historical lettered stage as if it were a final release. A current `pre` snapshot consolidates the implemented line without erasing its historical changelog.
+When changing this subsystem, update the domain, AI-context, code-index, UI and known-issues documentation when their contracts change. Keep future passenger features clearly separated from implemented behavior.
+
+## 0.1.5 documentation rule
+
+The completed `0.1.5pre` contract includes rigid consist movement, F6 manual shunting, F7 direction reversal, curve trajectory/per-vehicle orientation, rigid coupling/decoupling, rolling-stock catalogue/performance and Depot creation. Do not reintroduce the former F6/F7/F8 coupling-speed selector description.
 
 ## Audit procedure
-
-For a substantial change:
 
 1. inspect implementation;
 2. search usages and constructors;
@@ -41,11 +36,9 @@ For a substantial change:
 4. verify persistence and compatibility contracts;
 5. verify rendering/input coordinate assumptions;
 6. update affected maintained docs;
-7. update `docs/00-index.md` if the documentation map changes;
-8. update the current `pre` snapshot when the consolidated state changes;
-9. add detailed release notes under `docs/changelog/`;
-10. update `CHANGELOG.md`.
+7. update the current development changelog;
+8. update `CHANGELOG.md` when the release history changes.
 
-## AI handoff
+## Source of truth
 
-Start with `docs/00-index.md`, then read architecture/lifecycle/screen/domain/AI documents relevant to the task and the current `0.1.5pre` snapshot. Treat source code and call sites as authoritative if any documentation is stale.
+If documentation conflicts with code, inspect the current implementation and call sites first. Historical changelog entries are not rewritten to match later behavior.
