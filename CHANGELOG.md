@@ -1,121 +1,95 @@
 # Changelog
 
-This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
+This file contains the high-level release history. The `0.1.6` lettered development stages have been consolidated into `0.1.6pre`; the historical lettered notes remain immutable.
+
+## [0.1.6pre] — Consolidated 0.1.6 pre-release
+**Data:** 2026-09-04
+
+The `0.1.6` development line is consolidated here after stabilisation of passenger ownership, coupling/decoupling, consist ordering, movement geometry, direction reversal, runtime safety and diagnostics.
+
+### Passenger and journey model
+
+- Boarding is performed against a concrete `Wagon`.
+- Passenger state keeps `CurrentWagonId` and remains owned by the concrete wagon rather than the operational `Train` grouping.
+- `Wagon.CanContinueJourneyTo(...)` defines route continuity for boarding/journey continuation.
+- `PassengerManager.GetOnBoard(Train)` is an operational view over passengers in the train's current wagons.
+- `PassengerManager.GetTransferCandidates(Train)` is a future transfer/diagnostic seam; it does not select trains or move passengers automatically.
+- Runtime load restores onboard passengers directly into their saved wagon.
+- Coupling and decoupling never migrate passengers between wagons.
+
+### Consist ordering and coupling
+
+- `TrainComposition` is the single authoritative ordered vehicle container.
+- `Vehicle.CompositionOrder` explicitly records physical composition order without becoming a second source of truth.
+- F7, coupling and decoupling never reverse `Composition.Vehicles`.
+- `TrainComposition.SetLocomotive(...)` rebuilds adjacent runtime coupling connections.
+- Coupling candidates are restricted to compatible order-preserving `Rear → Front` outer boundaries.
+- Coupling clears stale runtime connections and rebuilds the complete runtime coupling chain from physical vehicle order.
+- Decoupling uses adjacent vehicle indices and the actual runtime connection.
+- Coupling/decoupling preserve exact vehicle world positions at the operation instant.
+- `CouplingGeometry` consistently accounts for intrinsic `VehicleOrientation`, including `Reverse`.
+- Coupling remains limited to `6 km/h`; decoupling remains below `6 km/h`.
+
+### Train direction, movement and geometry
+
+- F7 changes travel direction only at `0 km/h` without reversing or reordering the physical vehicle list.
+- The travel head is determined from direction/reversal state rather than assuming composition index `0`.
+- Vehicle positions and inter-vehicle spacing are preserved across direction changes and coupling operations.
+- Movement distance is measured from the active travel head.
+- Trajectory history is seeded from exact world positions and ordered according to travel direction.
+- Vehicles sample their own position from trajectory history using their physical distance behind the travel head.
+- Vehicle rotation follows the local trajectory tangent; the train head uses the exact active curve-arc tangent.
+- Vehicle lengths and movement use `SimulationScale` as the physical metres/grid conversion boundary.
+- `Speed` remains a non-negative magnitude; `IsReversed` remains travel-state information rather than a vehicle-list mutation.
+
+### Runtime safety and speed state
+
+- `RadioStop` is a hard guard against normal automatic movement in `Train.Update(...)`.
+- F6 manual shunting is the explicit exception and can clear/bypass automatic RadioStop/collision stopping for the targeted train while held.
+- `TrainComposition.EffectiveMaxSpeed` is the authoritative consist Vmax capability.
+- Signal speed restrictions are separate runtime limits and do not overwrite the consist capability.
+- Duplicate signal-speed state was removed.
+- `TrackConnections.GetOppositeDirection()` is centralised as one railway extension method.
+
+### Diagnostics and maintenance
+
+- Coupling diagnostics capture bounded before/after snapshots of train state, vehicle order, positions, distances, transforms and trajectory state.
+- High-value coupling diagnostics use the dedicated train diagnostic path so they are not lost behind the normal global log-rate limiter.
+- Stale `.bak`, debug-log, empty particle and obsolete direction-preservation artifacts were removed.
+- Local `*_log.txt` and `.sln.bak` files are ignored.
+- Android, WindowsDX and iOS host projects remain in the repository and are not removed merely because the checked-in solution files enumerate Core + DesktopGL.
+
+### Scope and verification
+
+The 0.1.6pre milestone remains a rigid consist model. Slack action, impact forces, coupling delay/animation, brake-pipe propagation, automatic passenger transfers, passenger train selection, fares/economy and full longitudinal vehicle dynamics remain outside scope.
+
+There is no dedicated automated Core test project and no CI check run establishing build success for this snapshot. Required validation is a normal solution build followed by live gameplay verification, including F7 reversal, coupling/decoupling and movement immediately after coupling.
+
+Detailed consolidated notes: `docs/changelog/0.1.6pre.md`.
 
 ## [0.1.6g] — Runtime safety and geometry cleanup
 **Data:** 2026-09-04
 
-- Removed stale `.bak`, debug-log, empty particle and obsolete direction-preservation artifacts.
-- Made `RadioStop` a hard guard for normal automatic train movement; F6 manual shunting remains the explicit bypass.
-- Centralized `TrackConnections.GetOppositeDirection()` as one railway extension method.
-- Made `TrainComposition.EffectiveMaxSpeed` the authoritative consist Vmax capability and separated it from the current signal speed restriction.
-- Removed the duplicate `_lastSignalSpeed` state.
-- Centralized grid/metre conversion through `SimulationScale` for vehicle physical length conversion and train movement.
-- Consolidated `VehicleOrientation` handling in coupling geometry.
-- Preserved exact vehicle positions during coupling/decoupling and F7 direction changes.
-- Verified that Android, WindowsDX and iOS host projects remain present and reference Core; they are not removed merely because the checked-in desktop `.sln`/`.slnx` enumerate Core + DesktopGL only.
-
-Detailed notes: `docs/changelog/0.1.6g.md`.
+Historical development stage. See `docs/changelog/0.1.6g.md`.
 
 ## [0.1.6f] — Explicit consist ordering
 
-- Added `Vehicle.CompositionOrder` as explicit vehicle-order metadata for the current physical consist.
-- `TrainComposition` now assigns and normalizes composition order after add/remove/insert/split operations.
-- Composition order is independent from travel direction; F7 must not reorder vehicles or their `CompositionOrder`.
-- Coupling continues to use `Composition.Vehicles` as the physical order, with `CompositionOrder` providing an explicit contract for that order.
-- No depot-orientation state was introduced; depot spawning remains responsible only for creating the correct runtime consist.
-
-Detailed notes: `docs/changelog/0.1.6f.md`.
+Historical development stage. See `docs/changelog/0.1.6f.md`.
 
 ## [0.1.6e] — Coupling/decoupling stabilisation
 
-- `TrainComposition.SetLocomotive(...)` rebuilds adjacent runtime coupling connections after locomotive insertion/replacement.
-- Coupling no longer uses locomotive presence to determine merge order; `Composition.Vehicles` remains the physical order.
-- Coupling candidates are restricted to order-preserving `Rear → Front` outer boundaries.
-- Merging clears stale runtime connections and rebuilds the complete runtime coupling chain from vehicle order.
-- Decoupling derives the split from adjacent vehicle indices and the actual runtime connection, including locomotive–wagon connections.
-- Coupling limit remains fixed at `6 km/h`; decoupling remains below `6 km/h`.
-- Coupling/decoupling do not migrate passengers between wagons.
-
-Detailed notes: `docs/changelog/0.1.6e.md`.
+Historical development stage. See `docs/changelog/0.1.6e.md`.
 
 ## [0.1.6d] — Passenger journey continuity
 **Data:** 2026-09-04
 
-- Fixed `Wagon` namespace resolution in `DefaultPassengerService` (CS0246).
-- Fixed the changed `Wagon.TryBoard(...)` API usage in runtime save/load (CS1501).
-- Passenger ownership remains tied to the concrete wagon rather than the train.
-- Added `Wagon.CanContinueJourneyTo(...)` as a route-continuity invariant.
-- Added `PassengerManager.GetTransferCandidates(Train)` as a future transfer-system seam without implementing automatic transfers or train selection.
-- Coupling and decoupling do not migrate passengers between wagons.
-- Runtime load restores an already onboard passenger directly into its saved wagon instead of applying normal boarding-at-station validation.
-- Runtime save metadata now reports game version `0.1.6d`.
-
-Detailed notes: `docs/changelog/0.1.6d.md`.
+Historical development stage. See `docs/changelog/0.1.6d.md`.
 
 ## [0.1.6c] — Wagon-aware passenger boarding
 
-- Boarding is performed against a concrete `Wagon`.
-- A configured wagon checks its current `TrainRoute` before accepting a passenger.
-- Passenger state keeps `CurrentWagonId`.
-- `PassengerManager.GetOnBoard(Train)` is only an operational view over the wagons currently forming the train.
-- Runtime passenger restoration uses the concrete wagon.
-
-Detailed notes: `docs/changelog/0.1.6c.md`.
+Historical development stage. See `docs/changelog/0.1.6c.md`.
 
 ## [0.1.5pre] — Final 0.1.5 pre-release
 **Data:** 2026-09-03
 
-### Train direction and F7
-
-- Rebuilt `F7` as a non-destructive train travel-direction change.
-- `Composition.Vehicles` is never reversed or reordered by F7.
-- Vehicle world positions and inter-vehicle distances are preserved at the reversal instant.
-- F7 changes only the train's cardinal `Direction` and is accepted only at `0 km/h`.
-- The locomotive remains at its existing world position; F7 does not teleport it to the opposite end.
-- `Speed` remains a non-negative magnitude.
-- `IsReversed` remains persisted travel-state information and does not reconstruct the vehicle list.
-
-### Train movement and curves
-
-- Initial consist spawning now uses vehicle lengths and travel direction so vehicles do not collapse onto one grid coordinate.
-- Rigid vehicle offsets preserve straight-track spacing.
-- Curve movement follows the travelled trajectory.
-- Each vehicle samples its own historical position according to its distance behind the train head.
-- Each vehicle derives its rotation from the local tangent of its own trajectory position, so vehicles enter curves sequentially rather than rotating simultaneously.
-- The train head continues to use the exact active curve-arc tangent.
-- F7 does not independently rotate vehicle graphics.
-
-### Coupling and decoupling
-
-- Physical coupling is represented by concrete vehicle ends and runtime `CouplingConnection` objects.
-- Coupler compatibility is determined by `CouplingSpecification` / `CouplerType`.
-- Adjacent compatible vehicles in pre-built consists can establish runtime couplings automatically.
-- Coupling operates on outer train boundaries and preserves consist order.
-- `C` selects the nearest valid coupling candidate and delegates the authoritative operation to `CouplingService`.
-- `X` targets the wagon under the cursor and prefers its rear runtime connection when both ends are connected.
-- Decoupling is allowed only below `6 km/h`.
-- Detached consists preserve vehicle order, internal runtime couplings and physical positions.
-
-### Shunting and safety
-
-- `F6` is manual shunting control toward `3 km/h` while held over a train.
-- The former configurable `F6/F7/F8` coupling-speed profiles are removed.
-- Coupling uses a fixed `6 km/h` shunting limit.
-- `F6` manual shunting bypasses the automatic RadioStop/collision stop path for the targeted train while held.
-- RadioStop remains an independent safety mechanism.
-- Coupling and decoupling reset affected signal state.
-
-### Persistence
-
-- Saved reversal state is restored without reversing the physical vehicle list or reconstructing vehicle positions from list order.
-
-### Scope
-
-`0.1.5pre` is the final version of the 0.1.5 development cycle. Further features and changes belong to a later version.
-
-The milestone intentionally remains a rigid consist model. Slack action, impact forces, coupling delay, brake-pipe propagation and full longitudinal vehicle dynamics are outside its scope.
-
-The dedicated `RailDispatchMono.Core.Tests` project is not part of the repository.
-
-Detailed final notes: `docs/changelog/0.1.5pre.md`.
+Historical consolidated milestone. Detailed notes: `docs/changelog/0.1.5pre.md`.
