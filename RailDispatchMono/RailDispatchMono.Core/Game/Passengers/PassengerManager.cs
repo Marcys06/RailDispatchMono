@@ -29,6 +29,11 @@ public sealed class PassengerManager
     public IEnumerable<Passenger> GetWaitingAt(Station station) =>
         _passengers.Where(p => p.State == PassengerState.WaitingAtStation && p.CurrentStationId == station.Id);
 
+    /// <summary>
+    /// Returns passengers physically inside wagons that are currently part of
+    /// the supplied train. The train is only an operational view; passenger
+    /// ownership remains tied to the concrete wagon.
+    /// </summary>
     public IEnumerable<Passenger> GetOnBoard(TrainClass train) =>
         train.Composition.Vehicles
             .OfType<Wagon>()
@@ -54,10 +59,10 @@ public sealed class PassengerManager
             int wagonBoarded = 0;
             foreach (var passenger in waiting)
             {
-                if (!wagon.CanAcceptPassenger(passenger))
+                if (!wagon.CanAcceptPassenger(passenger, station))
                     continue;
 
-                if (wagon.TryBoard(passenger))
+                if (wagon.TryBoard(passenger, station))
                 {
                     boarded++;
                     wagonBoarded++;
