@@ -2,6 +2,21 @@
 
 This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
 
+## [0.1.6g] — Runtime safety and geometry cleanup
+**Data:** 2026-09-04
+
+- Removed stale `.bak`, debug-log, empty particle and obsolete direction-preservation artifacts.
+- Made `RadioStop` a hard guard for normal automatic train movement; F6 manual shunting remains the explicit bypass.
+- Centralized `TrackConnections.GetOppositeDirection()` as one railway extension method.
+- Made `TrainComposition.EffectiveMaxSpeed` the authoritative consist Vmax capability and separated it from the current signal speed restriction.
+- Removed the duplicate `_lastSignalSpeed` state.
+- Centralized grid/metre conversion through `SimulationScale` for vehicle physical length conversion and train movement.
+- Consolidated `VehicleOrientation` handling in coupling geometry.
+- Preserved exact vehicle positions during coupling/decoupling and F7 direction changes.
+- Verified that Android, WindowsDX and iOS host projects remain present and reference Core; they are not removed merely because the checked-in desktop `.sln`/`.slnx` enumerate Core + DesktopGL only.
+
+Detailed notes: `docs/changelog/0.1.6g.md`.
+
 ## [0.1.6f] — Explicit consist ordering
 
 - Added `Vehicle.CompositionOrder` as explicit vehicle-order metadata for the current physical consist.
