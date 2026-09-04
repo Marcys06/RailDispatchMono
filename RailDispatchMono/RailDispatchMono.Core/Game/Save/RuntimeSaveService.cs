@@ -103,9 +103,7 @@ public static class RuntimeSaveService
                 {
                     Kind = vehicle is Locomotive ? "Locomotive" : "Wagon",
                     Type = vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
-                    ShortName = vehicle is Locomotive locomotive
-                        ? locomotive.ShortName
-                        : ((Wagon)vehicle).ShortName,
+                    ShortName = vehicle is Locomotive locomotive ? locomotive.ShortName : ((Wagon)vehicle).ShortName,
                     MaxSpeed = p.MaxSpeed,
                     Mass = p.Mass,
                     Length = p.Length,
@@ -188,16 +186,8 @@ public static class RuntimeSaveService
                 }
 
                 Vehicle vehicle = string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase)
-                    ? new Locomotive(
-                        Enum.Parse<LocomotiveType>(savedVehicle.Type, true),
-                        p,
-                        savedVehicle.ShortName)
-                    : new Wagon(
-                        p,
-                        savedVehicle.ShortName,
-                        Enum.Parse<WagonType>(savedVehicle.Type, true),
-                        savedVehicle.PassengerCapacity,
-                        savedVehicle.ServiceRoute);
+                    ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p, savedVehicle.ShortName)
+                    : new Wagon(p, savedVehicle.ShortName, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
                 vehicle.Orientation = savedVehicle.Orientation;
                 vehicles.Add(vehicle);
             }
@@ -227,7 +217,7 @@ public static class RuntimeSaveService
                     Station? destination = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.DestinationStationId);
                     if (origin == null || destination == null) continue;
                     var passenger = new Passenger(origin, destination);
-                    wagon.TryBoard(passenger, train.Id);
+                    wagon.TryBoard(passenger, origin);
                 }
             }
         }
