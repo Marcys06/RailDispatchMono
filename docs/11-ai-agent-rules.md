@@ -1,6 +1,6 @@
 # AI agent rules
 
-This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.5pre`.
+This file is the mandatory starting point for an AI coding agent working on RailDispatchMono. The current repository contract is `0.1.6g`.
 
 ## 1. Never invent architecture
 
@@ -74,30 +74,11 @@ The application enters through Main Menu. New Game creates a new empty game stat
 - Depots are world objects and the entry point for train creation.
 - Wagon routes describe passenger-service destinations and do not directly control locomotive movement.
 - Rigid coupling/decoupling is a domain operation owned by `CouplingService` and exposed through the current `TrainManager` command path.
+- `TrainComposition` is the single authoritative ordered vehicle container; `CompositionOrder` is metadata only.
+- `TrainComposition.EffectiveMaxSpeed` is the authoritative consist Vmax capability; signal limits are runtime restrictions layered on top.
+- `SimulationScale` is the single conversion boundary between physical metres and map-grid cells.
+- `RadioStop` must prevent normal automatic movement while active; F6 manual shunting is the explicit exception.
 
 ## 18. Myra contract
 
 - Myra `1.6.5` is consumed through the shared Core project.
-- `MyraUIManager` owns one shared `Desktop` and one active root.
-- Main Menu, Settings, About, Pause and the gameplay HUD use Myra.
-- The gameplay HUD includes clock, GameDay, speed controls, build tools and train/station lists.
-- Train/station information has one Myra presentation; do not reintroduce the removed duplicate legacy HUD.
-- Selecting a train/station from the Myra panel centers the camera on that object's world-space center.
-- `ScreenManager` remains lifecycle owner.
-- Pause is gameplay state, not a popup `GameScreen`.
-- `MyraPauseView` exposes Resume, Save, Load and Quit; gameplay owns the operations.
-- Myra does not automatically replace railway rendering or remaining world-specific radial/tooltip UI.
-
-## 19. Coupling contract
-
-- `Vehicle.Coupling` is static per-end coupler data.
-- `VehicleCouplingState` and `CouplingConnection` represent runtime connections.
-- `CouplingService` is authoritative for coupling/decoupling validation and state mutation.
-- `TrainComposition` remains the only authoritative ordered vehicle container.
-- `C`/`X`/`F6`/`F7`/`F8` are the current temporary command path.
-- UI must not mutate `TrainComposition.Vehicles` or coupling state directly.
-- Do not introduce coupling physics, persistence or a second command path without updating the current architecture and docs.
-
-## 20. Documentation version discipline
-
-`0.1.2pre`, `0.1.3pre`, `0.1.4pre` and `0.1.5pre` have current-state snapshots. Lettered stages remain historical changelog records. When code changes, update the affected maintained docs, the current `0.1.5pre` snapshot and the changelog.
