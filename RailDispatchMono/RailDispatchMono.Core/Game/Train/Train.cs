@@ -21,7 +21,6 @@ public sealed partial class Train
     private BlockController? _blockController;
 
     private float _speed;
-    private Vector2[] _vehicleOffsets = Array.Empty<Vector2>();
 
     public float Speed
     {
@@ -79,8 +78,6 @@ public sealed partial class Train
         foreach (var vehicle in vehicles)
             Composition.AddVehicle(vehicle);
 
-        RebuildVehicleOffsets();
-
         _maxSpeed = Composition.EffectiveMaxSpeed;
         _signalSpeedLimit = _maxSpeed;
         _targetSpeed = _maxSpeed;
@@ -89,6 +86,7 @@ public sealed partial class Train
         TotalDistance = 0f;
         ResetCurveState();
         ResetTrajectory();
+        SeedInitialTrajectoryFromComposition();
     }
 
     public Train(Vector2 spawnPosition, TrackConnections initialDirection, float speed)
@@ -108,6 +106,7 @@ public sealed partial class Train
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         ResetTrajectory();
+        SeedInitialTrajectoryFromComposition();
     }
 
     public void SetDirection(TrackConnections direction)
@@ -118,6 +117,7 @@ public sealed partial class Train
         _signalSpeedLimit = Composition.EffectiveMaxSpeed;
         ResetCurveState();
         ResetTrajectory();
+        SeedInitialTrajectoryFromComposition();
     }
 
     public void ResetSignalState()
@@ -160,23 +160,14 @@ public sealed partial class Train
         if (vehicleIndex < 0 || vehicleIndex >= Composition.Vehicles.Count)
             throw new ArgumentOutOfRangeException(nameof(vehicleIndex));
 
-        if (_vehicleOffsets.Length != Composition.Vehicles.Count)
-            RebuildVehicleOffsets();
-
         float distanceBehind = GetMovementDistanceToVehicle(vehicleIndex);
-        float rotation;
-
         if (distanceBehind <= MovementEpsilon)
-        {
-            rotation = GetRotation();
-            return (Position, ApplyVehicleOrientation(vehicleIndex, rotation));
-        }
+            return (Position, ApplyVehicleOrientation(vehicleIndex, GetRotation()));
 
-        if (TryGetTrajectoryTransformBehindHead(distanceBehind, out Vector2 trajectoryPosition, out float trajectoryRotation))
-            return (trajectoryPosition, ApplyVehicleOrientation(vehicleIndex, trajectoryRotation));
+        if (!TryGetTrajectoryTransformBehindHead(distanceBehind, out Vector2 trajectoryPosition, out float trajectoryRotation))
+            throw new InvalidOperationException("Vehicle trajectory history is not available for the requested vehicle.");
 
-        rotation = GetDirectionAngle(Direction);
-        return (Position + _vehicleOffsets[vehicleIndex], ApplyVehicleOrientation(vehicleIndex, rotation));
+        return (trajectoryPosition, ApplyVehicleOrientation(vehicleIndex, trajectoryRotation));
     }
 
     private float ApplyVehicleOrientation(int vehicleIndex, float rotation)
@@ -229,19 +220,6 @@ public sealed partial class Train
     }
 
     public float GetVehicleDistance(int vehicleIndex) => GetDistanceToVehicle(vehicleIndex);
-
-    internal void RebuildVehicleOffsets()
-    {
-        _vehicleOffsets = new Vector2[Composition.Vehicles.Count];
-        Vector2 directionVector = DirectionToVector(Direction);
-        float distance = 0f;
-
-        for (int i = 0; i < Composition.Vehicles.Count; i++)
-        {
-            _vehicleOffsets[i] = -directionVector * distance;
-            distance += Composition.Vehicles[i].Parameters.Length;
-        }
-    }
 
     private SignalController? _signalController;
     private float _targetSpeed;
