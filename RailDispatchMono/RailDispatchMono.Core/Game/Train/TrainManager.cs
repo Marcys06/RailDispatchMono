@@ -78,11 +78,40 @@ public sealed partial class TrainManager
         if (!composition.CanMove) throw new InvalidOperationException("A train composition must contain a locomotive.");
 
         var vehicles = composition.Vehicles.ToList();
-        var train = new Train(
-            new Vector2(startPosition.X + 0.5f, startPosition.Y + 0.5f),
-            direction == TrackConnections.None ? TrackConnections.East : direction,
-            speed,
-            vehicles);
+        TrackConnections initialDirection = direction == TrackConnections.None
+            ? TrackConnections.East
+            : direction;
+
+        // startPosition is the tail spawn point. The locomotive is the moving
+        // head, so [L][W][W] travelling East is physically [W][W][L] -->.
+        // Composition.Vehicles remains [L][W][W]; only the initial head
+        // position is shifted to the locomotive's physical location.
+        int locomotiveIndex = -1;
+        for (int i = 0; i < vehicles.Count; i++)
+        {
+            if (vehicles[i] is Locomotive)
+            {
+                locomotiveIndex = i;
+                break;
+            }
+        }
+
+        float tailToLocomotive = 0f;
+        if (locomotiveIndex == 0)
+        {
+            for (int i = 1; i < vehicles.Count; i++)
+                tailToLocomotive += vehicles[i].Parameters.Length;
+        }
+        else if (locomotiveIndex > 0)
+        {
+            for (int i = 0; i < locomotiveIndex; i++)
+                tailToLocomotive += vehicles[i].Parameters.Length;
+        }
+
+        Vector2 spawn = new(startPosition.X + 0.5f, startPosition.Y + 0.5f);
+        spawn += Train.DirectionToVector(initialDirection) * tailToLocomotive;
+
+        var train = new Train(spawn, initialDirection, speed, vehicles);
         train.SetMap(_map);
         Add(train);
         return train;
