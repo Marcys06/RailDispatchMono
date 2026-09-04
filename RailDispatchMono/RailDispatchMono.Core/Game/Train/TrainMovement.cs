@@ -9,6 +9,7 @@ namespace RailDispatchMono.Core.Game.Train;
 public sealed partial class Train
 {
     private const float MassResistanceExponent = 1.30f;
+    private const int MaxMovementIterations = 256;
 
     public void Update(float deltaTime)
     {
