@@ -124,6 +124,13 @@ namespace RailDispatchMono.Core.Screens.UI
                 _wagonRouteMenu.Update(mouse);
                 if (IsKeyPressed(keyboard, Keys.Escape))
                     _wagonRouteMenu.Close();
+
+                // Closing the timetable editor from any path (Escape or its buttons)
+                // must also leave the S edit mode. Otherwise the next S press toggles
+                // the stale edit-mode flag off instead of reopening the editor.
+                if (!_wagonRouteMenu.IsOpen)
+                    _wagonRouteEditMode = false;
+
                 RememberInput(mouse, keyboard);
                 return;
             }
