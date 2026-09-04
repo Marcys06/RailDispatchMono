@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.6a` development line**  
+**Documentation baseline: `0.1.6d` development line**  
 **Previous consolidated milestone: `0.1.5pre`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and call sites remain authoritative if documentation conflicts with implementation.
@@ -30,19 +30,21 @@ This directory contains maintained project documentation. Historical release not
 21. [21-current-state-0.1.4pre.md](21-current-state-0.1.4pre.md) — historical `0.1.4pre` snapshot.
 22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — authoritative consolidated `0.1.5pre` snapshot.
 
-## Current 0.1.6a focus
+## Current 0.1.6d focus
 
-The 0.1.6 line starts from the completed rigid-consist and movement work of `0.1.5pre` and the existing station/passenger foundation.
+The 0.1.6 line extends the completed rigid-consist, movement and coupling work of `0.1.5pre` and the existing station/passenger foundation.
 
-The passenger vertical slice is already present:
+The passenger vertical slice is:
 
 `Station → passenger generation → waiting → train arrival → alighting → boarding → dwell → departure`.
 
-Current passenger scope is intentionally basic: random destination demand, fixed origin/destination, three passenger states, wagon capacity/route acceptance and station dwell. Transfers, advanced demand, passenger economics and persistent passenger state are not implemented.
+The passenger is associated with a concrete `Wagon`, not with a `Train`. A train is only the current operational grouping of wagons. This is required because coupling and decoupling can move a wagon between trains without moving its passengers.
+
+`0.1.6d` adds journey-continuity checks and a transfer-ready diagnostic seam. It does not implement automatic transfers or train selection by passengers. Economy remains out of scope.
 
 ## Version policy
 
 - Consolidated `pre` snapshots become historical when a later development line starts.
-- Lettered stages such as `0.1.6a` are development records in `docs/changelog/`.
+- Lettered stages such as `0.1.6a`–`0.1.6d` are development records in `docs/changelog/`.
 - Historical stages are not rewritten to reflect later implementation.
 - Maintained architecture/domain documentation is updated when the current contract changes.
