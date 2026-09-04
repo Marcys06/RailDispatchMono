@@ -5,7 +5,10 @@ namespace RailDispatchMono.Core.Game.Passengers;
 
 /// <summary>
 /// Quasi-individual passenger with fixed origin and destination.
-/// Transfers are not performed yet, but the state model is ready for them.
+/// The passenger is associated with a concrete wagon while travelling.
+/// Transfers are not performed yet, but the model keeps the wagon as the
+/// stable transport reference so coupling and decoupling do not move the
+/// passenger between vehicles.
 /// </summary>
 public sealed class Passenger
 {
@@ -14,7 +17,7 @@ public sealed class Passenger
     public Station DestinationStation { get; }
     public PassengerState State { get; internal set; }
     public Guid? CurrentStationId { get; internal set; }
-    public Guid? CurrentTrainId { get; internal set; }
+    public Guid? CurrentWagonId { get; internal set; }
     public DateTime CreatedAtUtc { get; }
 
     public Passenger(Station originStation, Station destinationStation)
