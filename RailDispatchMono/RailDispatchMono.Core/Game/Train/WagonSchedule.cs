@@ -100,7 +100,7 @@ public sealed class WagonSchedule
 
         // A-B-C becomes A-B-C-B-A. The terminal A is added once at the end;
         // the first occurrence remains the departure/initial terminal.
-        var loop = BaseStationIds.Concat(BaseStationIds.Reverse().Skip(1)).ToList();
+        var loop = BaseStationIds.Concat(BaseStationIds.AsEnumerable().Reverse().Skip(1)).ToList();
         for (int i = 0; i < loop.Count; i++)
             Points.Add(new WagonSchedulePoint(loop[i], 0, 0));
     }
