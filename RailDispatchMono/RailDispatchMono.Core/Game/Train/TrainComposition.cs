@@ -11,6 +11,16 @@ public sealed class TrainComposition
 
     public IReadOnlyList<Vehicle> Vehicles => _vehicles;
 
+    /// <summary>
+    /// Rebuilds the explicit vehicle order metadata to match the current
+    /// physical order of the consist. Travel direction must not change it.
+    /// </summary>
+    public void NormalizeCompositionOrder()
+    {
+        for (int i = 0; i < _vehicles.Count; i++)
+            _vehicles[i].CompositionOrder = i;
+    }
+
     public float Length
     {
         get
@@ -51,6 +61,7 @@ public sealed class TrainComposition
         }
 
         _vehicles.Add(vehicle);
+        vehicle.CompositionOrder = _vehicles.Count - 1;
     }
 
     private static void InitializeAdjacentCoupling(Vehicle previous, Vehicle next)
@@ -76,11 +87,6 @@ public sealed class TrainComposition
         next.CouplingState.Set(VehicleEnd.Front, connection);
     }
 
-    /// <summary>
-    /// Rebuilds runtime couplings from the authoritative vehicle order.
-    /// This is used after replacing/reordering vehicles so stale connections
-    /// cannot block a valid adjacent locomotive/wagon connection.
-    /// </summary>
     public void RebuildRuntimeCouplings()
     {
         foreach (var vehicle in _vehicles)
@@ -91,6 +97,8 @@ public sealed class TrainComposition
 
         for (int i = 1; i < _vehicles.Count; i++)
             InitializeAdjacentCoupling(_vehicles[i - 1], _vehicles[i]);
+
+        NormalizeCompositionOrder();
     }
 
     public void SetLocomotive(LocomotiveDefinition definition)
@@ -112,17 +120,28 @@ public sealed class TrainComposition
         AddVehicle(definition.CreateVehicle());
     }
 
-    public bool RemoveVehicle(Vehicle vehicle) => _vehicles.Remove(vehicle);
+    public bool RemoveVehicle(Vehicle vehicle)
+    {
+        bool removed = _vehicles.Remove(vehicle);
+        if (removed)
+            NormalizeCompositionOrder();
+        return removed;
+    }
 
     public bool RemoveWagon(int index)
     {
         if (index < 0 || index >= _vehicles.Count || _vehicles[index] is not Wagon)
             return false;
         _vehicles.RemoveAt(index);
+        NormalizeCompositionOrder();
         return true;
     }
 
-    public void InsertVehicle(int index, Vehicle vehicle) => _vehicles.Insert(index, vehicle);
+    public void InsertVehicle(int index, Vehicle vehicle)
+    {
+        _vehicles.Insert(index, vehicle);
+        NormalizeCompositionOrder();
+    }
 
     public TrainComposition Split(int index)
     {
@@ -136,6 +155,8 @@ public sealed class TrainComposition
             _vehicles.RemoveAt(index);
             splitComposition.AddVehicle(vehicle);
         }
+
+        NormalizeCompositionOrder();
         return splitComposition;
     }
 

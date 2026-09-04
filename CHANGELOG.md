@@ -2,6 +2,16 @@
 
 This file contains the high-level release history. The 0.1.5 development sub-milestones have been consolidated because `0.1.5pre` is the final state of the cycle.
 
+## [0.1.6f] — Explicit consist ordering
+
+- Added `Vehicle.CompositionOrder` as explicit vehicle-order metadata for the current physical consist.
+- `TrainComposition` now assigns and normalizes composition order after add/remove/insert/split operations.
+- Composition order is independent from travel direction; F7 must not reorder vehicles or their `CompositionOrder`.
+- Coupling continues to use `Composition.Vehicles` as the physical order, with `CompositionOrder` providing an explicit contract for that order.
+- No depot-orientation state was introduced; depot spawning remains responsible only for creating the correct runtime consist.
+
+Detailed notes: `docs/changelog/0.1.6f.md`.
+
 ## [0.1.6e] — Coupling/decoupling stabilisation
 
 - `TrainComposition.SetLocomotive(...)` rebuilds adjacent runtime coupling connections after locomotive insertion/replacement.

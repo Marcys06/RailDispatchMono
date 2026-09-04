@@ -6,6 +6,12 @@ public abstract class Vehicle
 {
     public Guid Id { get; }
 
+    /// <summary>
+    /// Stable position of this vehicle inside its current physical consist.
+    /// This value is independent from the train travel direction (F7).
+    /// </summary>
+    public int CompositionOrder { get; internal set; } = -1;
+
     public VehicleParameters Parameters { get; }
 
     /// <summary>
