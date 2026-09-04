@@ -11,7 +11,7 @@ public static class CouplingGeometry
     public static Vector2 GetEndpoint(Train train, int vehicleIndex, VehicleEnd end)
     {
         var transform = train.GetVehicleTransform(vehicleIndex);
-        Vector2 forward = GetVehicleForward(train, vehicleIndex, transform.Rotation);
+        Vector2 forward = new(MathF.Cos(transform.Rotation), MathF.Sin(transform.Rotation));
         float halfLength = train.Composition.Vehicles[vehicleIndex].Parameters.Length * 0.5f;
 
         return transform.Position + (end == VehicleEnd.Front ? forward : -forward) * halfLength;
@@ -20,7 +20,7 @@ public static class CouplingGeometry
     public static Vector2 GetOutwardDirection(Train train, int vehicleIndex, VehicleEnd end)
     {
         var transform = train.GetVehicleTransform(vehicleIndex);
-        Vector2 forward = GetVehicleForward(train, vehicleIndex, transform.Rotation);
+        Vector2 forward = new(MathF.Cos(transform.Rotation), MathF.Sin(transform.Rotation));
         return end == VehicleEnd.Front ? forward : -forward;
     }
 
@@ -37,13 +37,5 @@ public static class CouplingGeometry
         Vector2 secondToFirst = -firstToSecond;
         return Vector2.Dot(GetOutwardDirection(firstTrain, firstIndex, firstEnd), firstToSecond) >= minimumDot &&
                Vector2.Dot(GetOutwardDirection(secondTrain, secondIndex, secondEnd), secondToFirst) >= minimumDot;
-    }
-
-    private static Vector2 GetVehicleForward(Train train, int vehicleIndex, float rotation)
-    {
-        Vector2 forward = new(MathF.Cos(rotation), MathF.Sin(rotation));
-        if (train.Composition.Vehicles[vehicleIndex].Orientation == VehicleOrientation.Reverse)
-            forward = -forward;
-        return forward;
     }
 }
