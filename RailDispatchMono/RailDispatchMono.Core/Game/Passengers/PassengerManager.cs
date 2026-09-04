@@ -42,6 +42,23 @@ public sealed class PassengerManager
     public IEnumerable<Passenger> GetOnBoard(Wagon wagon) =>
         _passengers.Where(p => p.State == PassengerState.OnBoard && p.CurrentWagonId == wagon.Id);
 
+    /// <summary>
+    /// Returns passengers whose current wagon can no longer serve their
+    /// destination from its current route position. This is a transfer-ready
+    /// diagnostic hook; it does not select a train and does not move passengers.
+    /// </summary>
+    public IEnumerable<Passenger> GetTransferCandidates(TrainClass train) =>
+        train.Composition.Vehicles
+            .OfType<Wagon>()
+            .SelectMany(GetOnBoard)
+            .Where(p =>
+            {
+                var wagon = train.Composition.Vehicles
+                    .OfType<Wagon>()
+                    .FirstOrDefault(w => w.Id == p.CurrentWagonId);
+                return wagon != null && !wagon.CanContinueJourneyTo(p.DestinationStation.Id);
+            });
+
     public int GetWaitingCount(Station station) => GetWaitingAt(station).Count();
     public int GetOnBoardCount(TrainClass train) => GetOnBoard(train).Count();
     public int GetOnBoardCount(Wagon wagon) => GetOnBoard(wagon).Count();
@@ -101,6 +118,22 @@ public sealed class PassengerManager
         }
 
         return alighted;
+    }
+
+    /// <summary>
+    /// Registers a passenger restored from persistence in the authoritative
+    /// passenger manager and attaches the same passenger instance to the wagon.
+    /// </summary>
+    public bool RestoreOnBoard(Wagon wagon, Passenger passenger)
+    {
+        if (wagon == null || passenger == null || _passengers.Contains(passenger))
+            return false;
+
+        if (!wagon.RestorePassenger(passenger))
+            return false;
+
+        _passengers.Add(passenger);
+        return true;
     }
 
     public void RemoveCompletedPassengers() => _passengers.RemoveAll(p => p.State == PassengerState.Arrived);
