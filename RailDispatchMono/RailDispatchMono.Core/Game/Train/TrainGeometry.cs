@@ -22,7 +22,6 @@ public sealed partial class Train
     private const float HalfPi = MathF.PI * 0.5f;
     private const float DefaultCurveLength = MathF.PI * CurveRadius * 0.5f;
     private const float MovementEpsilon = 0.00001f;
-    private const int MaxMovementIterations = 256;
 
     private readonly List<TrajectoryPoint> _trajectory = new();
     private float _totalTravelDistance;
@@ -303,15 +302,6 @@ public sealed partial class Train
         TrackConnections.South => new MapPosition(cell.X, cell.Y + 1),
         TrackConnections.West => new MapPosition(cell.X - 1, cell.Y),
         _ => cell
-    };
-
-    private static float GetDirectionAngle(TrackConnections direction) => direction switch
-    {
-        TrackConnections.East => 0f,
-        TrackConnections.South => MathHelper.PiOver2,
-        TrackConnections.West => MathHelper.Pi,
-        TrackConnections.North => -MathHelper.PiOver2,
-        _ => 0f
     };
 
     private static TrackConnections VectorToDirection(float angle)
