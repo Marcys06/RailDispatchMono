@@ -66,9 +66,6 @@ public sealed partial class TrainManager
             return;
         }
 
-        // F7 changes only the travel direction. Composition.Vehicles and every
-        // vehicle world position remain unchanged; the rigid formation then moves
-        // together in the new direction on subsequent simulation ticks.
         train.SetDirectionPreservingVehiclePositions(GetOppositeDirection(train.Direction));
         ResetSignalStateAfterChange(train);
 
@@ -206,16 +203,20 @@ public sealed partial class TrainManager
         if (train == null) throw new ArgumentNullException(nameof(train));
         var result = new List<CouplingCandidate>();
         if (train.Composition.Vehicles.Count == 0) return result;
+
+        int lastIndex = train.Composition.Vehicles.Count - 1;
         for (int otherIndex = 0; otherIndex < _trains.Count; otherIndex++)
         {
             var otherTrain = _trains[otherIndex];
             if (ReferenceEquals(otherTrain, train) || otherTrain.Composition.Vehicles.Count == 0) continue;
-            AddCandidateForEnd(result, train, 0, VehicleEnd.Front, otherTrain, 0, VehicleEnd.Front);
-            AddCandidateForEnd(result, train, 0, VehicleEnd.Front, otherTrain, otherTrain.Composition.Vehicles.Count - 1, VehicleEnd.Rear);
-            int lastIndex = train.Composition.Vehicles.Count - 1;
+
+            int otherLastIndex = otherTrain.Composition.Vehicles.Count - 1;
+
+            // Only order-preserving boundaries are candidates: Rear -> Front.
+            // The reverse ordering is represented by iterating the other train.
             AddCandidateForEnd(result, train, lastIndex, VehicleEnd.Rear, otherTrain, 0, VehicleEnd.Front);
-            AddCandidateForEnd(result, train, lastIndex, VehicleEnd.Rear, otherTrain, otherTrain.Composition.Vehicles.Count - 1, VehicleEnd.Rear);
         }
+
         result.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
         return result;
     }
