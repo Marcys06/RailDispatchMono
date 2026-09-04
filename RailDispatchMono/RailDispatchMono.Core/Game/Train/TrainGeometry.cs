@@ -188,7 +188,18 @@ public sealed partial class Train
         position = default;
         rotation = 0f;
 
-        if (distanceBehind <= MovementEpsilon || _trajectory.Count < 2)
+        if (distanceBehind <= MovementEpsilon)
+            return false;
+
+        // Composition order is immutable. When travelling in the normal
+        // direction, following vehicles are physically ahead of the locomotive
+        // in world space, so their position must be projected forward along the
+        // track. When reversed, they are behind the locomotive in travel space,
+        // and the recorded trajectory is the authoritative path for them.
+        if (!_isReversed)
+            return TryGetForwardTrackTransform(distanceBehind, out position, out rotation);
+
+        if (_trajectory.Count < 2)
             return false;
 
         float targetDistance = _totalTravelDistance - distanceBehind;
@@ -225,13 +236,9 @@ public sealed partial class Train
 
         Vector2 tangent;
         if (upperIndex < _trajectory.Count - 1)
-        {
             tangent = _trajectory[upperIndex + 1].Position - lower.Position;
-        }
         else
-        {
             tangent = upper.Position - lower.Position;
-        }
 
         if (tangent.LengthSquared() <= MovementEpsilon * MovementEpsilon)
             return false;
@@ -239,6 +246,245 @@ public sealed partial class Train
         tangent.Normalize();
         rotation = MathF.Atan2(tangent.Y, tangent.X);
         return true;
+    }
+
+    private bool TryGetForwardTrackTransform(float distanceAhead, out Vector2 position, out float rotation)
+    {
+        position = Position;
+        rotation = GetRotation();
+
+        if (_map is null || distanceAhead <= MovementEpsilon)
+            return distanceAhead <= MovementEpsilon;
+
+        Vector2 simulatedPosition = Position;
+        TrackConnections simulatedDirection = Direction;
+        MapPosition simulatedCell = GetCurrentCellFromPosition(simulatedPosition);
+
+        bool onCurve = _isOnCurve;
+        MapPosition curveCell = _curveCell;
+        TrackConnections curveEntry = _curveEntrySide;
+        TrackConnections curveExit = _curveExitSide;
+        Vector2 arcCenter = _arcCenter;
+        float arcStartAngle = _arcStartAngle;
+        float arcSweepAngle = _arcSweepAngle;
+        float curveDistance = _curveDistance;
+        float curveLength = _curveLength;
+
+        float remaining = distanceAhead;
+        int iterations = 0;
+
+        while (remaining > MovementEpsilon && ++iterations <= MaxMovementIterations)
+        {
+            if (onCurve)
+            {
+                float curveRemaining = curveLength - curveDistance;
+                if (curveRemaining <= MovementEpsilon)
+                {
+                    simulatedPosition = arcCenter + new Vector2(
+                        MathF.Cos(arcStartAngle + arcSweepAngle),
+                        MathF.Sin(arcStartAngle + arcSweepAngle)) * CurveRadius;
+                    simulatedDirection = curveExit;
+                    simulatedCell = GetNextCell(curveCell, curveExit);
+                    onCurve = false;
+                    continue;
+                }
+
+                float step = MathF.Min(remaining, curveRemaining);
+                curveDistance += step;
+                remaining -= step;
+
+                float progress = MathHelper.Clamp(curveDistance / curveLength, 0f, 1f);
+                float angle = arcStartAngle + arcSweepAngle * progress;
+                simulatedPosition = arcCenter + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * CurveRadius;
+
+                Vector2 tangent = new Vector2(-MathF.Sin(angle), MathF.Cos(angle));
+                if (arcSweepAngle < 0f)
+                    tangent = -tangent;
+
+                if (remaining <= MovementEpsilon)
+                {
+                    position = simulatedPosition;
+                    rotation = MathF.Atan2(tangent.Y, tangent.X);
+                    return true;
+                }
+
+                if (curveDistance >= curveLength - MovementEpsilon)
+                {
+                    simulatedPosition = arcCenter + new Vector2(
+                        MathF.Cos(arcStartAngle + arcSweepAngle),
+                        MathF.Sin(arcStartAngle + arcSweepAngle)) * CurveRadius;
+                    simulatedDirection = curveExit;
+                    simulatedCell = GetNextCell(curveCell, curveExit);
+                    onCurve = false;
+                }
+                continue;
+            }
+
+            if (!_map.TryGetTrack(simulatedCell, out TrackCell? track) || track is null)
+                return false;
+
+            TrackConnections entrySide = GetOppositeDirection(simulatedDirection);
+            TrackConnections exitSide;
+
+            if (track.Geometry == TrackGeometry.Junction)
+            {
+                exitSide = track.GetExitDirection(entrySide);
+                if (exitSide == TrackConnections.None)
+                    return false;
+
+                if (IsPerpendicular(entrySide, exitSide))
+                {
+                    curveCell = simulatedCell;
+                    curveEntry = entrySide;
+                    curveExit = exitSide;
+                    SetupLocalArcParams(curveCell, curveEntry, curveExit,
+                        out arcCenter, out arcStartAngle, out arcSweepAngle);
+                    curveLength = DefaultCurveLength;
+                    curveDistance = 0f;
+                    onCurve = true;
+                    continue;
+                }
+
+                simulatedDirection = exitSide;
+                Vector2 exitPosition = GetPositionAtEntry(simulatedCell, exitSide);
+                float transitionDistance = Vector2.Distance(simulatedPosition, exitPosition);
+                if (transitionDistance > remaining)
+                {
+                    Vector2 delta = exitPosition - simulatedPosition;
+                    if (delta.LengthSquared() <= MovementEpsilon * MovementEpsilon)
+                        return false;
+                    delta.Normalize();
+                    position = simulatedPosition + delta * remaining;
+                    rotation = MathF.Atan2(delta.Y, delta.X);
+                    return true;
+                }
+
+                simulatedPosition = exitPosition;
+                remaining -= transitionDistance;
+                continue;
+            }
+
+            if (track.Geometry == TrackGeometry.Curve)
+            {
+                exitSide = GetCurveExitDirection(track.Connections, entrySide);
+                if (exitSide == TrackConnections.None || !IsPerpendicular(entrySide, exitSide))
+                    return false;
+
+                curveCell = simulatedCell;
+                curveEntry = entrySide;
+                curveExit = exitSide;
+                SetupLocalArcParams(curveCell, curveEntry, curveExit,
+                    out arcCenter, out arcStartAngle, out arcSweepAngle);
+                curveLength = DefaultCurveLength;
+                curveDistance = 0f;
+                onCurve = true;
+                continue;
+            }
+
+            if (!track.HasConnection(simulatedDirection))
+                return false;
+
+            float distanceToBoundary = simulatedDirection switch
+            {
+                TrackConnections.East => simulatedCell.X + 1f - simulatedPosition.X,
+                TrackConnections.West => simulatedPosition.X - simulatedCell.X,
+                TrackConnections.South => simulatedCell.Y + 1f - simulatedPosition.Y,
+                TrackConnections.North => simulatedPosition.Y - simulatedCell.Y,
+                _ => 0f
+            };
+
+            distanceToBoundary = MathF.Max(0f, distanceToBoundary);
+            float straightStep = MathF.Min(remaining, distanceToBoundary);
+            if (straightStep > MovementEpsilon)
+            {
+                simulatedPosition += DirectionToVector(simulatedDirection) * straightStep;
+                remaining -= straightStep;
+            }
+
+            if (remaining <= MovementEpsilon)
+            {
+                position = simulatedPosition;
+                rotation = GetDirectionAngle(simulatedDirection);
+                return true;
+            }
+
+            MapPosition nextCell = GetNextCell(simulatedCell, simulatedDirection);
+            if (!_map.TryGetTrack(nextCell, out TrackCell? nextTrack) || nextTrack is null)
+                return false;
+
+            TrackConnections nextEntry = GetOppositeDirection(simulatedDirection);
+            TrackConnections nextExit = nextTrack.GetExitDirection(nextEntry);
+            if (nextExit == TrackConnections.None)
+                return false;
+
+            simulatedCell = nextCell;
+            simulatedDirection = nextExit;
+
+            if (IsPerpendicular(nextEntry, nextExit))
+            {
+                curveCell = simulatedCell;
+                curveEntry = nextEntry;
+                curveExit = nextExit;
+                SetupLocalArcParams(curveCell, curveEntry, curveExit,
+                    out arcCenter, out arcStartAngle, out arcSweepAngle);
+                curveLength = DefaultCurveLength;
+                curveDistance = 0f;
+                onCurve = true;
+            }
+            else
+            {
+                simulatedPosition = GetPositionAtEntry(nextCell, nextExit);
+            }
+        }
+
+        return false;
+    }
+
+    private static void SetupLocalArcParams(
+        MapPosition cell,
+        TrackConnections entrySide,
+        TrackConnections exitSide,
+        out Vector2 center,
+        out float startAngle,
+        out float sweepAngle)
+    {
+        float x = cell.X;
+        float y = cell.Y;
+
+        if (entrySide == TrackConnections.West && exitSide == TrackConnections.North)
+        {
+            center = new Vector2(x, y); startAngle = 0f; sweepAngle = -HalfPi; return;
+        }
+        if (entrySide == TrackConnections.North && exitSide == TrackConnections.West)
+        {
+            center = new Vector2(x, y); startAngle = 0f; sweepAngle = HalfPi; return;
+        }
+        if (entrySide == TrackConnections.East && exitSide == TrackConnections.North)
+        {
+            center = new Vector2(x + 1f, y); startAngle = HalfPi; sweepAngle = HalfPi; return;
+        }
+        if (entrySide == TrackConnections.North && exitSide == TrackConnections.East)
+        {
+            center = new Vector2(x + 1f, y); startAngle = MathF.PI; sweepAngle = -HalfPi; return;
+        }
+        if (entrySide == TrackConnections.East && exitSide == TrackConnections.South)
+        {
+            center = new Vector2(x + 1f, y + 1f); startAngle = -HalfPi; sweepAngle = -HalfPi; return;
+        }
+        if (entrySide == TrackConnections.South && exitSide == TrackConnections.East)
+        {
+            center = new Vector2(x + 1f, y + 1f); startAngle = MathF.PI; sweepAngle = HalfPi; return;
+        }
+        if (entrySide == TrackConnections.West && exitSide == TrackConnections.South)
+        {
+            center = new Vector2(x, y + 1f); startAngle = -HalfPi; sweepAngle = HalfPi; return;
+        }
+        if (entrySide == TrackConnections.South && exitSide == TrackConnections.West)
+        {
+            center = new Vector2(x, y + 1f); startAngle = 0f; sweepAngle = -HalfPi; return;
+        }
+
+        throw new InvalidOperationException($"Unsupported curve: {entrySide} -> {exitSide}");
     }
 
     private static Vector2 GetPositionAtEntry(MapPosition cell, TrackConnections direction)
