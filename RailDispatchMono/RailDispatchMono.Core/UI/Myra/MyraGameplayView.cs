@@ -16,6 +16,7 @@ internal sealed class MyraGameplayView
     private readonly Grid _left;
     private readonly Grid _right;
     private readonly Grid _trainList;
+    private readonly Grid _wagonList;
     private readonly Grid _stationList;
     private readonly VerticalStackPanel _toolContent;
     private readonly Button _toolToggle;
@@ -138,14 +139,16 @@ internal sealed class MyraGameplayView
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top
         };
-        _right.RowsProportions.Add(new Proportion(ProportionType.Auto));
-        _right.RowsProportions.Add(new Proportion(ProportionType.Auto));
+        for (int i = 0; i < 3; i++)
+            _right.RowsProportions.Add(new Proportion(ProportionType.Auto));
 
         _trainList = CreateListGrid(350);
+        _wagonList = CreateListGrid(350);
         _stationList = CreateListGrid(350);
 
         AddInfoSection(_right, "POCIĄGI", _trainList, 0);
-        AddInfoSection(_right, "STACJE", _stationList, 1);
+        AddInfoSection(_right, "WAGONY", _wagonList, 1);
+        AddInfoSection(_right, "STACJE", _stationList, 2);
 
         Grid.SetColumn(_right, 1);
         Grid.SetRow(_right, 0);
@@ -186,6 +189,8 @@ internal sealed class MyraGameplayView
     {
         _trainList.Widgets.Clear();
         _trainList.RowsProportions.Clear();
+        _wagonList.Widgets.Clear();
+        _wagonList.RowsProportions.Clear();
         _stationList.Widgets.Clear();
         _stationList.RowsProportions.Clear();
 
@@ -200,6 +205,20 @@ internal sealed class MyraGameplayView
                 () => _focusTrain(train));
         }
 
+        foreach (var train in manager.Trains)
+        {
+            foreach (var wagon in train.Composition.Vehicles.OfType<Wagon>().Take(10))
+            {
+                int capacity = wagon.PassengerCapacity;
+                int passengers = wagon.PassengerCount;
+                int occupancyPercent = capacity > 0 ? (int)MathF.Round(passengers * 100f / capacity) : 0;
+                string delay = FormatDelay(wagon.ScheduleRuntime.DelaySeconds, wagon.Schedule != null);
+                AddListButton(_wagonList,
+                    $"Wagon {wagon.ShortName}  •  opóźnienie: {delay}  •  zapełnienie: {passengers}/{capacity} ({occupancyPercent}%)",
+                    () => _focusTrain(train));
+            }
+        }
+
         foreach (var station in manager.StationController.Stations.Take(10))
         {
             int passengers = manager.StationController.Passengers.GetWaitingCount(station);
@@ -207,6 +226,18 @@ internal sealed class MyraGameplayView
                 $"{station.Name}  •  pasażerowie: {passengers}",
                 () => _focusStation(station));
         }
+    }
+
+    private static string FormatDelay(int delaySeconds, bool hasSchedule)
+    {
+        if (!hasSchedule) return "—";
+        if (delaySeconds == 0) return "0 s";
+
+        string sign = delaySeconds > 0 ? "+" : "−";
+        int absolute = Math.Abs(delaySeconds);
+        int minutes = absolute / 60;
+        int seconds = absolute % 60;
+        return minutes > 0 ? $"{sign}{minutes}m {seconds:D2}s" : $"{sign}{seconds} s";
     }
 
     private void RebuildTools()
