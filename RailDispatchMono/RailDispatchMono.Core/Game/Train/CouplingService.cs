@@ -99,7 +99,7 @@ public sealed class CouplingService
 
         manager.Remove(trailingTrain);
         DebugManager.Log($"[COUPLING] Trains {firstTrain.Id.ToString()[..8]} and {secondTrain.Id.ToString()[..8]} coupled at rest without repositioning vehicles.");
-        return CouplingOperationResult.Ok();
+        return CouplingOperationResult.Ok;
     }
 
     public CouplingOperationResult Decouple(TrainManager manager, Train train, Vehicle firstVehicle, VehicleEnd firstEnd)
