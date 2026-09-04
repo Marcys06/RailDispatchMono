@@ -15,6 +15,12 @@ public sealed partial class Train
         if (deltaTime <= 0.0f || !CanMove || _map is null)
             return;
 
+        if (_radioStopActive)
+        {
+            Speed = 0f;
+            return;
+        }
+
         DebugManager.BeginTrainLog(Id);
         DebugManager.Log(
             $"[TRAIN] ?? START - Pos: ({Position.X:F4}, {Position.Y:F4}), " +
@@ -24,26 +30,15 @@ public sealed partial class Train
         if (nextSignal != null)
         {
             _lastSignal = nextSignal;
-            _lastSignalSpeed = GetSpeedFromSignal(nextSignal);
+            _signalSpeedLimit = GetSpeedFromSignal(nextSignal);
         }
 
-        _targetSpeed = _lastSignalSpeed;
+        _targetSpeed = _signalSpeedLimit;
 
-        float maxSpeed = float.MaxValue;
+        float maxSpeed = Composition.EffectiveMaxSpeed;
         float baseAcceleration = 0f;
         float baseBraking = 0f;
 
-        foreach (var vehicle in Composition.Vehicles)
-        {
-            var p = vehicle.Parameters;
-            if (p.MaxSpeed < maxSpeed)
-                maxSpeed = p.MaxSpeed;
-        }
-
-        // Traction/braking capability comes from the locomotive. Additional mass
-        // reduces both rates using a non-linear 1.30 power law. This is deliberately
-        // stronger than a linear inverse-mass relationship while preserving the
-        // locomotive-only baseline.
         var locomotive = Composition.Locomotive;
         if (locomotive != null)
         {
@@ -73,8 +68,6 @@ public sealed partial class Train
             );
         }
 
-        // Speed is stored in physical m/s. World movement is measured in grid cells,
-        // so convert metres to cells at the single authoritative spatial boundary.
         float distance = SimulationScale.MetersToGrid(Speed * deltaTime);
         if (distance > MovementEpsilon)
             Move(distance);
@@ -91,10 +84,6 @@ public sealed partial class Train
         float locomotiveMass = MathF.Max(0.001f, locomotive.Parameters.MassTons);
         float totalMass = MathF.Max(locomotiveMass, Composition.TotalMass);
         float massRatio = totalMass / locomotiveMass;
-
-        // Linear inverse-mass scaling would use 1 / massRatio. Raising the ratio
-        // to 1.30 makes added mass have approximately 30% stronger sensitivity
-        // without making the relationship linear.
         return 1f / MathF.Pow(massRatio, MassResistanceExponent);
     }
 
@@ -156,7 +145,7 @@ public sealed partial class Train
                 break;
             }
 
-            TrackConnections entrySide = GetOppositeDirection(Direction);
+            TrackConnections entrySide = Direction.GetOppositeDirection();
 
             if (track.Geometry == TrackGeometry.Junction)
             {
@@ -301,7 +290,7 @@ public sealed partial class Train
 
     private bool EnterCurve(TrackCell track)
     {
-        TrackConnections entrySide = GetOppositeDirection(Direction);
+        TrackConnections entrySide = Direction.GetOppositeDirection();
         if (!track.HasConnection(entrySide))
             return false;
 
@@ -386,7 +375,7 @@ public sealed partial class Train
         MapPosition nextCell = GetNextCell(savedCurveCell, savedExitSide);
         if (_map.TryGetTrack(nextCell, out TrackCell? nextTrack) && nextTrack != null)
         {
-            TrackConnections entrySide = GetOppositeDirection(savedExitSide);
+            TrackConnections entrySide = savedExitSide.GetOppositeDirection();
             if (nextTrack.HasConnection(entrySide))
             {
                 Vector2 oldPos = Position;
@@ -420,7 +409,7 @@ public sealed partial class Train
             return false;
         }
 
-        TrackConnections entrySide = GetOppositeDirection(Direction);
+        TrackConnections entrySide = Direction.GetOppositeDirection();
         if (!nextTrack.HasConnection(entrySide))
         {
             DebugManager.Log($"[ENTER] No connection {entrySide} at {nextCell}");
