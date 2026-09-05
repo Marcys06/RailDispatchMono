@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.7c`**  
+**Documentation baseline: `0.1.7d`**  
 **Previous consolidated milestone: `0.1.6pre`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
@@ -31,19 +31,22 @@ This directory contains maintained project documentation. Historical release not
 22. [22-current-state-0.1.5pre.md](22-current-state-0.1.5pre.md) — historical `0.1.5pre` snapshot.
 23. [23-current-state-0.1.6pre.md](23-current-state-0.1.6pre.md) — historical `0.1.6pre` snapshot.
 24. [24-current-state-0.1.7a.md](24-current-state-0.1.7a.md) — historical `0.1.7a` snapshot.
-25. [25-current-state-0.1.7c.md](25-current-state-0.1.7c.md) — authoritative current `0.1.7c` snapshot.
+25. [25-current-state-0.1.7c.md](25-current-state-0.1.7c.md) — historical `0.1.7c` snapshot.
+26. [26-current-state-0.1.7d.md](26-current-state-0.1.7d.md) — authoritative current `0.1.7d` snapshot.
 
-## Current 0.1.7c focus
+## Current 0.1.7d focus
 
-Wagons permanently own repeating loop timetables and the gameplay HUD now exposes operational wagon status next to trains and stations. The player defines a base route such as `A-B-C-D`; runtime expands it to `A-B-C-D-C-B-A`. Arrival and departure are explicit control-point times for every point, including the return direction.
+Wagons permanently own repeating loop timetables and the gameplay HUD exposes operational wagon and station details. The player defines a base route such as `A-B-C-D`; runtime expands it to `A-B-C-D-C-B-A`.
 
-The `WAGONY` HUD list shows each wagon's timetable delay and passenger occupancy. The wagon remains the owner of its schedule; the train remains an operational grouping.
+The `WAGONY` HUD list shows each wagon's timetable delay and passenger occupancy. Hovering a wagon shows the ordered station stops from its timetable; when no timetable exists, the configured service route is used.
 
-Runtime save schema is `2`; save metadata identifies game version `0.1.7c`.
+The `STACJE` HUD list shows current waiting passenger count. Hovering a station shows the waiting passengers grouped by destination station and their counts.
+
+Runtime save schema is `2`; save metadata identifies game version `0.1.7d`.
 
 ## Version policy
 
-- `0.1.7c` is the current development snapshot.
-- `0.1.7a` and earlier snapshots are historical.
+- `0.1.7d` is the current development snapshot.
+- `0.1.7c`, `0.1.7a` and earlier snapshots are historical.
 - Historical release notes remain immutable.
 - Maintained architecture/domain documentation is updated when the current contract changes.
