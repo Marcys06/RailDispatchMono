@@ -225,15 +225,28 @@ internal sealed class MyraGameplayView
         int stationNumber = 1;
         foreach (var station in manager.StationController.Stations.Take(10))
         {
+            int currentStationNumber = stationNumber;
             int passengers = manager.StationController.Passengers.GetWaitingCount(station);
-            AddListButton(_stationList,
-                $"Stacja {stationNumber}: {passengers}",
-                () => ShowStationPassengerBreakdown(stationNumber, station, manager));
+            var button = AddListButton(_stationList,
+                $"Stacja {currentStationNumber}: {passengers}",
+                () => { });
+
+            bool expanded = false;
+            button.Click += (_, _) =>
+            {
+                expanded = !expanded;
+                button.Content = new Label
+                {
+                    Text = expanded
+                        ? BuildStationPassengerBreakdown(currentStationNumber, station, manager)
+                        : $"Stacja {currentStationNumber}: {manager.StationController.Passengers.GetWaitingCount(station)}"
+                };
+            };
             stationNumber++;
         }
     }
 
-    private void ShowStationPassengerBreakdown(int stationNumber, Station station, TrainManager manager)
+    private static string BuildStationPassengerBreakdown(int stationNumber, Station station, TrainManager manager)
     {
         var groups = manager.StationController.Passengers.GetWaitingAt(station)
             .GroupBy(p => p.DestinationStation.Id)
@@ -247,11 +260,11 @@ internal sealed class MyraGameplayView
             .ThenBy(g => g.Destination, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
-        string details = groups.Count == 0
-            ? $"Stacja {stationNumber}: 0"
-            : $"Stacja {stationNumber}: " + string.Join("  ", groups.Select(g => $"{g.Destination}: {g.Count} pasażerów"));
+        if (groups.Count == 0)
+            return $"Stacja {stationNumber}: 0";
 
-        AddListButton(_stationList, details, () => { });
+        return $"Stacja {stationNumber}: " +
+            string.Join("  ", groups.Select(g => $"{g.Destination}: {g.Count} pasażerów"));
     }
 
     private static string BuildWagonRouteTooltip(Wagon wagon, StationController stationController)
@@ -318,7 +331,7 @@ internal sealed class MyraGameplayView
         panel.Widgets.Add(button);
     }
 
-    private static void AddListButton(Grid grid, string text, Action action, string? tooltip = null)
+    private static Button AddListButton(Grid grid, string text, Action action, string? tooltip = null)
     {
         var button = new Button
         {
@@ -330,6 +343,7 @@ internal sealed class MyraGameplayView
         Grid.SetRow(button, grid.Widgets.Count);
         grid.RowsProportions.Add(new Proportion(ProportionType.Auto));
         grid.Widgets.Add(button);
+        return button;
     }
 
     private void AddToolButton(string text, TrackBuildMode mode)
