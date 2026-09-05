@@ -6,6 +6,7 @@ using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -32,6 +33,7 @@ internal sealed class MyraGameplayView
     private readonly Action _toggleRouteEdit;
     private bool _toolsExpanded;
     private readonly Grid _speedGrid;
+    private readonly HashSet<string> _expandedStations = new(StringComparer.Ordinal);
 
     public MyraGameplayView(
         Action<float> setSpeed,
@@ -232,18 +234,30 @@ internal sealed class MyraGameplayView
         }
     }
 
-    private static void AddStationToggle(Grid grid, int stationNumber, Station station, int passengers, TrainManager manager)
+    private void AddStationToggle(Grid grid, int stationNumber, Station station, int passengers, TrainManager manager)
     {
+        string stationKey = station.Id.ToString();
+        bool expanded = _expandedStations.Contains(stationKey);
+
         var button = new Button
         {
-            Content = new Label { Text = $"Stacja {stationNumber}: {passengers}" },
+            Content = new Label
+            {
+                Text = expanded
+                    ? BuildStationPassengerBreakdown(stationNumber, station, manager)
+                    : $"Stacja {stationNumber}: {passengers}"
+            },
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        bool expanded = false;
         button.Click += (_, _) =>
         {
             expanded = !expanded;
+            if (expanded)
+                _expandedStations.Add(stationKey);
+            else
+                _expandedStations.Remove(stationKey);
+
             button.Content = new Label
             {
                 Text = expanded
