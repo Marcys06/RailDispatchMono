@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 2;
-    public string GameVersion { get; set; } = "0.1.7c";
+    public string GameVersion { get; set; } = "0.1.7d";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -107,12 +107,12 @@ public static class RuntimeSaveService
                     Type = vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
                     ShortName = vehicle is Locomotive locomotive ? locomotive.ShortName : ((Wagon)vehicle).ShortName,
                     MaxSpeed = p.MaxSpeed,
+                    Acceleration = p.Acceleration,
+                    Braking = p.Braking,
                     Mass = p.Mass,
                     Length = p.Length,
                     MassTons = p.MassTons,
                     LengthMeters = p.LengthMeters,
-                    Acceleration = p.Acceleration,
-                    Braking = p.Braking,
                     MassCoefficient = p.MassCoefficient,
                     TechnicalCondition = p.TechnicalCondition,
                     AccelerationCoefficient = p.AccelerationCoefficient,
