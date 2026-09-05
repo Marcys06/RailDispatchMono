@@ -227,10 +227,31 @@ internal sealed class MyraGameplayView
         {
             int passengers = manager.StationController.Passengers.GetWaitingCount(station);
             AddListButton(_stationList,
-                $"Stacja {stationNumber}: {passengers} pasażerów",
-                () => { });
+                $"Stacja {stationNumber}: {passengers}",
+                () => ShowStationPassengerBreakdown(stationNumber, station, manager));
             stationNumber++;
         }
+    }
+
+    private void ShowStationPassengerBreakdown(int stationNumber, Station station, TrainManager manager)
+    {
+        var groups = manager.StationController.Passengers.GetWaitingAt(station)
+            .GroupBy(p => p.DestinationStation.Id)
+            .Select(g => new
+            {
+                Destination = manager.StationController.Stations.FirstOrDefault(s => s.Id == g.Key)?.Name
+                    ?? g.First().DestinationStation.Name,
+                Count = g.Count()
+            })
+            .OrderByDescending(g => g.Count)
+            .ThenBy(g => g.Destination, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        string details = groups.Count == 0
+            ? $"Stacja {stationNumber}: 0"
+            : $"Stacja {stationNumber}: " + string.Join("  ", groups.Select(g => $"{g.Destination}: {g.Count} pasażerów"));
+
+        AddListButton(_stationList, details, () => { });
     }
 
     private static string BuildWagonRouteTooltip(Wagon wagon, StationController stationController)
