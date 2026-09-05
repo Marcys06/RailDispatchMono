@@ -237,23 +237,30 @@ internal sealed class MyraGameplayView
         PassengerManager passengers,
         System.Collections.Generic.IEnumerable<Station> stations)
     {
+        var stationById = stations.ToDictionary(s => s.Id);
         var waiting = passengers.GetWaitingAt(station)
             .GroupBy(p => p.DestinationStation.Id)
             .Select(group =>
             {
-                string destination = stations.FirstOrDefault(s => s.Id == group.Key)?.Name
-                    ?? group.First().DestinationStation.Name;
+                var passenger = group.First();
+                string destination = stationById.TryGetValue(group.Key, out var destinationStation)
+                    ? destinationStation.Name
+                    : passenger.DestinationStation.Name;
+                if (string.IsNullOrWhiteSpace(destination))
+                    destination = $"Stacja {group.Key.ToString()[..8]}";
+
                 return (Destination: destination, Count: group.Count());
             })
-            .OrderBy(x => x.Destination)
+            .OrderBy(x => x.Destination, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         if (waiting.Count == 0)
-            return "Brak oczekujących pasażerów.";
+            return "Oczekujący pasażerowie: 0";
 
-        var builder = new StringBuilder("Oczekujący pasażerowie:");
+        int total = waiting.Sum(x => x.Count);
+        var builder = new StringBuilder($"Oczekujący pasażerowie: {total}");
         foreach (var item in waiting)
-            builder.Append($"\n• {item.Destination}: {item.Count}");
+            builder.Append($"\n• Cel: {item.Destination} — {item.Count}");
         return builder.ToString();
     }
 
