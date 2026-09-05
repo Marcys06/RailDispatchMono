@@ -1,11 +1,13 @@
 using Myra.Graphics2D;
 using Myra.Graphics2D.UI;
 using RailDispatchMono.Core.Game.Building;
+using RailDispatchMono.Core.Game.Passengers;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Simulation;
 using RailDispatchMono.Core.Game.Train;
 using System;
 using System.Linq;
+using System.Text;
 
 namespace RailDispatchMono.Core.UI.Myra;
 
@@ -215,7 +217,8 @@ internal sealed class MyraGameplayView
                 string delay = FormatDelay(wagon.ScheduleRuntime.DelaySeconds, wagon.Schedule != null);
                 AddListButton(_wagonList,
                     $"Wagon {wagon.ShortName}  •  opóźnienie: {delay}  •  zapełnienie: {passengers}/{capacity} ({occupancyPercent}%)",
-                    () => _focusTrain(train));
+                    () => _focusTrain(train),
+                    BuildWagonRouteTooltip(wagon, manager.StationController));
             }
         }
 
@@ -224,8 +227,52 @@ internal sealed class MyraGameplayView
             int passengers = manager.StationController.Passengers.GetWaitingCount(station);
             AddListButton(_stationList,
                 $"{station.Name}  •  pasażerowie: {passengers}",
-                () => _focusStation(station));
+                () => _focusStation(station),
+                BuildStationWaitingTooltip(station, manager.StationController.Passengers, manager.StationController.Stations));
         }
+    }
+
+    private static string BuildStationWaitingTooltip(
+        Station station,
+        PassengerManager passengers,
+        System.Collections.Generic.IEnumerable<Station> stations)
+    {
+        var waiting = passengers.GetWaitingAt(station)
+            .GroupBy(p => p.DestinationStation.Id)
+            .Select(group =>
+            {
+                string destination = stations.FirstOrDefault(s => s.Id == group.Key)?.Name
+                    ?? group.First().DestinationStation.Name;
+                return (Destination: destination, Count: group.Count());
+            })
+            .OrderBy(x => x.Destination)
+            .ToList();
+
+        if (waiting.Count == 0)
+            return "Brak oczekujących pasażerów.";
+
+        var builder = new StringBuilder("Oczekujący pasażerowie:");
+        foreach (var item in waiting)
+            builder.Append($"\n• {item.Destination}: {item.Count}");
+        return builder.ToString();
+    }
+
+    private static string BuildWagonRouteTooltip(Wagon wagon, StationController stationController)
+    {
+        var stationIds = wagon.Schedule?.Points.Select(p => p.StationId).ToList()
+            ?? wagon.ServiceRoute.ToList();
+
+        if (stationIds.Count == 0)
+            return "Brak zdefiniowanej trasy.";
+
+        var stationNames = stationIds
+            .Select(id => stationController.Stations.FirstOrDefault(s => s.Id == id)?.Name ?? id.ToString()[..8])
+            .ToList();
+
+        var builder = new StringBuilder("Stacje na trasie:");
+        for (int i = 0; i < stationNames.Count; i++)
+            builder.Append($"\n{i + 1}. {stationNames[i]}");
+        return builder.ToString();
     }
 
     private static string FormatDelay(int delaySeconds, bool hasSchedule)
@@ -274,12 +321,13 @@ internal sealed class MyraGameplayView
         panel.Widgets.Add(button);
     }
 
-    private static void AddListButton(Grid grid, string text, Action action)
+    private static void AddListButton(Grid grid, string text, Action action, string? tooltip = null)
     {
         var button = new Button
         {
             Content = new Label { Text = text },
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Tooltip = tooltip
         };
         button.Click += (_, _) => action();
         Grid.SetRow(button, grid.Widgets.Count);
