@@ -15,12 +15,17 @@ public sealed class MyraUIManager
     public bool IsInitialized => _initialized;
 
     /// <summary>
-    /// True when a temporary Myra GUI replaced the gameplay root.
-    /// Gameplay/world mouse input must be ignored in this state so a selected
-    /// build mode cannot place tracks underneath the GUI.
+    /// True while a temporary Myra GUI has replaced the gameplay root.
     /// </summary>
     public bool IsGameplayOverlayOpen =>
         _initialized && _previousRoot != null && Desktop.Root != _previousRoot;
+
+    /// <summary>
+    /// True for the gameplay update in which a Myra action was dispatched.
+    /// This consumes the same mouse click on the UI so it cannot also reach
+    /// InputManager and perform a world action.
+    /// </summary>
+    public bool GameplayInputConsumedThisFrame { get; private set; }
 
     public void Initialize(Microsoft.Xna.Framework.Game game)
     {
@@ -36,6 +41,17 @@ public sealed class MyraUIManager
     public void SetRoot(Widget root)
     {
         if (!_initialized) throw new InvalidOperationException("MyraUIManager must be initialized before setting a root widget.");
+
+        // Returning to the root that was replaced closes the temporary GUI.
+        // Do not overwrite _previousRoot with the GUI itself; otherwise the
+        // overlay lock would remain active forever after closing the window.
+        if (_previousRoot == root)
+        {
+            Desktop.Root = root;
+            _previousRoot = null;
+            return;
+        }
+
         if (Desktop.Root != null && Desktop.Root != root)
             _previousRoot = Desktop.Root;
         Desktop.Root = root;
@@ -47,6 +63,7 @@ public sealed class MyraUIManager
         Desktop.Root = _previousRoot;
         _previousRoot = null;
         _pendingAction = null;
+        GameplayInputConsumedThisFrame = false;
     }
 
     public void QueueAction(Action action)
@@ -57,6 +74,7 @@ public sealed class MyraUIManager
 
     public void Update(GameTime gameTime)
     {
+        GameplayInputConsumedThisFrame = _pendingAction != null;
         Action? action = _pendingAction;
         _pendingAction = null;
         action?.Invoke();
