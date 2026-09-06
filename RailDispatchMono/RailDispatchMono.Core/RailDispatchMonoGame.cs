@@ -245,6 +245,13 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
                 var selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
                 if (selectedField?.GetValue(_gameplayView) is Train train) RailwayDispatcher.ForceProceed(train);
             }
+
+            if ((keyboard.IsKeyDown(Keys.D0) && _previousKeyboard.IsKeyUp(Keys.D0)) ||
+                (keyboard.IsKeyDown(Keys.NumPad0) && _previousKeyboard.IsKeyUp(Keys.NumPad0)))
+            {
+                SetBuildMode(TrackBuildMode.None);
+            }
+
             if (keyboard.IsKeyDown(Keys.F8) && _previousKeyboard.IsKeyUp(Keys.F8)) OpenTrackInfrastructureEditor();
             if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
             if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
