@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.5a] — GUI input lock correction
+**Data:** 2026-09-06
+
+### Fixed
+
+- Fixed the Myra temporary-root lifecycle: returning from F8/F9/F10/F11 now correctly clears the overlay state instead of leaving gameplay input blocked.
+- Added same-frame consumption of queued Myra UI actions. A click on a HUD action such as `Tor prosty` can no longer change the build mode and then leak into `InputManager` as a world click in the same frame.
+- The existing F8/F9/F10/F11 build-mode reset remains active.
+
+### Verification status
+
+No Windows build or live gameplay verification was performed. The correction was checked statically against the current Myra root/action flow.
+
 ## [0.2.5] — Named railway lines and bulk infrastructure editing
 **Data:** 2026-09-06
 
