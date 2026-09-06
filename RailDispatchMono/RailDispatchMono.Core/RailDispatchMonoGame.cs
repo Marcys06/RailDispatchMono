@@ -164,6 +164,21 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         _myraUI.SetRoot(editor.Root);
     }
 
+    private void OpenRailwayLineEditor()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        GameMap? map = GetGameplayField<GameMap>("_map");
+        InputManager? input = GetGameplayField<InputManager>("_inputManager");
+        if (map == null || input == null) return;
+        var editor = new MyraRailwayLineView(
+            map,
+            map.RailwayLines,
+            () => input.SelectedTracks,
+            positions => input.SetTrackSelection(positions),
+            () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
+        _myraUI.SetRoot(editor.Root);
+    }
+
     private void RefreshTimetableHud()
     {
         if (_gameplayView == null || _gameplay == null) return;
@@ -227,6 +242,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
             if (keyboard.IsKeyDown(Keys.F8) && _previousKeyboard.IsKeyUp(Keys.F8)) OpenTrackInfrastructureEditor();
             if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
             if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
+            if (keyboard.IsKeyDown(Keys.F11) && _previousKeyboard.IsKeyUp(Keys.F11)) OpenRailwayLineEditor();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
             if (_gameplayUiRefreshTimer >= 0.5d)
             {
