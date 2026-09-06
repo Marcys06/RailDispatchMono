@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.5` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.2.6a` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -24,18 +24,19 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 - `MyraLocomotiveScheduleView` — locomotive timetable editor
 - `MyraTrackInfrastructureView` — F8 single-track infrastructure editor
 - `MyraRailwayDiagnosticsView` — full infrastructure/dispatcher diagnostics
-- `MyraRailwayLineView` — F11 named railway line and bulk infrastructure editor
+- `MyraRailwayLineView` — F11 named railway line and complete bulk infrastructure editor
 - `MyraUIManager`
 
 There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the timetable, infrastructure, diagnostics or railway-line editor and restores it on close.
 
-## 0.2.5 gameplay controls
+## 0.2.6a gameplay controls
 
 - `F6` — dispatcher-only force passage;
 - `F8` — edit infrastructure metadata of the track under the mouse cursor;
 - `F9` — locomotive timetable editor;
 - `F10` — railway diagnostics;
-- `F11` — named railway line editor.
+- `F11` — complete named railway line and bulk infrastructure editor;
+- `0` / `NumPad0` — explicit track selection / `TrackBuildMode.None`.
 
 F8 changes only infrastructure metadata: track role, line class and traction (`None`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
 
@@ -54,22 +55,49 @@ This is intentionally a world-input lock, not a replacement Myra input system: M
 In `TrackBuildMode.None`, existing track cells can be selected directly on the map:
 
 - LPM — replace selection;
-- Shift+LPM — add to selection;
-- Ctrl+LPM — toggle selection.
+- Shift+LPM — add;
+- Ctrl+LPM — toggle.
 
 `TrackRenderer` draws a white contour around the active selection. The selection is owned by `InputManager` and is passed to the F11 editor; it is not a second domain model.
 
 ## Railway line editor — F11
 
-`MyraRailwayLineView` supports:
+`MyraRailwayLineView` supports the complete documented workflow:
 
-- naming and creating a line from the current selection;
-- listing and selecting existing named lines;
-- selecting a line's tracks back on the map;
-- adding/removing the current selection from a line;
-- mass-applying `TrackType`, `LineClass` and `TractionSystem` to the selection or selected line;
-- selecting a connected track area using the existing topology;
-- deleting a named line without deleting physical track.
+### Selection
+
+- show the current selection count;
+- clear the selection;
+- select the complete connected track area using existing topology.
+
+### Line lifecycle
+
+- enter a name and create a line from the current selection;
+- select an existing named line;
+- rename the selected line;
+- select a line's tracks back on the map;
+- delete a named line without deleting physical track.
+
+### Membership
+
+- add the current selection to the selected line;
+- remove the current selection from the selected line;
+- perform the same member operations directly from each saved-line row.
+
+### Bulk infrastructure
+
+For each of `TrackType`, `LineClass` and `TractionSystem` the player can cycle the value independently and apply it to:
+
+- the current multi-track selection;
+- the currently selected named line.
+
+### Saved-line list
+
+Each saved line displays its name, track count and color index and provides direct `WYBIERZ`, `ZAZNACZ`, `+ ZAZNACZENIE`, `− ZAZNACZENIE` and `USUŃ` actions.
+
+### F11 layout contract — 0.2.6a
+
+The editor has a scrollable main content area and a separate scrollable saved-line list. Selection, line management, membership and bulk operations are separated into sections so the documented controls do not disappear below or outside the visible window.
 
 Named lines are organizational infrastructure metadata only. They do not become a routing, block, signal or dispatcher subsystem.
 
