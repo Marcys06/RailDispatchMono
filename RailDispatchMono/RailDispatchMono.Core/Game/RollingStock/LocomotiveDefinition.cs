@@ -48,8 +48,11 @@ public sealed class LocomotiveDefinition
     }
 
     public bool CanOperateOn(TractionSystem system)
-        => Traction == TractionType.Diesel ||
-           system == TractionSystem.None ? Traction == TractionType.Diesel : SupportedTractionSystems.Contains(system);
+    {
+        if (Traction == TractionType.Diesel)
+            return true;
+        return system != TractionSystem.None && SupportedTractionSystems.Contains(system);
+    }
 
     public Locomotive CreateVehicle()
     {
