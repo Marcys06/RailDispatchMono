@@ -136,6 +136,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         if (selectedField?.GetValue(_gameplayView) is not Train train || train.Composition.Locomotive == null) return;
         var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController;
         if (stations == null) return;
+        TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
+        if (builder != null) builder.Mode = TrackBuildMode.None;
         var editor = new MyraLocomotiveScheduleView(train, stations, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
         _myraUI.SetRoot(editor.Root);
     }
@@ -146,6 +148,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         var manager = GetGameplayField<TrainManager>("_trainManager");
         var signals = GetGameplayField<SignalController>("_signalController");
         if (manager == null || signals == null) return;
+        TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
+        if (builder != null) builder.Mode = TrackBuildMode.None;
         var view = new MyraRailwayDiagnosticsView(manager, signals, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
         _myraUI.SetRoot(view.Root);
     }
@@ -160,6 +164,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         MouseState mouse = Mouse.GetState();
         Vector2 world = camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
         var position = new MapPosition((int)MathF.Floor(world.X), (int)MathF.Floor(world.Y));
+        builder.Mode = TrackBuildMode.None;
         var editor = new MyraTrackInfrastructureView(map, builder, position, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
         _myraUI.SetRoot(editor.Root);
     }
@@ -170,6 +175,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         GameMap? map = GetGameplayField<GameMap>("_map");
         InputManager? input = GetGameplayField<InputManager>("_inputManager");
         if (map == null || input == null) return;
+        TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
+        if (builder != null) builder.Mode = TrackBuildMode.None;
         var editor = new MyraRailwayLineView(
             map,
             map.RailwayLines,
@@ -189,7 +196,6 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         if (label == null) return;
         var textProperty = label.GetType().GetProperty("Text");
         if (textProperty == null) return;
-
         string text = $"Vmax składu: {train.MaxSpeed * 3.6f:0.0} km/h\nCel prędkości: {train.EffectiveTargetSpeed * 3.6f:0.0} km/h\nKierunek: {train.Direction}  •  {RailwayDispatcher.Current?.GetStatus(train) ?? "DISPATCHER NIEDOSTĘPNY"}";
         var schedule = train.LocomotiveSchedule;
         var runtime = train.LocomotiveScheduleRuntime;
