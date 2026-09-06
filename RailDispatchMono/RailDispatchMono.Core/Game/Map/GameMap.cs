@@ -15,6 +15,8 @@ public sealed class GameMap
     public IReadOnlyDictionary<MapPosition, TrackCell> Tracks =>
         _tracks;
 
+    public RailwayLineManager RailwayLines { get; }
+
     public GameMap(int width, int height)
         : this(new MapSize(width, height))
     {
@@ -26,6 +28,7 @@ public sealed class GameMap
 
         _terrain = new TerrainType[
             checked(size.Width * size.Height)];
+        RailwayLines = new RailwayLineManager(this);
     }
 
     // ============================================================
@@ -73,9 +76,9 @@ public sealed class GameMap
 
     public bool RemoveTrack(MapPosition position)
     {
+        RailwayLines.RemovePosition(position);
         return _tracks.Remove(position);
     }
-
 
     public bool IsJunctionAt(MapPosition position)
     {
@@ -90,7 +93,6 @@ public sealed class GameMap
                track?.Geometry == TrackGeometry.Junction ? track : null;
     }
 
-    // GameMap.cs - dodaj brakuj¹ce metody
     public bool HasTrackAt(MapPosition position)
     {
         return _tracks.ContainsKey(position);
@@ -106,6 +108,7 @@ public sealed class GameMap
     public void Clear()
     {
         _tracks.Clear();
+        RailwayLines.Clear();
     }
 
     public bool IsInside(MapPosition position)
@@ -116,8 +119,7 @@ public sealed class GameMap
 
     public bool IsInside(int x, int y)
     {
-        return x >= 0 && x < Size.Width &&
-               y >= 0 && y < Size.Height;
+        return x >= 0 && x < Size.Width && y >= 0 && y < Size.Height;
     }
 
     private int GetIndex(MapPosition position)
@@ -134,8 +136,7 @@ public sealed class GameMap
             position.Y < 0 ||
             position.Y >= Size.Height)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(position));
+            throw new ArgumentOutOfRangeException(nameof(position));
         }
     }
 }
