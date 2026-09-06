@@ -9,48 +9,47 @@ public sealed partial class Train
     private LocomotiveScheduleRuntime? _locomotiveScheduleRuntime;
 
     public LocomotiveSchedule? LocomotiveSchedule => Composition.Locomotive?.Schedule;
-    public LocomotiveScheduleRuntime? LocomotiveScheduleRuntime => _locomotiveScheduleRuntime;
+    public LocomotiveScheduleRuntime? LocomotiveScheduleRuntime => LocomotiveSchedule == null ? null : _locomotiveScheduleRuntime ??= new LocomotiveScheduleRuntime();
 
     /// <summary>Applies timetable departure control without taking switch/signal control away from the player.</summary>
     public bool PrepareAutomaticSchedule(StationController stations)
     {
         var schedule = LocomotiveSchedule;
         if (schedule == null || !schedule.Enabled || !schedule.IsValid(out _)) return false;
-        _locomotiveScheduleRuntime ??= new LocomotiveScheduleRuntime();
-        if (_locomotiveScheduleRuntime.ScheduleId != schedule.Id) _locomotiveScheduleRuntime.Reset(schedule.Id);
+        var runtime = LocomotiveScheduleRuntime!;
+        if (runtime.ScheduleId != schedule.Id) runtime.Reset(schedule.Id);
 
         int now = GameClock.Current == null ? 0 : (int)GameClock.Current.Seconds;
         var station = stations.GetStationAt(GetCurrentCell());
         if (station != null)
         {
             int pointIndex = schedule.Points.FindIndex(p => p.StationId == station.Id);
-            if (pointIndex >= 0 && _locomotiveScheduleRuntime.CurrentPointIndex != pointIndex)
+            if (pointIndex >= 0 && runtime.CurrentPointIndex != pointIndex)
             {
-                _locomotiveScheduleRuntime.RecordArrival(schedule, pointIndex, now, GameClock.Current?.GameDay ?? 1);
+                runtime.RecordArrival(schedule, pointIndex, now, GameClock.Current?.GameDay ?? 1);
                 Speed = 0f;
                 return true;
             }
         }
 
-        if (_locomotiveScheduleRuntime.CurrentPointIndex >= 0 &&
-            _locomotiveScheduleRuntime.State == LocomotiveScheduleState.WaitingAtStation)
+        if (runtime.CurrentPointIndex >= 0 && runtime.State == LocomotiveScheduleState.WaitingAtStation)
         {
-            if (now < _locomotiveScheduleRuntime.RequiredDepartureSeconds)
+            if (now < runtime.RequiredDepartureSeconds)
             {
                 Speed = 0f;
                 return true;
             }
-            _locomotiveScheduleRuntime.State = LocomotiveScheduleState.Running;
+            runtime.State = LocomotiveScheduleState.Running;
         }
 
-        _locomotiveScheduleRuntime.State = LocomotiveScheduleState.Running;
+        runtime.State = LocomotiveScheduleState.Running;
         return false;
     }
 
     public void UpdateAutomaticScheduleState(StationController stations)
     {
         var schedule = LocomotiveSchedule;
-        var runtime = _locomotiveScheduleRuntime;
+        var runtime = LocomotiveScheduleRuntime;
         if (schedule == null || runtime == null || runtime.CurrentPointIndex < 0) return;
         var station = stations.GetStationAt(GetCurrentCell());
         if (station == null || schedule.Points[runtime.CurrentPointIndex].StationId != station.Id) return;
