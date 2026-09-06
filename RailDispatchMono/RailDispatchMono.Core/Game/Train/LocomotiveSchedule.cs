@@ -23,7 +23,7 @@ public sealed class LocomotiveSchedule
             if (point.StationId == Guid.Empty) { error = $"Punkt {i + 1} nie ma przypisanej stacji."; return false; }
             if (point.ArrivalSeconds < 0 || point.ArrivalSeconds >= 86400 || point.DepartureSeconds < 0 || point.DepartureSeconds >= 86400)
             { error = "Czasy muszą mieścić się w zakresie 00:00-23:59:59."; return false; }
-            if (point.DepartureSeconds < point.ArrivalSeconds) { error = $"Odjazd w punkcie {i + 1} jest wcześniejszy niż przyjazd."; return false; }
+            if (point.ArrivalSeconds >= point.DepartureSeconds) { error = $"Punkt {i + 1}: przyjazd musi być wcześniejszy niż odjazd."; return false; }
             if (i > 0 && point.ArrivalSeconds < Points[i - 1].DepartureSeconds)
             { error = $"Czas punktu {i + 1} nie może być wcześniejszy od poprzedniego odjazdu."; return false; }
         }
@@ -88,16 +88,28 @@ public sealed class LocomotiveScheduleRuntime
     public int GetScheduledDeparture(LocomotiveSchedule schedule, int pointIndex) =>
         schedule.Points[pointIndex].DepartureSeconds + CycleNumber * schedule.CycleDurationSeconds;
 
+    private int GetFutureScheduledArrival(LocomotiveSchedule schedule, int pointIndex)
+    {
+        int cycle = CycleNumber + (CurrentPointIndex >= 0 && pointIndex < CurrentPointIndex ? 1 : 0);
+        return schedule.Points[pointIndex].ArrivalSeconds + cycle * schedule.CycleDurationSeconds;
+    }
+
+    private int GetFutureScheduledDeparture(LocomotiveSchedule schedule, int pointIndex)
+    {
+        int cycle = CycleNumber + (CurrentPointIndex >= 0 && pointIndex < CurrentPointIndex ? 1 : 0);
+        return schedule.Points[pointIndex].DepartureSeconds + cycle * schedule.CycleDurationSeconds;
+    }
+
     public int GetExpectedArrival(LocomotiveSchedule schedule, int pointIndex)
     {
-        int scheduled = GetScheduledArrival(schedule, pointIndex);
+        int scheduled = pointIndex == CurrentPointIndex ? GetScheduledArrival(schedule, pointIndex) : GetFutureScheduledArrival(schedule, pointIndex);
         if (pointIndex == CurrentPointIndex) return Math.Max(scheduled, LastObservedArrivalSeconds);
         return scheduled + PropagatedDelaySeconds;
     }
 
     public int GetExpectedDeparture(LocomotiveSchedule schedule, int pointIndex)
     {
-        int scheduled = GetScheduledDeparture(schedule, pointIndex);
+        int scheduled = pointIndex == CurrentPointIndex ? GetScheduledDeparture(schedule, pointIndex) : GetFutureScheduledDeparture(schedule, pointIndex);
         if (pointIndex == CurrentPointIndex) return Math.Max(scheduled, RequiredDepartureSeconds);
         return scheduled + PropagatedDelaySeconds;
     }
