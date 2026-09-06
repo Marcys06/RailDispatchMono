@@ -5,14 +5,15 @@ using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Railway;
 
-/// <summary>First-come-first-served block arbitration. It never moves switches or changes signal aspects.</summary>
+/// <summary>First-come-first-served block arbitration over the existing block chain. It never moves switches or changes signal aspects.</summary>
 public sealed class RailwayDispatcher
 {
-    public readonly record struct PendingRequest(Guid TrainId, Guid BlockId);
+    public readonly record struct PendingRequest(Guid TrainId, Guid BlockId, DateTime RequestedAtUtc);
 
     private readonly BlockController _blocks;
     private readonly Dictionary<Guid, Block> _reservations = new();
     private readonly List<PendingRequest> _pendingRequests = new();
+    private readonly HashSet<Guid> _forcedTrains = new();
     public static RailwayDispatcher? Current { get; private set; }
 
     public IReadOnlyList<Guid> PendingRequestTrainIds => _pendingRequests.Select(x => x.TrainId).ToList();
@@ -36,9 +37,41 @@ public sealed class RailwayDispatcher
     public static void NotifyUpdated(Train.Train train) => Current?.Update(train);
     public static void NotifyReleased(Train.Train train) => Current?.Release(train);
 
+    /// <summary>F6 dispatcher override. It bypasses dispatcher arbitration only; it never changes physical block occupancy.</summary>
+    public static void ForceProceed(Train.Train train)
+    {
+        if (train == null || Current == null) return;
+        Current._forcedTrains.Add(train.Id);
+        Current._pendingRequests.RemoveAll(r => r.TrainId == train.Id);
+    }
+
+    public static void ClearForceProceed(Train.Train train) => Current?._forcedTrains.Remove(train.Id);
+    public static bool IsForced(Train.Train train) => Current?._forcedTrains.Contains(train.Id) == true;
+
+    public static double GetWaitSeconds(Train.Train train)
+    {
+        if (Current == null) return 0;
+        var request = Current._pendingRequests.FirstOrDefault(r => r.TrainId == train.Id);
+        return request == default ? 0 : Math.Max(0, (DateTime.UtcNow - request.RequestedAtUtc).TotalSeconds);
+    }
+
+    public static string GetRequestedBlockName(Train.Train train)
+    {
+        if (Current == null) return "—";
+        var request = Current._pendingRequests.FirstOrDefault(r => r.TrainId == train.Id);
+        if (request == default) return "—";
+        return Current._blocks.Blocks.FirstOrDefault(b => b.Id == request.BlockId)?.Name ?? request.BlockId.ToString()[..8];
+    }
+
     public bool CanProceed(Train.Train train)
     {
         if (train == null) return false;
+        if (_forcedTrains.Contains(train.Id))
+        {
+            _pendingRequests.RemoveAll(r => r.TrainId == train.Id);
+            return true;
+        }
+
         var current = _blocks.GetBlockAtPosition(train.Position);
         if (current == null) return true;
         var next = current.NextBlock;
@@ -53,6 +86,7 @@ public sealed class RailwayDispatcher
             return false;
         }
 
+        // FCFS is local to the requested block. A train waiting for another block does not block this one.
         var earlierRequest = _pendingRequests.FirstOrDefault(r => r.BlockId == next.Id);
         if (earlierRequest != default && earlierRequest.TrainId != train.Id)
         {
@@ -74,7 +108,7 @@ public sealed class RailwayDispatcher
     private void Enqueue(Guid trainId, Guid blockId)
     {
         if (!_pendingRequests.Any(r => r.TrainId == trainId && r.BlockId == blockId))
-            _pendingRequests.Add(new PendingRequest(trainId, blockId));
+            _pendingRequests.Add(new PendingRequest(trainId, blockId, DateTime.UtcNow));
     }
 
     private void RemoveRequest(Guid trainId, Guid blockId) => _pendingRequests.RemoveAll(r => r.TrainId == trainId && r.BlockId == blockId);
@@ -96,6 +130,7 @@ public sealed class RailwayDispatcher
         if (train == null) return;
         if (_reservations.Remove(train.Id, out var block)) block.ReleaseReservation();
         _pendingRequests.RemoveAll(r => r.TrainId == train.Id);
+        _forcedTrains.Remove(train.Id);
         PruneRequests();
     }
 
@@ -109,14 +144,15 @@ public sealed class RailwayDispatcher
     public string GetStatus(Train.Train train)
     {
         if (train == null) return "BRAK POCIĄGU";
+        if (_forcedTrains.Contains(train.Id)) return "OVERRIDE F6 — PRZEJAZD WYMUSZONY";
         var current = _blocks.GetBlockAtPosition(train.Position);
         if (current == null) return "POZA BLOKAMI";
         var next = current.NextBlock;
         if (next == null) return "BRAK NASTĘPNEGO BLOKU";
-        if (next.IsOccupied && !next.ContainsTrain(train)) return "BLOK ZAJĘTY — OCZEKIWANIE";
-        if (next.IsReserved && next.ReservedFor != train) return "BLOK ZAREZERWOWANY — OCZEKIWANIE";
+        if (next.IsOccupied && !next.ContainsTrain(train)) return "BLOKADA — OCZEKIWANIE";
+        if (next.IsReserved && next.ReservedFor != train) return "TRASA ZAJĘTA — OCZEKIWANIE";
         if (next.IsCoolingDown) return "BLOK WYGASZANY — OCZEKIWANIE";
-        if (_pendingRequests.Any(r => r.TrainId == train.Id && r.BlockId == next.Id)) return "KOLEJKA DISPATCHERA";
-        return _reservations.ContainsKey(train.Id) ? "DROGA ZAREZERWOWANA" : "DROGA DOSTĘPNA";
+        if (_pendingRequests.Any(r => r.TrainId == train.Id && r.BlockId == next.Id)) return "KOLEJKA FCFS";
+        return _reservations.ContainsKey(train.Id) ? "TRASA PRZYZNANA" : "TRASA DOSTĘPNA";
     }
 }
