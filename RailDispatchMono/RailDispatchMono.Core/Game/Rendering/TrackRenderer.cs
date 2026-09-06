@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RailDispatchMono.Core.Game.Building;
@@ -10,8 +11,15 @@ namespace RailDispatchMono.Core.Game.Rendering;
 public sealed class TrackRenderer
 {
     private readonly GameMap _map;
+    private readonly HashSet<MapPosition> _selectedTracks = new();
     private Texture2D? _pixel;
     private SignalRenderer? _signalRenderer;
+
+    private static readonly Color[] LineColors =
+    {
+        Color.MediumPurple, Color.LimeGreen, Color.Gold, Color.DeepSkyBlue,
+        Color.HotPink, Color.Cyan, Color.Orange, Color.Violet
+    };
 
     public TrackRenderer(GameMap map) => _map = map;
 
@@ -23,6 +31,13 @@ public sealed class TrackRenderer
     }
 
     public void SetSignalRenderer(SignalRenderer signalRenderer) => _signalRenderer = signalRenderer;
+
+    public void SetSelectedTracks(IEnumerable<MapPosition> positions)
+    {
+        _selectedTracks.Clear();
+        foreach (var position in positions)
+            if (_map.HasTrack(position)) _selectedTracks.Add(position);
+    }
 
     public void Draw(SpriteBatch spriteBatch, Camera camera)
     {
@@ -107,15 +122,29 @@ public sealed class TrackRenderer
     private void DrawTracks(SpriteBatch spriteBatch)
     {
         foreach (var track in _map.Tracks.Values)
+        {
+            RailwayLine? line = _map.RailwayLines.FindContaining(track.Position);
+            if (line != null)
+            {
+                Color lineColor = GetLineColor(line.ColorIndex);
+                DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, line.LineClass, line.Traction, lineColor, GetLineThickness(line.LineClass, line.Type) + 0.075f);
+            }
+
+            if (_selectedTracks.Contains(track.Position))
+            {
+                DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, track.LineClass, track.Traction, Color.White, GetLineThickness(track.LineClass, track.Type) + 0.13f);
+            }
+
             if (track.IsJunction) DrawJunctionTrack(spriteBatch, track);
             else DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, track.LineClass, track.Traction);
+        }
     }
 
-    private void DrawTrackLines(SpriteBatch spriteBatch, MapPosition position, TrackGeometry geometry, TrackConnections connections, bool preview, TrackType type, LineClass lineClass, TractionSystem traction)
+    private void DrawTrackLines(SpriteBatch spriteBatch, MapPosition position, TrackGeometry geometry, TrackConnections connections, bool preview, TrackType type, LineClass lineClass, TractionSystem traction, Color? overrideColor = null, float? overrideThickness = null)
     {
         float x = position.X, y = position.Y, centerX = x + 0.5f, centerY = y + 0.5f;
-        Color color = GetTractionColor(traction);
-        float thickness = GetLineThickness(lineClass, type);
+        Color color = overrideColor ?? GetTractionColor(traction);
+        float thickness = overrideThickness ?? GetLineThickness(lineClass, type);
         if (preview) color *= 0.5f;
         if (connections.HasFlag(TrackConnections.North)) DrawLine(spriteBatch, centerX, centerY, centerX, y, color, thickness);
         if (connections.HasFlag(TrackConnections.East)) DrawLine(spriteBatch, centerX, centerY, x + 1f, centerY, color, thickness);
@@ -132,6 +161,8 @@ public sealed class TrackRenderer
         Vector2 end = new Vector2(centerX, centerY) + GetDirectionVector(activeExit) * 0.45f;
         DrawLine(spriteBatch, centerX, centerY, end.X, end.Y, bladeColor, Math.Max(0.08f, GetLineThickness(track.LineClass, track.Type)));
     }
+
+    private static Color GetLineColor(int index) => LineColors[Math.Abs(index) % LineColors.Length];
 
     private static Color GetTractionColor(TractionSystem traction) => traction switch
     {
