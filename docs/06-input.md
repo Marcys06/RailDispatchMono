@@ -22,6 +22,22 @@
 - mouse wheel — zoom camera
 - `Escape` / `P` — pause/resume
 
+## GUI input lock
+
+When any temporary Myra GUI replaces the gameplay root, gameplay/world mouse input is completely suspended.
+
+This means clicks on the map do **not**:
+
+- build a track even if build mode `1` was selected;
+- select or deselect tracks;
+- remove tracks or other world objects;
+- toggle signals or junctions;
+- move or zoom the gameplay camera through world input.
+
+The GUI itself continues to receive the mouse normally. Closing the GUI returns to gameplay with build mode reset to `None`, preventing the click used to close a window from immediately placing a track.
+
+This rule is centralized through `MyraUIManager.IsGameplayOverlayOpen` and enforced by `GameplayScreen` before calling `InputManager.Update()`.
+
 ## Operational shortcuts
 
 - `F6` — **WYMUSZENIE PRZEJAZDU** for the selected train; bypasses dispatcher arbitration only;
@@ -31,13 +47,15 @@
 - `F10` — open railway/dispatcher diagnostics;
 - `F11` — open the named railway line editor and bulk infrastructure editor.
 
+Opening F8/F9/F10/F11 explicitly cancels the active track-building mode before showing the GUI.
+
 ## Named railway lines — F11
 
 The F11 editor operates on the multi-track selection created directly on the map. It can:
 
 - create a named `RailwayLine` from the selection;
 - select an existing line on the map;
-- add/remove the current selection from an existing line;
+- add/remove the current selection from an existing named line;
 - mass-apply `TrackType`, `LineClass` and `TractionSystem` to the selection or whole line;
 - select the whole connected track area from one selected starting cell;
 - delete a line without deleting physical track.
@@ -66,4 +84,4 @@ World clicks are converted through the existing camera coordinate helpers. Do no
 
 ## AI rule
 
-Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding general gameplay controls. F6/F8/F9/F10/F11 operational views are owned by `RailDispatchMonoGame` and Myra while domain state remains in the relevant managers/models. Keep one owner for each action.
+Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding general gameplay controls. F6/F8/F9/F10/F11 operational views are owned by `RailDispatchMonoGame` and Myra while domain state remains in the relevant managers/models. Keep one owner for each action. Any new gameplay GUI must use the same world-input lock contract: while the GUI replaces the gameplay root, `InputManager.Update()` must not process world input.
