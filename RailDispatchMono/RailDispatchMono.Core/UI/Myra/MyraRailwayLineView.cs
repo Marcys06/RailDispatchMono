@@ -11,7 +11,6 @@ namespace RailDispatchMono.Core.UI.Myra;
 internal sealed class MyraRailwayLineView
 {
     public Widget Root { get; }
-
     private readonly GameMap _map;
     private readonly RailwayLineManager _lines;
     private readonly Func<IReadOnlyCollection<MapPosition>> _getSelection;
@@ -26,12 +25,7 @@ internal sealed class MyraRailwayLineView
     private TractionSystem _traction = TractionSystem.None;
     private Guid? _selectedLineId;
 
-    public MyraRailwayLineView(
-        GameMap map,
-        RailwayLineManager lines,
-        Func<IReadOnlyCollection<MapPosition>> getSelection,
-        Action<IEnumerable<MapPosition>> setSelection,
-        Action close)
+    public MyraRailwayLineView(GameMap map, RailwayLineManager lines, Func<IReadOnlyCollection<MapPosition>> getSelection, Action<IEnumerable<MapPosition>> setSelection, Action close)
     {
         _map = map;
         _lines = lines;
@@ -39,27 +33,17 @@ internal sealed class MyraRailwayLineView
         _setSelection = setSelection;
         _close = close;
 
-        var root = new VerticalStackPanel
-        {
-            Width = 1200,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 6
-        };
-
+        var root = new VerticalStackPanel { Width = 1200, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Spacing = 6 };
         root.Widgets.Add(new Label { Text = "LINIE KOLEJOWE — F11", Wrap = true });
-        root.Widgets.Add(new Label
-        {
-            Text = "LPM na mapie: nowe zaznaczenie • Shift+LPM: dodaj tor • Ctrl+LPM: przełącz tor. F11 otwiera ten ekran.",
-            Wrap = true
-        });
+        root.Widgets.Add(new Label { Text = "LPM na mapie: nowe zaznaczenie • Shift+LPM: dodaj tor • Ctrl+LPM: przełącz tor. F11 otwiera ten ekran.", Wrap = true });
 
         var createRow = new HorizontalStackPanel { Spacing = 5 };
         _nameBox = new TextBox { Text = "Nowa linia", Width = 280 };
         createRow.Widgets.Add(_nameBox);
         createRow.Widgets.Add(CreateButton("UTWÓRZ Z ZAZNACZENIA", 220, CreateLine));
-        createRow.Widgets.Add(CreateButton("ZAZNACZ LINIĘ", 150, SelectCurrentLine, true));
-        createRow.Widgets.Add(CreateButton("USUŃ LINIĘ", 130, DeleteCurrentLine, true));
+        createRow.Widgets.Add(CreateButton("ZMIEŃ NAZWĘ", 130, RenameCurrentLine));
+        createRow.Widgets.Add(CreateButton("ZAZNACZ LINIĘ", 150, SelectCurrentLine));
+        createRow.Widgets.Add(CreateButton("USUŃ LINIĘ", 130, DeleteCurrentLine));
         root.Widgets.Add(createRow);
 
         _selectionLabel = new Label { Wrap = true };
@@ -88,7 +72,7 @@ internal sealed class MyraRailwayLineView
         bulkRow3.Widgets.Add(CreateButton("◀", 45, () => CycleTraction(-1)));
         bulkRow3.Widgets.Add(CreateButton("▶", 45, () => CycleTraction(1)));
         bulkRow3.Widgets.Add(CreateButton("ZAZNACZ POŁĄCZONY OBSZAR", 220, SelectConnectedArea));
-        bulkRow3.Widgets.Add(CreateButton("WYCZYŚĆ ZAZNACZENIE", 170, () => _setSelection(Array.Empty<MapPosition>())));
+        bulkRow3.Widgets.Add(CreateButton("WYCZYŚĆ ZAZNACZENIE", 170, () => { _setSelection(Array.Empty<MapPosition>()); Refresh(); }));
         bulk.Widgets.Add(bulkRow3);
         root.Widgets.Add(bulk);
 
@@ -106,11 +90,7 @@ internal sealed class MyraRailwayLineView
     private void CreateLine()
     {
         var selection = _getSelection().Where(_map.HasTrack).Distinct().ToList();
-        if (selection.Count == 0)
-        {
-            _status.Text = "BŁĄD: zaznacz co najmniej jeden tor na mapie.";
-            return;
-        }
+        if (selection.Count == 0) { _status.Text = "BŁĄD: zaznacz co najmniej jeden tor na mapie."; return; }
         var line = _lines.Create(_nameBox.Text, selection);
         _selectedLineId = line.Id;
         _status.Text = $"Utworzono „{line.Name}” — segmentów: {line.TrackPositions.Count}.";
@@ -119,17 +99,27 @@ internal sealed class MyraRailwayLineView
 
     private RailwayLine? CurrentLine => _selectedLineId.HasValue ? _lines.Find(_selectedLineId.Value) : null;
 
+    private void RenameCurrentLine()
+    {
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
+        if (string.IsNullOrWhiteSpace(_nameBox.Text)) { _status.Text = "Nazwa nie może być pusta."; return; }
+        line.Rename(_nameBox.Text);
+        _status.Text = $"Linia ma teraz nazwę „{line.Name}”.";
+        Refresh();
+    }
+
     private void SelectCurrentLine()
     {
-        if (CurrentLine is not RailwayLine line) return;
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
         _setSelection(line.TrackPositions.ToList());
+        _nameBox.Text = line.Name;
         _status.Text = $"Zaznaczono linię „{line.Name}”.";
         Refresh();
     }
 
     private void DeleteCurrentLine()
     {
-        if (CurrentLine is not RailwayLine line) return;
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
         _lines.Delete(line.Id);
         _selectedLineId = null;
         _status.Text = "Linia usunięta. Tory pozostają bez zmian.";
@@ -138,7 +128,7 @@ internal sealed class MyraRailwayLineView
 
     private void AddSelectionToLine()
     {
-        if (CurrentLine is not RailwayLine line) return;
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
         _lines.AddPositions(line, _getSelection());
         _status.Text = $"Linia „{line.Name}”: {line.TrackPositions.Count} segmentów.";
         Refresh();
@@ -146,7 +136,7 @@ internal sealed class MyraRailwayLineView
 
     private void RemoveSelectionFromLine()
     {
-        if (CurrentLine is not RailwayLine line) return;
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
         _lines.RemovePositions(line, _getSelection());
         _status.Text = $"Linia „{line.Name}”: {line.TrackPositions.Count} segmentów.";
         Refresh();
@@ -154,18 +144,13 @@ internal sealed class MyraRailwayLineView
 
     private void ApplyToSelection()
     {
-        var selection = _getSelection();
-        int count = _lines.ApplyInfrastructure(selection, _trackType, _lineClass, _traction);
+        int count = _lines.ApplyInfrastructure(_getSelection(), _trackType, _lineClass, _traction);
         _status.Text = $"Zmieniono parametry {count} zaznaczonych segmentów.";
     }
 
     private void ApplyToLine()
     {
-        if (CurrentLine is not RailwayLine line)
-        {
-            _status.Text = "Najpierw wybierz linię.";
-            return;
-        }
+        if (CurrentLine is not RailwayLine line) { _status.Text = "Najpierw wybierz linię."; return; }
         int count = _lines.ApplyInfrastructure(line, _trackType, _lineClass, _traction);
         _status.Text = $"Zmieniono parametry {count} segmentów linii „{line.Name}".";
     }
@@ -173,11 +158,7 @@ internal sealed class MyraRailwayLineView
     private void SelectConnectedArea()
     {
         var first = _getSelection().FirstOrDefault();
-        if (!_map.HasTrack(first))
-        {
-            _status.Text = "Zaznacz najpierw jeden tor startowy.";
-            return;
-        }
+        if (!_map.HasTrack(first)) { _status.Text = "Zaznacz najpierw jeden tor startowy."; return; }
         _setSelection(RailwayLineManager.CollectConnectedTracks(_map, first));
         _status.Text = "Zaznaczono cały połączony obszar torów.";
         Refresh();
@@ -206,26 +187,26 @@ internal sealed class MyraRailwayLineView
 
     private void Refresh()
     {
-        _selectionLabel.Text = $"Zaznaczenie: {_getSelection().Count} torów" + (CurrentLine == null ? "" : $" • linia: {CurrentLine.Name} ({CurrentLine.TrackPositions.Count} segmentów)");
+        var current = CurrentLine;
+        _selectionLabel.Text = $"Zaznaczenie: {_getSelection().Count} torów" + (current == null ? "" : $" • linia: {current.Name} ({current.TrackPositions.Count} segmentów)");
         _linesPanel.Widgets.Clear();
         foreach (var line in _lines.Lines)
         {
             var local = line;
             var row = new HorizontalStackPanel { Spacing = 4 };
             row.Widgets.Add(new Label { Text = $"{line.Name} • {line.TrackPositions.Count} torów • kolor {line.ColorIndex + 1}", Width = 520, Wrap = true });
-            row.Widgets.Add(CreateButton("WYBIERZ", 100, () => { _selectedLineId = local.Id; Refresh(); }));
+            row.Widgets.Add(CreateButton("WYBIERZ", 100, () => { _selectedLineId = local.Id; _nameBox.Text = local.Name; Refresh(); }));
             row.Widgets.Add(CreateButton("ZAZNACZ", 100, () => { _selectedLineId = local.Id; SelectCurrentLine(); }));
             row.Widgets.Add(CreateButton("+ ZAZNACZENIE", 130, () => { _selectedLineId = local.Id; AddSelectionToLine(); }));
             row.Widgets.Add(CreateButton("− ZAZNACZENIE", 130, () => { _selectedLineId = local.Id; RemoveSelectionFromLine(); }));
             row.Widgets.Add(CreateButton("USUŃ", 80, () => { _selectedLineId = local.Id; DeleteCurrentLine(); }));
             _linesPanel.Widgets.Add(row);
         }
-        _status.Text ??= "";
     }
 
-    private static Button CreateButton(string text, int width, Action action, bool disabled = false)
+    private static Button CreateButton(string text, int width, Action action)
     {
-        var button = new Button { Content = new Label { Text = text, Wrap = true }, Width = width, HorizontalAlignment = HorizontalAlignment.Left, Enabled = !disabled };
+        var button = new Button { Content = new Label { Text = text, Wrap = true }, Width = width, HorizontalAlignment = HorizontalAlignment.Left };
         button.Click += (_, _) => action();
         return button;
     }
