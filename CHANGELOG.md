@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.2.6a] — Complete F11 railway line editor
+**Data:** 2026-09-06
+
+### Fixed
+
+- Fixed the F11 editor layout so documented controls are accessible instead of being pushed outside the visible area by oversized horizontal rows.
+- Added a scrollable main F11 content area and a separate scrollable saved-line list.
+- Separated selection, line management, membership and bulk-infrastructure operations into explicit sections.
+
+### F11
+
+- Create a named line from the current selection.
+- Select an existing line.
+- Rename the selected line.
+- Select a line's tracks on the map.
+- Delete a named line without deleting physical track.
+- Add/remove the current selection from the selected line.
+- Cycle and apply `TrackType` to the selection or selected line.
+- Cycle and apply `LineClass` to the selection or selected line.
+- Cycle and apply `TractionSystem` to the selection or selected line.
+- Select a connected track area using existing track topology.
+- Clear the current selection.
+- Use the same line/member operations directly from each saved-line row.
+
+### Domain boundary
+
+- `RailwayLineManager` remains the owner of named-line grouping and bulk infrastructure operations.
+- Named lines remain organizational metadata only.
+- Blocks, signals, switches, routes, timetable logic, movement and physics are unchanged.
+- No automatic dispatcher decisions or route repair were introduced.
+
+### Documentation
+
+- Added `docs/34-current-state-0.2.6a.md`.
+- Added `docs/changelog/0.2.6a.md`.
+- Updated `docs/00-index.md` and `docs/16-screens-and-ui.md`.
+
+### Verification
+
+No Windows build or live gameplay verification was performed in this environment.
+
 ## [0.2.6] — Rebuilt gameplay HUD
 **Data:** 2026-09-06
 
