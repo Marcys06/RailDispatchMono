@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.0` is the current documented development baseline. It connects the existing station, signal and block systems with an operational locomotive timetable while preserving the player's infrastructure-control role.
+`0.2.4` is the current documented development baseline. It connects the existing station, signal, block and timetable systems with explicit infrastructure metadata while preserving the player's infrastructure-control role.
 
 ## Core rule
 
@@ -22,7 +22,7 @@ ScreenManager
     v
 GameplayScreen
     |
-    +--> GameMap / railway services
+    +--> GameMap / TrackCell / TrackBuilder
     +--> TrainManager
     |       +--> Train / TrainMovement
     |       +--> TrainComposition
@@ -39,6 +39,9 @@ GameplayScreen
 ## Ownership
 
 - simulation/domain state belongs to `Game/` subsystems;
+- track topology belongs to `GameMap` / `TrackCell` / `TrackBuilder`;
+- track geometry is `TrackGeometry`; infrastructure role is `TrackType`; line classification is `LineClass`; electrification is `TractionSystem`;
+- infrastructure wear is stored by `TrackCell` and is not yet actively simulated;
 - train lifecycle belongs to `TrainManager`;
 - ordered physical consist state belongs to `TrainComposition`;
 - coupling validation/mutation belongs to `CouplingService`;
@@ -51,6 +54,24 @@ GameplayScreen
 - signal and junction aspects remain player-controlled;
 - presentation belongs to screens/Myra/renderers;
 - persistence remains behind the existing save services.
+
+## Infrastructure boundary
+
+Infrastructure metadata is segment-local. A block may span multiple segments with different infrastructure parameters; the block system remains concerned with traffic occupancy and reservation rather than duplicating infrastructure state.
+
+`LineClassProfile` exposes prepared Vmax and axle-load values. 0.2.4 does not automatically impose those values on the movement model; that belongs to the planned physics/infrastructure work.
+
+Electrical traction is modelled independently from propulsion type. An electric locomotive declares supported `TractionSystem` values, while diesel locomotives are independent of electrification. The model supports multi-system locomotives. 0.2.4 does not automatically reroute an incompatible train.
+
+## Infrastructure editing boundary
+
+`TrackBuilder` owns construction-time infrastructure defaults and metadata-only mutation methods. `MyraTrackInfrastructureView` is a UI request surface for the same domain operations and does not own track state.
+
+F8 edits the track under the cursor. It does not change geometry, block state, signals or switches.
+
+## Persistence
+
+`MapSaveData` schema `2` persists infrastructure metadata per track cell. Old map saves are not a compatibility requirement for this development line.
 
 ## Locomotive timetable
 
@@ -79,7 +100,7 @@ The implemented passenger flow remains:
 
 `StationController → PassengerManager → PassengerService → Wagon`
 
-`PassengerManager.GetOnBoard(Train)` is an operational view, not an ownership boundary. No automatic passenger-transfer system was added in 0.2.0.
+`PassengerManager.GetOnBoard(Train)` is an operational view, not an ownership boundary. No automatic passenger-transfer system was added.
 
 ## Consist and movement contract
 
@@ -88,13 +109,13 @@ The established rigid-consist rules remain authoritative:
 - `Composition.Vehicles` is the physical order;
 - F7 changes travel direction without reversing the physical list;
 - vehicle positions and trajectory handling remain under the existing movement model;
-- F6 remains manual shunting;
+- F6 is the dispatcher override;
 - coupling and decoupling remain manual;
 - RadioStop remains an independent safety stop.
 
 ## Runtime ordering
 
-For an automatically operated train, the relevant update order is:
+For an automatically operated train, the relevant update order remains:
 
 ```text
 StationController.BeforeTrainUpdate
@@ -117,6 +138,10 @@ StationController.AfterTrainUpdate
     +--> dispatcher reservation release
 ```
 
+## Roadmap boundary
+
+0.2.4 prepares infrastructure data. 0.3.0 activates infrastructure management; 0.4.0 adds economy; 0.5.0 public timetable; 0.6.0 passenger demand; 0.7.0 richer physics; 0.8.0 crises; 0.9.0 network; 1.0.0 full integration. The detailed dependency plan is in `docs/roadmap-0.3.0-to-1.0.0.md`.
+
 ## Safety and dependency discipline
 
 1. Find the existing owner of state before adding a new manager/service.
@@ -126,4 +151,5 @@ StationController.AfterTrainUpdate
 5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, `TrainRoute` and HUD together.
 6. When changing coupling, audit `TrainComposition`, `CouplingService`, vehicle-end connections and passenger ownership together.
 7. When changing constructors/data contracts, inspect save/load and catalogue factories.
-8. When changing timetable behaviour, update this document, the current-state snapshot and the 0.2.0 changelog together.
+8. When changing infrastructure, audit `TrackCell`, `TrackBuilder`, `GameMap`, map persistence, rolling stock traction and block/signal ownership together.
+9. Every current contract change requires a current-state snapshot and relevant changelog update.
