@@ -137,6 +137,48 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         _myraUI.SetRoot(view.Root);
     }
 
+    private void RefreshTimetableHud()
+    {
+        if (_gameplayView == null || _gameplay == null) return;
+        var selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (selectedField?.GetValue(_gameplayView) is not Train train) return;
+        var detailField = typeof(MyraGameplayView).GetField("_selectionDetails", BindingFlags.Instance | BindingFlags.NonPublic);
+        object? label = detailField?.GetValue(_gameplayView);
+        if (label == null) return;
+        var textProperty = label.GetType().GetProperty("Text");
+        if (textProperty == null) return;
+
+        string text = $"Vmax składu: {train.MaxSpeed * 3.6f:0.0} km/h\nCel prędkości: {train.EffectiveTargetSpeed * 3.6f:0.0} km/h\nKierunek: {train.Direction}  •  {RailwayDispatcher.Current?.GetStatus(train) ?? "DISPATCHER NIEDOSTĘPNY"}";
+        var schedule = train.LocomotiveSchedule;
+        var runtime = train.LocomotiveScheduleRuntime;
+        if (schedule?.Enabled == true && schedule.Points.Count > 0)
+        {
+            if (runtime != null && runtime.CurrentPointIndex >= 0 && runtime.CurrentPointIndex < schedule.Points.Count)
+            {
+                int current = runtime.CurrentPointIndex;
+                int next = (current + 1) % schedule.Points.Count;
+                var currentPoint = schedule.Points[current];
+                var nextPoint = schedule.Points[next];
+                var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController.Stations;
+                string currentName = stations?.FirstOrDefault(s => s.Id == currentPoint.StationId)?.Name ?? "—";
+                string nextName = stations?.FirstOrDefault(s => s.Id == nextPoint.StationId)?.Name ?? "—";
+                int eta = runtime.GetExpectedArrival(schedule, next);
+                text += $"\nRozkład: {schedule.Name} • stan: {runtime.State}\nPunkt: {current + 1}/{schedule.Points.Count} • {currentName}\nNastępny: {nextName}\nETA: {FormatClock(eta)} • odjazd: {FormatClock(runtime.GetExpectedDeparture(schedule, current))}\nOpóźnienie: {runtime.DelaySeconds:+#;-#;0}s • propagowane: {runtime.PropagatedDelaySeconds}s";
+            }
+            else
+            {
+                text += $"\nRozkład: {schedule.Name} • oczekiwanie na pierwszy punkt";
+            }
+        }
+        textProperty.SetValue(label, text);
+    }
+
+    private static string FormatClock(int seconds)
+    {
+        int normalized = ((seconds % 86400) + 86400) % 86400;
+        return $"{normalized / 3600:D2}:{normalized / 60 % 60:D2}";
+    }
+
     private T? GetGameplayField<T>(string fieldName) where T : class
     {
         if (_gameplay == null) return null;
@@ -159,6 +201,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
             {
                 _gameplayUiRefreshTimer = 0d;
                 _gameplayView.Refresh();
+                RefreshTimetableHud();
             }
         }
         _previousKeyboard = keyboard;
