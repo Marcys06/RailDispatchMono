@@ -17,6 +17,17 @@ public sealed class RailwayDispatcher
         Current = this;
     }
 
+    public static bool TryCanProceed(Train.Train train)
+    {
+        var blocks = TrainManager.Current?.BlockController;
+        if (blocks == null) return true;
+        Current ??= new RailwayDispatcher(blocks);
+        return Current.CanProceed(train);
+    }
+
+    public static void NotifyUpdated(Train.Train train) => Current?.Update(train);
+    public static void NotifyReleased(Train.Train train) => Current?.Release(train);
+
     public bool CanProceed(Train.Train train)
     {
         if (train == null) return false;
