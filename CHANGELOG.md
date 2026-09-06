@@ -1,5 +1,66 @@
 # Changelog
 
+## [0.2.4] — Track infrastructure and traction
+**Data:** 2026-09-06
+
+### Infrastructure
+
+- Separated track geometry from operational track role.
+- Added `TrackType`: `Mainline`, `Secondary`, `Siding`, `Platform`.
+- Added `LineClass`: `Local`, `Regional`, `Mainline`, `Magistral`.
+- Added `TractionSystem`: `None`, `DC`, `AC`.
+- `TrackCell` now stores track type, line class, traction and prepared wear state.
+- Added prepared infrastructure Vmax and axle-load profiles without replacing the current movement model.
+
+### Rolling stock
+
+- Kept `TractionType` as the propulsion category `Electric` / `Diesel`.
+- Electric locomotives now declare supported electrical systems, allowing multi-system locomotives in the data model.
+- EP07 is configured for DC and EU200 for AC.
+- Diesel locomotives remain independent of track electrification.
+
+### Infrastructure editing
+
+- Added F8 track infrastructure editor for the track under the mouse cursor.
+- Existing track can change role, line class and traction without changing geometry, connections, blocks, signals or switches.
+- `TrackBuilder` applies selected infrastructure defaults to newly built track.
+
+### Persistence
+
+- `map.json` schema is now `2`.
+- Track infrastructure metadata and wear are persisted.
+- Old map saves are not a compatibility target.
+
+### Scope deliberately deferred
+
+- no economy or infrastructure costs;
+- no active wear simulation;
+- no automatic route repair for incompatible traction;
+- no automatic infrastructure conflict resolution;
+- no movement/physics rewrite.
+
+### Roadmap
+
+- `0.3.0` — infrastructure management;
+- `0.4.0` — economy;
+- `0.5.0` — public timetable and coordination;
+- `0.6.0` — passenger demand and satisfaction;
+- `0.7.0` — richer physics;
+- `0.8.0` — failures, weather and crisis management;
+- `0.9.0` — network and hub stations;
+- `1.0.0` — full integration, balance and campaign.
+
+### Documentation
+
+- Added `docs/31-current-state-0.2.4.md`.
+- Added `docs/changelog/0.2.4.md`.
+- Added `docs/roadmap-0.3.0-to-1.0.0.md`.
+- Updated `docs/00-index.md`, `docs/03-architecture.md`, `docs/15-ai-context.md` and `docs/16-screens-and-ui.md`.
+
+### Verification
+
+No Windows build or live gameplay verification was performed in this change. The 0.2.4 verification target is F8 infrastructure editing, new-track defaults, map schema 2 save/load, locomotive traction metadata and unchanged block/signal/F6 behaviour.
+
 ## [0.2.3] — Operational Dispatcher UI
 **Data:** 2026-09-06
 
