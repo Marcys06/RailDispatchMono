@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.0`**  
-**Previous consolidated milestone: `0.1.6pre`**
+**Documentation baseline: `0.2.1`**  
+**Previous consolidated milestone: `0.2.0`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -33,23 +33,22 @@ This directory contains maintained project documentation. Historical release not
 24. [24-current-state-0.1.7a.md](24-current-state-0.1.7a.md) — historical `0.1.7a` snapshot.
 25. [25-current-state-0.1.7c.md](25-current-state-0.1.7c.md) — historical `0.1.7c` snapshot.
 26. [26-current-state-0.1.7d.md](26-current-state-0.1.7d.md) — historical `0.1.7d` snapshot.
-27. [27-current-state-0.2.0.md](27-current-state-0.2.0.md) — authoritative `0.2.0` snapshot.
+27. [27-current-state-0.2.0.md](27-current-state-0.2.0.md) — historical `0.2.0` snapshot.
+28. [28-current-state-0.2.1.md](28-current-state-0.2.1.md) — authoritative `0.2.1` snapshot.
 
-## Current 0.2.0 focus
+## Current 0.2.1 focus
 
-0.2.0 connects locomotive-owned operational timetables with the existing station, signal and block runtime. A locomotive timetable contains expected arrival and required departure times. An automatically operated train waits at a scheduled station until the required departure time, records actual arrival and carries the resulting delay into runtime.
+0.2.1 is a UI-only restructuring of the gameplay presentation. The Myra gameplay HUD is now one operational dashboard with a shared visual hierarchy: global status at the top, operations at left, selected-train/diagnostic state in the centre and traffic information at right, with wagon and control references at the bottom.
 
-Wagon timetables remain independent and preserve the existing wagon ownership model. Existing passenger boarding/alighting and station dwell processing remain active; automatic passenger transfers are not introduced here.
+The HUD exposes locomotive timetable state and dispatcher/block state without taking their decisions away from the player. It distinguishes automatic and manual trains, exposes occupancy/delay summaries and keeps station passenger breakdowns expandable.
 
-The existing signal system remains under player control. The new `RailwayDispatcher` only arbitrates the next connected block: occupied or reserved blocks belonging to another train can hold automatic movement. It does not set switches or change signal aspects. The player therefore remains responsible for infrastructure configuration and resolving situations that cannot be operated automatically.
+The HUD remains a presentation layer. Train movement, station lifecycle, passengers, blocks, signals, switches, coupling and timetable state remain owned by their domain systems.
 
-Manual shunting, coupling/decoupling, F6 control, F7 reversal and RadioStop retain their established semantics. The physical movement model is unchanged.
-
-Schedule persistence schema is now `2` and supports an optional locomotive timetable alongside wagon schedule definitions. Backward compatibility with old saves is not a 0.2.0 requirement.
+Backward compatibility with the previous HUD layout is not a requirement.
 
 ## Version policy
 
-- `0.2.0` is the current development snapshot.
-- `0.1.7d` and earlier snapshots are historical.
+- `0.2.1` is the current development snapshot.
+- `0.2.0` and earlier snapshots are historical.
 - Historical release notes remain immutable.
-- Maintained architecture/domain documentation is updated whenever the current contract changes.
+- Maintained architecture/domain/UI documentation is updated whenever the current contract changes.
