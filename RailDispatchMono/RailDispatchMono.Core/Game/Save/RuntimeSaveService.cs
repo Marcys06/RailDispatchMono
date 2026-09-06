@@ -16,7 +16,7 @@ namespace RailDispatchMono.Core.Game.Save;
 public sealed class RuntimeSaveData
 {
     public int SchemaVersion { get; set; } = 2;
-    public string GameVersion { get; set; } = "0.1.7d";
+    public string GameVersion { get; set; } = "0.2.0";
     public int GameDay { get; set; } = 1;
     public double GameTimeSeconds { get; set; }
     public List<TrainSaveData> Trains { get; set; } = new();
@@ -55,6 +55,8 @@ public sealed class VehicleSaveData
     public List<Guid> ServiceRoute { get; set; } = new();
     public WagonSchedule? Schedule { get; set; }
     public WagonScheduleRuntime? ScheduleRuntime { get; set; }
+    public LocomotiveSchedule? LocomotiveSchedule { get; set; }
+    public LocomotiveScheduleRuntime? LocomotiveScheduleRuntime { get; set; }
     public List<PassengerSaveData> Passengers { get; set; } = new();
 }
 
@@ -73,186 +75,123 @@ public static class RuntimeSaveService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static string FilePath => Path.Combine(
-        SaveSlotContext.ActiveSlotDirectory ?? throw new InvalidOperationException("No active save slot."),
-        "trains.json");
+    public static string FilePath => Path.Combine(SaveSlotContext.ActiveSlotDirectory ?? throw new InvalidOperationException("No active save slot."), "trains.json");
 
     public static void Save(TrainManager trainManager, GameClock clock)
     {
         if (trainManager == null) throw new ArgumentNullException(nameof(trainManager));
         if (clock == null) throw new ArgumentNullException(nameof(clock));
-
         var data = new RuntimeSaveData { GameDay = clock.GameDay, GameTimeSeconds = clock.Seconds };
         var passengers = new List<PassengerSaveData>();
 
         foreach (TrainModel train in trainManager.Trains)
         {
-            var savedTrain = new TrainSaveData
-            {
-                Id = train.Id,
-                X = train.Position.X,
-                Y = train.Position.Y,
-                Speed = train.Speed,
-                DistanceAlongTrack = train.DistanceAlongTrack,
-                Direction = train.Direction,
-                IsReversed = train.IsReversed
-            };
-
+            var savedTrain = new TrainSaveData { Id=train.Id, X=train.Position.X, Y=train.Position.Y, Speed=train.Speed, DistanceAlongTrack=train.DistanceAlongTrack, Direction=train.Direction, IsReversed=train.IsReversed };
             foreach (Vehicle vehicle in train.Composition.Vehicles)
             {
-                var p = vehicle.Parameters;
-                var savedVehicle = new VehicleSaveData
+                var p=vehicle.Parameters;
+                var savedVehicle=new VehicleSaveData
                 {
-                    Kind = vehicle is Locomotive ? "Locomotive" : "Wagon",
-                    Type = vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
-                    ShortName = vehicle is Locomotive locomotive ? locomotive.ShortName : ((Wagon)vehicle).ShortName,
-                    MaxSpeed = p.MaxSpeed,
-                    Acceleration = p.Acceleration,
-                    Braking = p.Braking,
-                    Mass = p.Mass,
-                    Length = p.Length,
-                    MassTons = p.MassTons,
-                    LengthMeters = p.LengthMeters,
-                    MassCoefficient = p.MassCoefficient,
-                    TechnicalCondition = p.TechnicalCondition,
-                    AccelerationCoefficient = p.AccelerationCoefficient,
-                    BrakingCoefficient = p.BrakingCoefficient,
-                    Orientation = vehicle.Orientation
+                    Kind=vehicle is Locomotive ? "Locomotive" : "Wagon",
+                    Type=vehicle is Locomotive l ? l.Type.ToString() : ((Wagon)vehicle).WagonType.ToString(),
+                    ShortName=vehicle is Locomotive locomotive ? locomotive.ShortName : ((Wagon)vehicle).ShortName,
+                    MaxSpeed=p.MaxSpeed, Acceleration=p.Acceleration, Braking=p.Braking, Mass=p.Mass, Length=p.Length,
+                    MassTons=p.MassTons, LengthMeters=p.LengthMeters, MassCoefficient=p.MassCoefficient, TechnicalCondition=p.TechnicalCondition,
+                    AccelerationCoefficient=p.AccelerationCoefficient, BrakingCoefficient=p.BrakingCoefficient, Orientation=vehicle.Orientation
                 };
-
+                if (vehicle is Locomotive locomotiveVehicle)
+                {
+                    savedVehicle.LocomotiveSchedule=locomotiveVehicle.Schedule?.Clone();
+                    if (train.LocomotiveScheduleRuntime != null)
+                        savedVehicle.LocomotiveScheduleRuntime=new LocomotiveScheduleRuntime
+                        {
+                            ScheduleId=train.LocomotiveScheduleRuntime.ScheduleId, CycleNumber=train.LocomotiveScheduleRuntime.CycleNumber,
+                            CurrentPointIndex=train.LocomotiveScheduleRuntime.CurrentPointIndex, State=train.LocomotiveScheduleRuntime.State,
+                            DelaySeconds=train.LocomotiveScheduleRuntime.DelaySeconds, LastObservedArrivalSeconds=train.LocomotiveScheduleRuntime.LastObservedArrivalSeconds,
+                            LastObservedDay=train.LocomotiveScheduleRuntime.LastObservedDay, RequiredDepartureSeconds=train.LocomotiveScheduleRuntime.RequiredDepartureSeconds
+                        };
+                }
                 if (vehicle is Wagon wagon)
                 {
-                    savedVehicle.PassengerCapacity = wagon.PassengerCapacity;
-                    savedVehicle.ServiceRoute = wagon.ServiceRoute.ToList();
-                    savedVehicle.Schedule = wagon.Schedule?.Clone();
-                    savedVehicle.ScheduleRuntime = new WagonScheduleRuntime
-                    {
-                        ScheduleId = wagon.ScheduleRuntime.ScheduleId,
-                        CycleNumber = wagon.ScheduleRuntime.CycleNumber,
-                        CurrentPointIndex = wagon.ScheduleRuntime.CurrentPointIndex,
-                        State = wagon.ScheduleRuntime.State,
-                        DelaySeconds = wagon.ScheduleRuntime.DelaySeconds,
-                        LastObservedArrivalSeconds = wagon.ScheduleRuntime.LastObservedArrivalSeconds,
-                        LastObservedDay = wagon.ScheduleRuntime.LastObservedDay,
-                        DwellUntilSeconds = wagon.ScheduleRuntime.DwellUntilSeconds
-                    };
-
+                    savedVehicle.PassengerCapacity=wagon.PassengerCapacity;
+                    savedVehicle.ServiceRoute=wagon.ServiceRoute.ToList();
+                    savedVehicle.Schedule=wagon.Schedule?.Clone();
+                    savedVehicle.ScheduleRuntime=new WagonScheduleRuntime { ScheduleId=wagon.ScheduleRuntime.ScheduleId, CycleNumber=wagon.ScheduleRuntime.CycleNumber, CurrentPointIndex=wagon.ScheduleRuntime.CurrentPointIndex, State=wagon.ScheduleRuntime.State, DelaySeconds=wagon.ScheduleRuntime.DelaySeconds, LastObservedArrivalSeconds=wagon.ScheduleRuntime.LastObservedArrivalSeconds, LastObservedDay=wagon.ScheduleRuntime.LastObservedDay, DwellUntilSeconds=wagon.ScheduleRuntime.DwellUntilSeconds };
                     foreach (Passenger passenger in wagon.Passengers)
                     {
-                        var snapshot = new PassengerSaveData
-                        {
-                            OriginStationId = passenger.OriginStation.Id,
-                            DestinationStationId = passenger.DestinationStation.Id,
-                            State = passenger.State
-                        };
-                        savedVehicle.Passengers.Add(snapshot);
-                        passengers.Add(snapshot);
+                        var snapshot=new PassengerSaveData { OriginStationId=passenger.OriginStation.Id, DestinationStationId=passenger.DestinationStation.Id, State=passenger.State };
+                        savedVehicle.Passengers.Add(snapshot); passengers.Add(snapshot);
                     }
                 }
                 savedTrain.Vehicles.Add(savedVehicle);
             }
             data.Trains.Add(savedTrain);
         }
-
         Directory.CreateDirectory(SaveSlotContext.ActiveSlotDirectory!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
-        File.WriteAllText(Path.Combine(SaveSlotContext.ActiveSlotDirectory!, "passengers.json"),
-            JsonSerializer.Serialize(new { schemaVersion = 2, passengers }, Options));
+        File.WriteAllText(FilePath,JsonSerializer.Serialize(data,Options));
+        File.WriteAllText(Path.Combine(SaveSlotContext.ActiveSlotDirectory!,"passengers.json"),JsonSerializer.Serialize(new { schemaVersion=2, passengers },Options));
     }
 
     public static void Load(TrainManager trainManager, SignalController signals, BlockController blocks, StationController stations, GameClock clock)
     {
-        if (!File.Exists(FilePath)) throw new FileNotFoundException("trains.json is missing.", FilePath);
-        var data = JsonSerializer.Deserialize<RuntimeSaveData>(File.ReadAllText(FilePath), Options)
-            ?? throw new InvalidDataException("trains.json is empty or invalid.");
-        if (data.SchemaVersion != 1 && data.SchemaVersion != 2)
-            throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
+        if (!File.Exists(FilePath)) throw new FileNotFoundException("trains.json is missing.",FilePath);
+        var data=JsonSerializer.Deserialize<RuntimeSaveData>(File.ReadAllText(FilePath),Options) ?? throw new InvalidDataException("trains.json is empty or invalid.");
+        if(data.SchemaVersion!=1&&data.SchemaVersion!=2)throw new InvalidDataException($"Unsupported trains schema version: {data.SchemaVersion}.");
+        trainManager.ClearAll(); trainManager.Update(0f);
 
-        trainManager.ClearAll();
-        trainManager.Update(0f);
-
-        foreach (TrainSaveData savedTrain in data.Trains)
+        foreach(TrainSaveData savedTrain in data.Trains)
         {
-            var vehicles = new List<Vehicle>();
-            foreach (VehicleSaveData savedVehicle in savedTrain.Vehicles)
+            var vehicles=new List<Vehicle>();
+            foreach(VehicleSaveData savedVehicle in savedTrain.Vehicles)
             {
                 VehicleParameters p;
-                if (savedVehicle.MassTons > 0f && savedVehicle.LengthMeters > 0f)
-                {
-                    p = VehicleParameters.CreatePhysical(
-                        savedVehicle.MaxSpeed * 3.6f,
-                        savedVehicle.Acceleration,
-                        savedVehicle.Braking,
-                        savedVehicle.MassTons,
-                        savedVehicle.LengthMeters,
-                        savedVehicle.Length,
-                        savedVehicle.MassCoefficient,
-                        savedVehicle.TechnicalCondition);
-                }
+                if(savedVehicle.MassTons>0f&&savedVehicle.LengthMeters>0f)
+                    p=VehicleParameters.CreatePhysical(savedVehicle.MaxSpeed*3.6f,savedVehicle.Acceleration,savedVehicle.Braking,savedVehicle.MassTons,savedVehicle.LengthMeters,savedVehicle.Length,savedVehicle.MassCoefficient,savedVehicle.TechnicalCondition);
                 else
-                {
-                    p = new VehicleParameters(
-                        savedVehicle.MaxSpeed,
-                        savedVehicle.AccelerationCoefficient,
-                        savedVehicle.BrakingCoefficient,
-                        savedVehicle.Mass,
-                        savedVehicle.Length,
-                        savedVehicle.MassCoefficient,
-                        savedVehicle.TechnicalCondition);
-                }
+                    p=new VehicleParameters(savedVehicle.MaxSpeed,savedVehicle.AccelerationCoefficient,savedVehicle.BrakingCoefficient,savedVehicle.Mass,savedVehicle.Length,savedVehicle.MassCoefficient,savedVehicle.TechnicalCondition);
 
-                Vehicle vehicle = string.Equals(savedVehicle.Kind, "Locomotive", StringComparison.OrdinalIgnoreCase)
-                    ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type, true), p, savedVehicle.ShortName)
-                    : new Wagon(p, savedVehicle.ShortName, Enum.Parse<WagonType>(savedVehicle.Type, true), savedVehicle.PassengerCapacity, savedVehicle.ServiceRoute);
-                vehicle.Orientation = savedVehicle.Orientation;
-                if (vehicle is Wagon wagon && savedVehicle.Schedule != null)
+                Vehicle vehicle=string.Equals(savedVehicle.Kind,"Locomotive",StringComparison.OrdinalIgnoreCase)
+                    ? new Locomotive(Enum.Parse<LocomotiveType>(savedVehicle.Type,true),p,savedVehicle.ShortName)
+                    : new Wagon(p,savedVehicle.ShortName,Enum.Parse<WagonType>(savedVehicle.Type,true),savedVehicle.PassengerCapacity,savedVehicle.ServiceRoute);
+                vehicle.Orientation=savedVehicle.Orientation;
+                if(vehicle is Locomotive locomotive && savedVehicle.LocomotiveSchedule!=null) locomotive.Schedule=savedVehicle.LocomotiveSchedule.Clone();
+                if(vehicle is Wagon wagon&&savedVehicle.Schedule!=null)
                 {
                     wagon.SetSchedule(savedVehicle.Schedule);
-                    if (savedVehicle.ScheduleRuntime != null)
+                    if(savedVehicle.ScheduleRuntime!=null)
                     {
-                        wagon.ScheduleRuntime.ScheduleId = savedVehicle.ScheduleRuntime.ScheduleId;
-                        wagon.ScheduleRuntime.CycleNumber = savedVehicle.ScheduleRuntime.CycleNumber;
-                        wagon.ScheduleRuntime.CurrentPointIndex = savedVehicle.ScheduleRuntime.CurrentPointIndex;
-                        wagon.ScheduleRuntime.State = savedVehicle.ScheduleRuntime.State;
-                        wagon.ScheduleRuntime.DelaySeconds = savedVehicle.ScheduleRuntime.DelaySeconds;
-                        wagon.ScheduleRuntime.LastObservedArrivalSeconds = savedVehicle.ScheduleRuntime.LastObservedArrivalSeconds;
-                        wagon.ScheduleRuntime.LastObservedDay = savedVehicle.ScheduleRuntime.LastObservedDay;
-                        wagon.ScheduleRuntime.DwellUntilSeconds = savedVehicle.ScheduleRuntime.DwellUntilSeconds;
+                        wagon.ScheduleRuntime.ScheduleId=savedVehicle.ScheduleRuntime.ScheduleId; wagon.ScheduleRuntime.CycleNumber=savedVehicle.ScheduleRuntime.CycleNumber; wagon.ScheduleRuntime.CurrentPointIndex=savedVehicle.ScheduleRuntime.CurrentPointIndex; wagon.ScheduleRuntime.State=savedVehicle.ScheduleRuntime.State; wagon.ScheduleRuntime.DelaySeconds=savedVehicle.ScheduleRuntime.DelaySeconds; wagon.ScheduleRuntime.LastObservedArrivalSeconds=savedVehicle.ScheduleRuntime.LastObservedArrivalSeconds; wagon.ScheduleRuntime.LastObservedDay=savedVehicle.ScheduleRuntime.LastObservedDay; wagon.ScheduleRuntime.DwellUntilSeconds=savedVehicle.ScheduleRuntime.DwellUntilSeconds;
                     }
                 }
                 vehicles.Add(vehicle);
             }
-
-            var train = new TrainModel(new Vector2(savedTrain.X, savedTrain.Y), savedTrain.Direction, savedTrain.Speed, vehicles);
-            train.SetMap(trainManager.Map);
-            train.SetSignalController(signals);
-            train.SetBlockController(blocks);
-            train.DistanceAlongTrack = savedTrain.DistanceAlongTrack;
-            train.RestoreTravelDirection(savedTrain.IsReversed);
-            trainManager.Add(train);
+            var train=new TrainModel(new Vector2(savedTrain.X,savedTrain.Y),savedTrain.Direction,savedTrain.Speed,vehicles);
+            train.SetMap(trainManager.Map); train.SetSignalController(signals); train.SetBlockController(blocks); train.DistanceAlongTrack=savedTrain.DistanceAlongTrack; train.RestoreTravelDirection(savedTrain.IsReversed); trainManager.Add(train);
         }
-
         trainManager.Update(0f);
 
-        foreach (TrainSaveData savedTrain in data.Trains)
+        foreach(TrainSaveData savedTrain in data.Trains)
         {
-            TrainModel? train = trainManager.Trains.FirstOrDefault(x => x.Position == new Vector2(savedTrain.X, savedTrain.Y));
-            if (train == null) continue;
-            for (int i = 0; i < savedTrain.Vehicles.Count && i < train.Composition.Vehicles.Count; i++)
+            TrainModel? train=trainManager.Trains.FirstOrDefault(x=>x.Position==new Vector2(savedTrain.X,savedTrain.Y));
+            if(train==null)continue;
+            var savedLoco=savedTrain.Vehicles.FirstOrDefault(v=>string.Equals(v.Kind,"Locomotive",StringComparison.OrdinalIgnoreCase));
+            if(savedLoco?.LocomotiveScheduleRuntime!=null&&train.LocomotiveSchedule!=null)
             {
-                if (train.Composition.Vehicles[i] is not Wagon wagon) continue;
-                foreach (PassengerSaveData savedPassenger in savedTrain.Vehicles[i].Passengers)
+                train.LocomotiveScheduleRuntime?.Reset(savedLoco.LocomotiveScheduleRuntime.ScheduleId);
+                var runtime=train.LocomotiveScheduleRuntime;
+                if(runtime!=null){runtime.CycleNumber=savedLoco.LocomotiveScheduleRuntime.CycleNumber;runtime.CurrentPointIndex=savedLoco.LocomotiveScheduleRuntime.CurrentPointIndex;runtime.State=savedLoco.LocomotiveScheduleRuntime.State;runtime.DelaySeconds=savedLoco.LocomotiveScheduleRuntime.DelaySeconds;runtime.LastObservedArrivalSeconds=savedLoco.LocomotiveScheduleRuntime.LastObservedArrivalSeconds;runtime.LastObservedDay=savedLoco.LocomotiveScheduleRuntime.LastObservedDay;runtime.RequiredDepartureSeconds=savedLoco.LocomotiveScheduleRuntime.RequiredDepartureSeconds;}
+            }
+            for(int i=0;i<savedTrain.Vehicles.Count&&i<train.Composition.Vehicles.Count;i++)
+            {
+                if(train.Composition.Vehicles[i] is not Wagon wagon)continue;
+                foreach(PassengerSaveData savedPassenger in savedTrain.Vehicles[i].Passengers)
                 {
-                    if (savedPassenger.State != PassengerState.OnBoard) continue;
-                    Station? origin = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.OriginStationId);
-                    Station? destination = stations.Stations.FirstOrDefault(s => s.Id == savedPassenger.DestinationStationId);
-                    if (origin == null || destination == null) continue;
-                    var passenger = new Passenger(origin, destination);
-                    wagon.RestorePassenger(passenger);
+                    if(savedPassenger.State!=PassengerState.OnBoard)continue;
+                    Station? origin=stations.Stations.FirstOrDefault(s=>s.Id==savedPassenger.OriginStationId); Station? destination=stations.Stations.FirstOrDefault(s=>s.Id==savedPassenger.DestinationStationId);
+                    if(origin==null||destination==null)continue; wagon.RestorePassenger(new Passenger(origin,destination));
                 }
             }
         }
-
-        clock.SetTime(data.GameDay, data.GameTimeSeconds);
+        clock.SetTime(data.GameDay,data.GameTimeSeconds);
     }
 }
