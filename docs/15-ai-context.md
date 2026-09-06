@@ -2,15 +2,13 @@
 
 ## Current development line
 
-**RailDispatchMono `0.2.1`** is the current development snapshot. The 0.2.1 line rebuilds the Myra gameplay HUD into one coherent operational dashboard while preserving the 0.2.0 timetable, block, signal and player-control contracts.
+**RailDispatchMono `0.2.3`** is the current development snapshot. The 0.2.3 line adds an operational dispatcher HUD and explicit player intervention while preserving the timetable, block, signal and player-control contracts from 0.2.2.
 
 ## HUD contract
 
-`MyraGameplayView` is the single gameplay HUD surface mounted by `MyraUIManager`. It presents global status, infrastructure tools, selected-train operations, diagnostics, traffic, stations and wagons in one hierarchy.
+`MyraGameplayView` is the single gameplay HUD surface mounted by `MyraUIManager`. It presents global status, infrastructure tools, selected-train operations, dispatcher state, traffic, stations and wagons in one hierarchy.
 
-The centre column is flexible. Side rails have stable widths. Lists scroll and labels wrap. The UI does not own domain state.
-
-Selecting a train focuses the camera and exposes speed, consist Vmax, effective signal target, direction, dispatcher state, locomotive timetable state and RadioStop diagnostics.
+Selecting a train focuses the camera and exposes timetable point, next point, ETA, required departure, delay, dispatcher state and RadioStop diagnostics. The HUD provides explicit dispatcher actions but does not directly mutate physical infrastructure.
 
 ## Passenger/station contract
 
@@ -18,13 +16,15 @@ Selecting a train focuses the camera and exposes speed, consist Vmax, effective 
 
 ## Locomotive timetable contract
 
-`Locomotive.Schedule` owns an optional `LocomotiveSchedule`. `LocomotiveSchedulePoint` contains station, expected arrival and required departure. `LocomotiveScheduleRuntime` stores current point, cycle, actual arrival, delay and required departure.
+`Locomotive.Schedule` owns an optional `LocomotiveSchedule`. `LocomotiveSchedulePoint` contains station, expected arrival and required departure. `LocomotiveScheduleRuntime` stores current point, cycle, actual arrival/departure, travel duration, delay and required departure.
 
 Early arrival does not produce early departure. The timetable is cyclic. `TrainSchedule`/`ScheduleStorage` schema is `2`.
 
 ## Dispatcher/block contract
 
-`RailwayDispatcher` arbitrates the next connected existing `Block` on a first-come-first-served basis. It can hold automatic movement when the next block is occupied or reserved by another train.
+`RailwayDispatcher` arbitrates the next connected existing `Block` on a first-come-first-served basis. Requests retain target block and request timestamp; FCFS ordering is local to the requested block.
+
+F6 calls `RailwayDispatcher.ForceProceed`. This bypasses dispatcher arbitration for the selected train only. It does not clear physical occupancy, alter signals or move switches. Route release operates through `RailwayDispatcher.NotifyReleased`.
 
 The dispatcher does not set switches and does not change signal aspects. The player remains responsible for infrastructure configuration and unresolved operational situations.
 
@@ -32,7 +32,7 @@ The dispatcher does not set switches and does not change signal aspects. The pla
 
 `CouplingService` is authoritative. `Composition.Vehicles` is physical order and is never reversed by coupling or decoupling. Coupling/decoupling remain manual.
 
-F6 is manual shunting. F7 changes travel direction only at `0 km/h`. RadioStop remains a hard guard for normal automatic movement. Existing rigid-consist, trajectory, acceleration, braking and Vmax contracts remain unchanged.
+F6 is now the explicit dispatcher override. F7 changes travel direction only at `0 km/h`. RadioStop remains a hard guard for normal automatic movement. Existing rigid-consist, trajectory, acceleration, braking and Vmax contracts remain unchanged.
 
 ## Architecture rules
 
@@ -53,7 +53,7 @@ F6 is manual shunting. F7 changes travel direction only at `0 km/h`. RadioStop r
 
 ## Verification
 
-No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.1 specifically, verify 1600x900 and resized windows, long station names, multiple trains/wagons, expanded station passenger summaries and the diagnostics panel.
+No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.3 specifically, verify F6 override, F9 timetable editing, F10 diagnostics, route release, AUTO/RĘCZ switching, multiple trains competing for one block, delay display and resized Myra layouts.
 
 ## AI rule
 
