@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Save;
@@ -24,6 +25,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     private GameplayScreen? _gameplay;
     private MyraGameplayView? _gameplayView;
     private double _gameplayUiRefreshTimer;
+    private KeyboardState _previousKeyboard;
 
     public static bool IsMobile => false;
     public static bool IsDesktop => true;
@@ -65,17 +67,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
         string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal) ? request[4..] : request;
         SaveSlotService.Activate(slotDirectory);
-
         if (_mainMenu != null)
         {
             _screenManager.RemoveScreen(_mainMenu);
             _mainMenu = null;
         }
-
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
         _screenManager.AddScreen(_gameplay, null);
         if (loadExisting) _gameplay.LoadSavedGame();
-
         _gameplayView = new MyraGameplayView(
             speed => _myraUI.QueueAction(() => GameClock.Current?.SetSpeed(speed)),
             train => _myraUI.QueueAction(() => FocusTrain(train)),
@@ -90,9 +89,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     {
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
-            camera.Position = train.Position - new Vector2(
-                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
-                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
+            camera.Position = train.Position - new Vector2(GraphicsDevice.Viewport.Width / (2f * camera.Zoom), GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
     }
 
     private void FocusStation(Station station)
@@ -100,12 +97,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
         {
-            Vector2 center = new(
-                station.Position.X + station.Width / 2f,
-                station.Position.Y + station.Height / 2f);
-            camera.Position = center - new Vector2(
-                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
-                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
+            Vector2 center = new(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f);
+            camera.Position = center - new Vector2(GraphicsDevice.Viewport.Width / (2f * camera.Zoom), GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
         }
     }
 
@@ -123,6 +116,17 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         modeField?.SetValue(input, !(bool)(modeField.GetValue(input) ?? false));
     }
 
+    private void OpenLocomotiveScheduleEditor()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        FieldInfo? selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (selectedField?.GetValue(_gameplayView) is not Train train || train.Composition.Locomotive == null) return;
+        var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController;
+        if (stations == null) return;
+        var editor = new MyraLocomotiveScheduleView(train, stations, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        _myraUI.SetRoot(editor.Root);
+    }
+
     private T? GetGameplayField<T>(string fieldName) where T : class
     {
         if (_gameplay == null) return null;
@@ -135,8 +139,10 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     protected override void Update(GameTime gameTime)
     {
         _myraUI.Update(gameTime);
+        KeyboardState keyboard = Keyboard.GetState();
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
+            if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
             if (_gameplayUiRefreshTimer >= 0.5d)
             {
@@ -144,6 +150,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
                 _gameplayView.Refresh();
             }
         }
+        _previousKeyboard = keyboard;
         base.Update(gameTime);
     }
 
