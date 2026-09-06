@@ -13,39 +13,56 @@
 - `LineClass.Regional` → cienka.
 - `LineClass.Mainline` → grubsza.
 - `LineClass.Magistral` → najgrubsza.
-- `TrackType` dodatkowo delikatnie koryguje grubość: bocznica jest wizualnie lżejsza, tor zasadniczy zachowuje pełną grubość.
+- `TrackType` dodatkowo delikatnie koryguje grubość.
 
-Kolor oznacza trakcję, a grubość klasę linii. Dzięki temu oba wymiary są widoczne jednocześnie bez dokładania kolejnych ikon na każdy segment.
+Kolor bazowy oznacza trakcję, a grubość klasę linii. Nazwane linie otrzymują dodatkowy kolorowy kontur, dzięki czemu nie zasłaniają informacji o trakcji.
 
-## Grupy szlaków / linii kolejowych
+Aktywne zaznaczenie torów jest oznaczane białym konturem.
 
-Dodano domenowy `RailwayLine` i `RailwayLineManager`.
+## Zaznaczanie wielu torów
 
-Grupa jest logiczną kolekcją segmentów toru i nie zastępuje:
+W trybie budowy `None`:
 
-- bloków;
-- sygnałów;
-- zwrotnic;
-- topologii ruchowej;
-- rozkładów jazdy.
+- LPM na istniejącym torze — nowe zaznaczenie;
+- Shift+LPM — dodanie toru do zaznaczenia;
+- Ctrl+LPM — przełączenie toru w zaznaczeniu.
 
-Manager udostępnia przygotowane operacje:
+F11 otwiera edytor nazwanych linii pracujący na tym zaznaczeniu.
 
-- tworzenie grupy z listy segmentów;
-- wyszukiwanie grupy zawierającej segment;
-- przypisywanie/odłączanie segmentów;
-- masową zmianę `TrackType`, `LineClass` i `TractionSystem` dla całej grupy;
-- zebranie połączonego obszaru torów metodą flood-fill od wskazanego segmentu.
+## Nazwane linie kolejowe
 
-To jest podstawa pod edycję masową: gracz będzie mógł traktować np. `Wrocław–Opole` jako jeden szlak i zmienić jego parametry jednym działaniem, zamiast edytować każdy segment osobno.
+`RailwayLine` jest player-facing logiczną kolekcją segmentów toru. `RailwayLineManager` obsługuje:
 
-## TrackType
+- tworzenie nazwanej linii;
+- wybór istniejącej linii;
+- dodawanie/usuwanie zaznaczenia z linii;
+- usuwanie linii bez usuwania torów;
+- masową zmianę `TrackType`, `LineClass` i `TractionSystem`;
+- zaznaczenie całego połączonego obszaru przez istniejącą topologię toru.
 
-W 0.2.5 pozostaje rozróżnieniem eksploatacyjnym `Mainline`, `Secondary`, `Siding`, `Platform`. Jego główną funkcją jest teraz czytelność mapy i przygotowanie do przyszłych zasad infrastruktury. Nie dodano sztucznych ograniczeń ruchu tylko dlatego, że segment ma inny typ.
+Linia nie zastępuje bloków, sygnałów, zwrotnic, tras ani rozkładów jazdy.
+
+## Ekran F11
+
+`MyraRailwayLineView` daje jednocześnie:
+
+- pole nazwy i tworzenie linii z zaznaczenia;
+- listę istniejących linii;
+- wybór i zaznaczenie linii na mapie;
+- dodawanie/usuwanie zaznaczenia z wybranej linii;
+- cykliczny wybór `TrackType`, `LineClass` i `TractionSystem`;
+- masową zmianę parametrów na zaznaczeniu albo całej linii;
+- wybór połączonego obszaru torów.
+
+## Zapis
+
+Named lines są częścią `map.json` od schematu `3`. Zapisy przechowują ID, nazwę, indeks koloru i listę pozycji torów. Usunięcie fizycznego toru automatycznie usuwa jego pozycję ze wszystkich linii.
+
+Stare schematy map nie są obecnie obsługiwane — zgodnie z zasadą braku wymogu kompatybilności w tych wersjach rozwojowych.
 
 ## Profil rozgrywki
 
-Pozostaje wariant B: przystępna symulacja. System pokazuje konsekwencje i daje narzędzia masowej konfiguracji, ale nie podejmuje za gracza decyzji o przebudowie sieci.
+Pozostaje wariant B: przystępna symulacja. System daje graczowi narzędzia do szybkiego oznaczania i przebudowy parametrów infrastruktury, ale nie naprawia automatycznie tras ani nie podejmuje za gracza decyzji eksploatacyjnych.
 
 ## Roadmapa
 
@@ -53,4 +70,4 @@ Pozostaje wariant B: przystępna symulacja. System pokazuje konsekwencje i daje 
 
 ## Weryfikacja
 
-Nie wykonano kompilacji Windows ani testu live gameplay. Po pobraniu należy sprawdzić renderowanie wszystkich trzech stanów trakcji, różnice grubości klas linii, zapis/odczyt oraz zachowanie istniejących bloków, sygnałów, zwrotnic i F6.
+Nie wykonano kompilacji Windows ani testu live gameplay. Po pobraniu należy sprawdzić F11, wielokrotne zaznaczanie, kontury linii, zapis/odczyt schematu 3 oraz zachowanie istniejących bloków, sygnałów, zwrotnic i F6.
