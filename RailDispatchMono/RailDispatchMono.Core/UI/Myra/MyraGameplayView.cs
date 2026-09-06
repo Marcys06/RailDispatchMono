@@ -142,6 +142,6 @@ internal sealed class MyraGameplayView
     private static Grid ListGrid(int width) => new() { Width = width, HorizontalAlignment = HorizontalAlignment.Left, RowSpacing = 2 };
     private static Label Header(string text) => new() { Text = text, Wrap = true };
     private static Button Button(string text, int width) => new() { Content = new Label { Text = text, Wrap = true }, Width = width };
-    private static void Add(Grid grid, string text, Action action) { var b = Button(text, grid.Width - 5); b.Click += (_, _) => action(); Grid.SetRow(b, grid.Widgets.Count); grid.RowsProportions.Add(new Proportion(ProportionType.Auto)); grid.Widgets.Add(b); }
+    private static void Add(Grid grid, string text, Action action) { int width = grid.Width ?? 335; var b = Button(text, Math.Max(1, width - 5)); b.Click += (_, _) => action(); Grid.SetRow(b, grid.Widgets.Count); grid.RowsProportions.Add(new Proportion(ProportionType.Auto)); grid.Widgets.Add(b); }
     private static string FormatDelay(int seconds) { var sign = seconds < 0 ? "-" : "+"; var value = Math.Abs(seconds); return $"{sign}{value / 60:00}:{value % 60:00}"; }
 }
