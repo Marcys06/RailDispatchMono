@@ -36,7 +36,6 @@ public sealed class TrackRenderer
         if (_pixel is null || !IsInsideMap(position)) return;
         var cellPosition = new Vector2(position.X, position.Y);
         spriteBatch.Draw(_pixel, cellPosition, null, Color.Yellow * 0.18f, 0f, Vector2.Zero, Vector2.One, SpriteEffects.None, 0f);
-
         TrackGeometry geometry;
         TrackConnections connections;
         if (mode == TrackBuildMode.Straight)
@@ -61,14 +60,9 @@ public sealed class TrackRenderer
             geometry = TrackGeometry.Junction;
             connections = GetJunctionConnections(junctionType);
         }
-        else if (mode == TrackBuildMode.Signal)
-        {
-            DrawSignalPreview(spriteBatch, cellPosition);
-            return;
-        }
+        else if (mode == TrackBuildMode.Signal) { DrawSignalPreview(spriteBatch, cellPosition); return; }
         else return;
-
-        DrawTrackLines(spriteBatch, position, geometry, connections, true);
+        DrawTrackLines(spriteBatch, position, geometry, connections, true, TrackType.Mainline, LineClass.Mainline, TractionSystem.None);
     }
 
     private static TrackConnections GetJunctionConnections(JunctionType type) => type switch
@@ -90,7 +84,6 @@ public sealed class TrackRenderer
 
     private void DrawSignalPreview(SpriteBatch spriteBatch, Vector2 cellPosition)
     {
-        if (_pixel is null) return;
         Vector2 center = cellPosition + new Vector2(0.5f, 0.5f);
         float radius = 0.3f, thickness = 0.04f;
         const int segments = 20;
@@ -115,28 +108,55 @@ public sealed class TrackRenderer
     {
         foreach (var track in _map.Tracks.Values)
             if (track.IsJunction) DrawJunctionTrack(spriteBatch, track);
-            else DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false);
+            else DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, track.LineClass, track.Traction);
     }
 
-    private void DrawTrackLines(SpriteBatch spriteBatch, MapPosition position, TrackGeometry geometry, TrackConnections connections, bool preview)
+    private void DrawTrackLines(SpriteBatch spriteBatch, MapPosition position, TrackGeometry geometry, TrackConnections connections, bool preview, TrackType type, LineClass lineClass, TractionSystem traction)
     {
         float x = position.X, y = position.Y, centerX = x + 0.5f, centerY = y + 0.5f;
-        Color color = geometry == TrackGeometry.Curve ? Color.Orange : Color.Black;
+        Color color = GetTractionColor(traction);
+        float thickness = GetLineThickness(lineClass, type);
         if (preview) color *= 0.5f;
-        if (connections.HasFlag(TrackConnections.North)) DrawLine(spriteBatch, centerX, centerY, centerX, y, color, 0.12f);
-        if (connections.HasFlag(TrackConnections.East)) DrawLine(spriteBatch, centerX, centerY, x + 1f, centerY, color, 0.12f);
-        if (connections.HasFlag(TrackConnections.South)) DrawLine(spriteBatch, centerX, centerY, centerX, y + 1f, color, 0.12f);
-        if (connections.HasFlag(TrackConnections.West)) DrawLine(spriteBatch, centerX, centerY, x, centerY, color, 0.12f);
+        if (connections.HasFlag(TrackConnections.North)) DrawLine(spriteBatch, centerX, centerY, centerX, y, color, thickness);
+        if (connections.HasFlag(TrackConnections.East)) DrawLine(spriteBatch, centerX, centerY, x + 1f, centerY, color, thickness);
+        if (connections.HasFlag(TrackConnections.South)) DrawLine(spriteBatch, centerX, centerY, centerX, y + 1f, color, thickness);
+        if (connections.HasFlag(TrackConnections.West)) DrawLine(spriteBatch, centerX, centerY, x, centerY, color, thickness);
     }
 
     private void DrawJunctionTrack(SpriteBatch spriteBatch, TrackCell track)
     {
-        DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false);
+        DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, track.LineClass, track.Traction);
         float centerX = track.Position.X + 0.5f, centerY = track.Position.Y + 0.5f;
         TrackConnections activeExit = track.IsSwitchedToDiverging ? track.DivergingSide : track.StraightSide;
         Color bladeColor = track.IsSwitchedToDiverging ? Color.Orange : Color.Lime;
         Vector2 end = new Vector2(centerX, centerY) + GetDirectionVector(activeExit) * 0.45f;
-        DrawLine(spriteBatch, centerX, centerY, end.X, end.Y, bladeColor, 0.18f);
+        DrawLine(spriteBatch, centerX, centerY, end.X, end.Y, bladeColor, Math.Max(0.08f, GetLineThickness(track.LineClass, track.Type)));
+    }
+
+    private static Color GetTractionColor(TractionSystem traction) => traction switch
+    {
+        TractionSystem.AC => Color.CornflowerBlue,
+        TractionSystem.DC => Color.OrangeRed,
+        _ => Color.Black
+    };
+
+    private static float GetLineThickness(LineClass lineClass, TrackType type)
+    {
+        float thickness = lineClass switch
+        {
+            LineClass.Local => 0.08f,
+            LineClass.Regional => 0.105f,
+            LineClass.Mainline => 0.13f,
+            LineClass.Magistral => 0.16f,
+            _ => 0.1f
+        };
+        return type switch
+        {
+            TrackType.Siding => thickness * 0.78f,
+            TrackType.Platform => thickness * 1.05f,
+            TrackType.Secondary => thickness * 0.9f,
+            _ => thickness
+        };
     }
 
     private static Vector2 GetDirectionVector(TrackConnections side) => side switch
