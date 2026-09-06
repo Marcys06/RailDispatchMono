@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.2.0] — Operational railway simulation
+**Data:** 2026-09-06
+
+### Locomotive timetable
+
+- Locomotives can own an independent operational timetable.
+- Wagon timetables remain independent and retain their existing wagon ownership model.
+- Timetable arrival is the expected arrival time; departure is the required departure time.
+- An automatically operated locomotive waits at a scheduled station until the required departure time, including when it arrives early.
+- Actual arrival and timetable delay are retained in locomotive runtime state.
+- Locomotive timetables remain cyclic.
+
+### Dispatcher and blocks
+
+- Added first-come-first-served `RailwayDispatcher` arbitration for the existing block chain.
+- Automatic movement is held when the next connected block is occupied or reserved by another train.
+- Block reservations are released after the train enters the reserved block.
+- The dispatcher does not move switches and does not change signal aspects.
+- Existing signal and player-controlled junction systems remain authoritative for infrastructure operation.
+
+### Stations and passengers
+
+- Locomotive timetable execution is integrated with the existing `StationController`.
+- Existing passenger boarding/alighting and station dwell remain active.
+- Passenger ownership remains at the concrete wagon level.
+- Automatic passenger transfers are not introduced.
+
+### Manual gameplay
+
+- F6/manual shunting remains available.
+- F7 reversal remains available.
+- RadioStop semantics remain unchanged.
+- Coupling and decoupling remain manual.
+- The player remains responsible for switches, signal aspects and resolving infrastructure situations that automation cannot solve.
+
+### Persistence
+
+- `TrainSchedule` is now version `2` and can persist an optional locomotive timetable alongside wagon schedules.
+- `ScheduleStorage` document schema is now `2`.
+- Backward compatibility with pre-0.2.0 saves is not required.
+
+### Documentation
+
+- Documentation baseline moved to `0.2.0`.
+- Added `docs/27-current-state-0.2.0.md` as the authoritative current-state snapshot.
+- Added `docs/changelog/0.2.0.md` with the complete milestone contract.
+
 ## [0.1.7b] — Timetable editor UI
 **Data:** 2026-09-04
 
