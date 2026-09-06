@@ -2,9 +2,7 @@
 
 ## Current development line
 
-`0.1.6e` is the current documented development baseline. It builds on the completed `0.1.5pre` movement/consist contract and the `0.1.6c`/`0.1.6d` passenger model.
-
-The important 0.1.6 rule is that a passenger belongs to a concrete `Wagon`, while `Train` is only the current operational grouping of wagons. Coupling and decoupling therefore do not migrate passenger ownership.
+`0.2.0` is the current documented development baseline. It connects the existing station, signal and block systems with an operational locomotive timetable while preserving the player's infrastructure-control role.
 
 ## Core rule
 
@@ -18,25 +16,24 @@ Platform host
     v
 RailDispatchMonoGame
     |
-    +--> GraphicsDeviceManager
-    +--> MyraUIManager
-    |
     v
 ScreenManager
-    |
-    +--> GameScreen instances
-    +--> InputState
-    +--> SpriteBatch / shared resources
     |
     v
 GameplayScreen
     |
-    +--> railway/map services
+    +--> GameMap / railway services
     +--> TrainManager
+    |       +--> Train / TrainMovement
+    |       +--> TrainComposition
+    |       +--> CouplingService
+    |       +--> RailwayDispatcher
+    |
     +--> StationController
+            +--> Locomotive timetable execution
             +--> PassengerManager
-            +--> IPassengerService
-            +--> IPassengerDemandProvider
+            +--> PassengerService
+            +--> station dwell
 ```
 
 ## Ownership
@@ -46,64 +43,87 @@ GameplayScreen
 - ordered physical consist state belongs to `TrainComposition`;
 - coupling validation/mutation belongs to `CouplingService`;
 - station lifecycle, stop/dwell and passenger generation belong to `StationController`;
-- active passenger collection belongs to `PassengerManager`;
-- station passenger exchange policy belongs to `IPassengerService` / `DefaultPassengerService`;
-- passenger destination demand belongs to `IPassengerDemandProvider` / `RandomPassengerDemandProvider`;
-- wagon passenger ownership and service-route acceptance belong to `Wagon`;
-- rolling-stock catalogue data belongs to `Game/RollingStock`;
-- depot ownership belongs to `DepotController`;
+- locomotive operational timetable belongs to `Locomotive.Schedule` and its `Train` runtime;
+- wagon timetable remains owned by `Wagon`;
+- passenger ownership while riding remains at the concrete `Wagon`;
+- railway block occupancy remains owned by `BlockController`/`Block`;
+- block arbitration belongs to `RailwayDispatcher`;
+- signal and junction aspects remain player-controlled;
 - presentation belongs to screens/Myra/renderers;
 - persistence remains behind the existing save services.
 
-## Passenger domain boundary
+## Locomotive timetable
 
-The implemented passenger flow is:
+`LocomotiveSchedule` is separate from `WagonSchedule`. A locomotive timetable contains ordered station points with expected arrival and required departure times.
+
+`TrainSchedule` persists the optional locomotive timetable alongside wagon schedule definitions. `TrainSchedule` version and `ScheduleStorage` document schema are `2`.
+
+The train runtime records actual arrival and delay. Early arrival does not cause an early departure: the locomotive remains stopped until its required departure time. The timetable is cyclic.
+
+## Dispatcher boundary
+
+`RailwayDispatcher` is deliberately not a second signal system. It arbitrates the next already-connected `Block`:
+
+- an occupied next block belonging to another train blocks automatic progress;
+- a reservation belonging to another train blocks automatic progress;
+- the first train processed by the simulation obtains the available reservation;
+- reservations are released after the train enters the reserved block;
+- no switch is changed automatically;
+- no signal aspect is changed automatically by the dispatcher.
+
+This leaves route configuration and signal operation with the player. The dispatcher prevents an automated train from ignoring physical block conflicts; it does not solve an incorrectly configured railway for the player.
+
+## Passenger boundary
+
+The implemented passenger flow remains:
 
 `StationController → PassengerManager → PassengerService → Wagon`
 
-with demand supplied through `IPassengerDemandProvider`.
-
-`Passenger` has fixed origin/destination and runtime state. A boarded passenger records the concrete wagon (`CurrentWagonId`). `PassengerManager.GetOnBoard(Train)` is an operational view over passengers in the wagons currently forming that train; it is not the ownership boundary.
-
-A configured wagon validates its current `TrainRoute` before accepting a passenger. `Wagon.CanContinueJourneyTo(...)` is the explicit route-continuity invariant used by the 0.1.6d model.
-
-`PassengerManager.GetTransferCandidates(Train)` is a diagnostic/future-system seam only. It does not choose a train and does not perform automatic transfers.
-
-Runtime load restores an already-onboard passenger directly into its saved wagon instead of treating the restore as a new station boarding operation.
+`PassengerManager.GetOnBoard(Train)` is an operational view, not an ownership boundary. No automatic passenger-transfer system was added in 0.2.0.
 
 ## Consist and movement contract
 
-The `0.1.5pre` rigid-consist rules remain authoritative:
+The established rigid-consist rules remain authoritative:
 
-- `Composition.Vehicles` is the physical order and is not reversed by F7, coupling or decoupling;
-- F7 changes only travel `Direction` and is accepted at `0 km/h`;
-- vehicle world positions and spacing are preserved at F7;
-- curve movement uses trajectory history and per-vehicle distance/tangent;
-- F6 is manual shunting toward a fixed `3 km/h` and bypasses automatic RadioStop/collision stopping for the targeted train while held;
-- coupling uses a fixed `6 km/h` limit;
-- decoupling requires speed below `6 km/h`.
+- `Composition.Vehicles` is the physical order;
+- F7 changes travel direction without reversing the physical list;
+- vehicle positions and trajectory handling remain under the existing movement model;
+- F6 remains manual shunting;
+- coupling and decoupling remain manual;
+- RadioStop remains an independent safety stop.
 
-## Coupling contract in 0.1.6e
+## Runtime ordering
 
-`CouplingService` is authoritative. Runtime connections are attached to concrete vehicle ends.
+For an automatically operated train, the relevant update order is:
 
-- locomotive insertion/replacement rebuilds adjacent runtime connections;
-- merging clears stale runtime connections and rebuilds the full chain from vehicle order;
-- coupling candidates use only order-preserving `Rear → Front` outer boundaries;
-- decoupling finds the split from adjacent vehicle indices plus the actual runtime connection;
-- locomotive–wagon coupling uses the same compatible coupler contract as wagon–wagon coupling;
-- no passenger migration occurs during merge/split.
-
-## Persistence
-
-Runtime save schema remains version `1`. Rolling-stock short labels are persisted. Runtime coupling connections and passenger runtime state are not persisted as independent runtime graphs; onboard passengers are restored into their saved concrete wagon when represented by the current save data.
+```text
+StationController.BeforeTrainUpdate
+    |
+    +--> locomotive timetable departure gate
+    |
+    +--> RailwayDispatcher block arbitration
+    |
+    v
+existing collision/signal safety
+    |
+    v
+Train.Update
+    |
+    v
+StationController.AfterTrainUpdate
+    |
+    +--> passenger service/dwell
+    +--> locomotive actual-arrival recording
+    +--> dispatcher reservation release
+```
 
 ## Safety and dependency discipline
 
 1. Find the existing owner of state before adding a new manager/service.
-2. Reuse existing managers/models rather than parallel globals.
+2. Reuse existing managers/models rather than parallel systems.
 3. Keep presentation out of domain mutation.
-4. When changing acceleration, braking or Vmax, audit signal stopping and RadioStop.
-5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, `TrainRoute` and the active HUD together.
+4. When changing movement, audit signals, blocks, collision safety and RadioStop.
+5. When changing station/passenger flow, audit `StationController`, `PassengerManager`, `Wagon`, `TrainRoute` and HUD together.
 6. When changing coupling, audit `TrainComposition`, `CouplingService`, vehicle-end connections and passenger ownership together.
 7. When changing constructors/data contracts, inspect save/load and catalogue factories.
+8. When changing timetable behaviour, update this document, the current-state snapshot and the 0.2.0 changelog together.
