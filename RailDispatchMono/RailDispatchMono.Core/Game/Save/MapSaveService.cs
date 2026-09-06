@@ -12,7 +12,7 @@ using RailDispatchMono.Core.Game.Train;
 
 namespace RailDispatchMono.Core.Game.Save;
 
-/// <summary>Infrastructure persistence service. In 0.0.16 it writes inside the active save slot.</summary>
+/// <summary>Infrastructure persistence service for the current map schema.</summary>
 public sealed class MapSaveService
 {
     private const string SaveDirectoryName = "RailDispatchMono";
@@ -43,7 +43,7 @@ public sealed class MapSaveService
 
         var data = new MapSaveData
         {
-            GameVersion = "0.1.4f",
+            GameVersion = "0.2.4",
             Map = new MapInfoSaveData { Width = map.Size.Width, Height = map.Size.Height }
         };
 
@@ -59,7 +59,11 @@ public sealed class MapSaveService
                 SwitchPosition = track.CurrentSwitchPosition,
                 CommonStem = track.CommonStem,
                 StraightConnection = track.StraightConnection,
-                DivergingConnection = track.DivergingConnection
+                DivergingConnection = track.DivergingConnection,
+                Type = track.Type,
+                LineClass = track.LineClass,
+                Traction = track.Traction,
+                WearPercent = track.WearPercent
             });
         }
 
@@ -138,7 +142,7 @@ public sealed class MapSaveService
 
         var data = JsonSerializer.Deserialize<MapSaveData>(File.ReadAllText(MapFilePath), _jsonOptions)
             ?? throw new InvalidDataException("map.json is empty or invalid.");
-        if (data.SchemaVersion != 1) throw new InvalidDataException($"Unsupported map schema version: {data.SchemaVersion}.");
+        if (data.SchemaVersion != 2) throw new InvalidDataException($"Unsupported map schema version: {data.SchemaVersion}.");
         if (data.Map.Width != map.Size.Width || data.Map.Height != map.Size.Height)
             throw new InvalidDataException($"Map size {data.Map.Width}x{data.Map.Height} does not match runtime map {map.Size.Width}x{map.Size.Height}.");
 
@@ -155,6 +159,8 @@ public sealed class MapSaveService
             if (saved.Geometry == TrackGeometry.Junction)
                 track.ConfigureJunction(saved.CommonStem, saved.StraightConnection, saved.DivergingConnection);
             track.SetSwitchPosition(saved.SwitchPosition);
+            track.SetInfrastructure(saved.Type, saved.LineClass, saved.Traction);
+            track.SetWear(saved.WearPercent);
             map.AddTrack(track);
         }
 
