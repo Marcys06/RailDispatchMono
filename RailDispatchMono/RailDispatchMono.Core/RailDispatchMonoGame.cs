@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
+using RailDispatchMono.Core.Game.Map;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Save;
 using RailDispatchMono.Core.Game.Rendering;
@@ -149,6 +150,20 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         _myraUI.SetRoot(view.Root);
     }
 
+    private void OpenTrackInfrastructureEditor()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        Camera? camera = GetGameplayField<Camera>("_camera");
+        GameMap? map = GetGameplayField<GameMap>("_map");
+        TrackBuilder? builder = GetGameplayField<TrackBuilder>("_builder");
+        if (camera == null || map == null || builder == null) return;
+        MouseState mouse = Mouse.GetState();
+        Vector2 world = camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
+        var position = new MapPosition((int)MathF.Floor(world.X), (int)MathF.Floor(world.Y));
+        var editor = new MyraTrackInfrastructureView(map, builder, position, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
+        _myraUI.SetRoot(editor.Root);
+    }
+
     private void RefreshTimetableHud()
     {
         if (_gameplayView == null || _gameplay == null) return;
@@ -204,12 +219,12 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         KeyboardState keyboard = Keyboard.GetState();
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
-            // F6 is the explicit dispatcher override. It does not alter block occupancy or signals.
             if (keyboard.IsKeyDown(Keys.F6) && _previousKeyboard.IsKeyUp(Keys.F6))
             {
                 var selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
                 if (selectedField?.GetValue(_gameplayView) is Train train) RailwayDispatcher.ForceProceed(train);
             }
+            if (keyboard.IsKeyDown(Keys.F8) && _previousKeyboard.IsKeyUp(Keys.F8)) OpenTrackInfrastructureEditor();
             if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
             if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
