@@ -150,6 +150,9 @@ public sealed class GameplayScreen : GameScreen
 
         float deltaTime = _clock.Update(realDelta);
         bool hudHandled = HandleHudInput();
+        bool gameplayUiOpen = ScreenManager?.Game is RailDispatchMonoGame game
+            && game.MyraUI.IsGameplayOverlayOpen;
+
         if (!hudHandled)
         {
             MouseState mouse = Mouse.GetState();
@@ -159,11 +162,13 @@ public sealed class GameplayScreen : GameScreen
             _floatingText.Update(deltaTime);
             _trainDebugger.Update(deltaTime, _trainManager);
             _blockController.Update(deltaTime);
-            _inputManager.Update(gameTime);
+            if (!gameplayUiOpen)
+                _inputManager.Update(gameTime);
         }
         else
         {
-            _inputManager.Update(gameTime);
+            if (!gameplayUiOpen)
+                _inputManager.Update(gameTime);
         }
 
         _previousMouse = Mouse.GetState();
@@ -180,6 +185,8 @@ public sealed class GameplayScreen : GameScreen
         if (_isPaused) return;
         if (ScreenManager?.Game is not RailDispatchMonoGame game) return;
         _isPaused = true;
+        _builder.Mode = TrackBuildMode.None;
+        _spawnArmed = false;
         _pauseView = new MyraPauseView(
             () => game.MyraUI.QueueAction(ResumeGame),
             () => game.MyraUI.QueueAction(SaveMap),
@@ -195,6 +202,7 @@ public sealed class GameplayScreen : GameScreen
         _isPaused = false;
         _pauseView = null;
         if (ScreenManager?.Game is RailDispatchMonoGame game) game.MyraUI.Clear();
+        _builder.Mode = TrackBuildMode.None;
     }
 
     private bool HandleHudInput() => false;
@@ -202,18 +210,10 @@ public sealed class GameplayScreen : GameScreen
 
     private void CreateTestTrack()
     {
-        // Buduję mini-pętlę 4x4 (kwadrat)
-        // Górna krawędź: idziemy na wschód od (8,20) do (12,20)
         for (int x = 8; x < 12; x++) _builder.BuildStraight(new MapPosition(x, 20), true);
-
-        // Prawa krawędź: idziemy na południe od (12,20) do (12,24)
-        for (int y = 20; y < 24; y++) _builder.BuildStraight(new MapPosition(12, y), false); // false = pion
-
-        // Dolna krawędź: idziemy na zachód od (12,24) do (8,24)
+        for (int y = 20; y < 24; y++) _builder.BuildStraight(new MapPosition(12, y), false);
         for (int x = 12; x > 8; x--) _builder.BuildStraight(new MapPosition(x, 24), true);
-
-        // Lewa krawędź: idziemy na północ od (8,24) do (8,20)
-        for (int y = 24; y > 20; y--) _builder.BuildStraight(new MapPosition(8, y), false); // false = pion
+        for (int y = 24; y > 20; y--) _builder.BuildStraight(new MapPosition(8, y), false);
     }
 
     private void SnapshotWagonPassengers()
@@ -319,7 +319,6 @@ public sealed class GameplayScreen : GameScreen
         Vector2 mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
         var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
         if (!vehicleInfo.HasValue) return;
-
         (Train train, int vehicleIndex, Vector2 worldPos) = vehicleInfo.Value;
         Vehicle vehicle = train.Composition.Vehicles[vehicleIndex];
         bool isLoco = vehicle is Locomotive;
@@ -345,7 +344,6 @@ public sealed class GameplayScreen : GameScreen
             linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasażerów:");
             foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
         }
-
         float padding = 8f;
         float lineHeight = _tooltipFont.LineSpacing * 0.65f;
         float width = linesList.Max(line => _tooltipFont.MeasureString(line).X * 0.65f) + padding * 2;
@@ -353,13 +351,14 @@ public sealed class GameplayScreen : GameScreen
         Vector2 position = mouseScreenPos + new Vector2(15, 15);
         if (position.X + width > _graphicsDevice.Viewport.Width) position.X = mouseScreenPos.X - width - 15;
         if (position.Y + height > _graphicsDevice.Viewport.Height) position.Y = mouseScreenPos.Y - height - 15;
-        _spriteBatch.Begin();
-        DrawRect(new Rectangle((int)position.X, (int)position.Y, (int)width, (int)height), bgColor);
-        float y = position.Y + padding;
-        foreach (string line in linesList)
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+        Rectangle rect = new((int)position.X, (int)position.Y, (int)width, (int)height);
+        _spriteBatch.Draw(_pixel, rect, bgColor);
+        Vector2 text = position + new Vector2(padding);
+        for (int i = 0; i < linesList.Count; i++)
         {
-            _spriteBatch.DrawString(_tooltipFont, line, new Vector2(position.X + padding, y), Color.White, 0f, Vector2.Zero, 0.65f, SpriteEffects.None, 0f);
-            y += lineHeight;
+            _spriteBatch.DrawString(_tooltipFont, linesList[i], text, i == 0 ? Color.Yellow : Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+            text.Y += lineHeight;
         }
         _spriteBatch.End();
     }
