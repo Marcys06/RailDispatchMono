@@ -1,4 +1,6 @@
+using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Train;
+using System.Collections.Generic;
 
 namespace RailDispatchMono.Core.Game.RollingStock;
 
@@ -7,6 +9,7 @@ public sealed class LocomotiveDefinition
     public string Id { get; }
     public string DisplayName { get; }
     public TractionType Traction { get; }
+    public IReadOnlySet<TractionSystem> SupportedTractionSystems { get; }
     public LocomotiveType LocomotiveType { get; }
     public float MaxSpeedKmh { get; }
     public float MassTons { get; }
@@ -27,7 +30,8 @@ public sealed class LocomotiveDefinition
         float accelerationMps2,
         float decelerationMps2,
         float massCoefficient = 0.01f,
-        string? texturePath = null)
+        string? texturePath = null,
+        params TractionSystem[] supportedTractionSystems)
     {
         Id = id;
         DisplayName = displayName;
@@ -40,7 +44,12 @@ public sealed class LocomotiveDefinition
         DecelerationMps2 = decelerationMps2;
         MassCoefficient = massCoefficient;
         TexturePath = texturePath;
+        SupportedTractionSystems = new HashSet<TractionSystem>(supportedTractionSystems);
     }
+
+    public bool CanOperateOn(TractionSystem system)
+        => Traction == TractionType.Diesel ||
+           system == TractionSystem.None ? Traction == TractionType.Diesel : SupportedTractionSystems.Contains(system);
 
     public Locomotive CreateVehicle()
     {
@@ -53,6 +62,6 @@ public sealed class LocomotiveDefinition
             1.0f,
             MassCoefficient);
 
-        return new Locomotive(LocomotiveType, parameters, Id);
+        return new Locomotive(LocomotiveType, parameters, Id, Traction, SupportedTractionSystems);
     }
 }
