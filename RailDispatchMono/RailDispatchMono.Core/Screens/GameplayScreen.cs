@@ -152,6 +152,8 @@ public sealed class GameplayScreen : GameScreen
         bool hudHandled = HandleHudInput();
         bool gameplayUiOpen = ScreenManager?.Game is RailDispatchMonoGame game
             && game.MyraUI.IsGameplayOverlayOpen;
+        bool gameplayUiConsumedInput = ScreenManager?.Game is RailDispatchMonoGame uiGame
+            && uiGame.MyraUI.GameplayInputConsumedThisFrame;
 
         if (!hudHandled)
         {
@@ -162,12 +164,12 @@ public sealed class GameplayScreen : GameScreen
             _floatingText.Update(deltaTime);
             _trainDebugger.Update(deltaTime, _trainManager);
             _blockController.Update(deltaTime);
-            if (!gameplayUiOpen)
+            if (!gameplayUiOpen && !gameplayUiConsumedInput)
                 _inputManager.Update(gameTime);
         }
         else
         {
-            if (!gameplayUiOpen)
+            if (!gameplayUiOpen && !gameplayUiConsumedInput)
                 _inputManager.Update(gameTime);
         }
 
