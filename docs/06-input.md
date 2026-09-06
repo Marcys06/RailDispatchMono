@@ -26,6 +26,8 @@
 
 When any temporary Myra GUI replaces the gameplay root, gameplay/world mouse input is completely suspended.
 
+Additionally, the frame in which a queued Myra UI action is dispatched is consumed by the GUI. This is required for actions such as selecting `Tor prosty`: the click must not first change the build mode and then be interpreted by `InputManager` as a world click in the same frame.
+
 This means clicks on the map do **not**:
 
 - build a track even if build mode `1` was selected;
@@ -34,9 +36,9 @@ This means clicks on the map do **not**:
 - toggle signals or junctions;
 - move or zoom the gameplay camera through world input.
 
-The GUI itself continues to receive the mouse normally. Closing the GUI returns to gameplay with build mode reset to `None`, preventing the click used to close a window from immediately placing a track.
+The GUI itself continues to receive the mouse normally. Closing a temporary GUI returns to the gameplay root and clears the temporary-root state. Build mode is reset to `None` when F8/F9/F10/F11 are opened, preventing a stale construction mode from surviving an editor session.
 
-This rule is centralized through `MyraUIManager.IsGameplayOverlayOpen` and enforced by `GameplayScreen` before calling `InputManager.Update()`.
+This rule is centralized through `MyraUIManager.IsGameplayOverlayOpen` and `MyraUIManager.GameplayInputConsumedThisFrame`, and enforced by `GameplayScreen` before calling `InputManager.Update()`.
 
 ## Operational shortcuts
 
@@ -84,4 +86,4 @@ World clicks are converted through the existing camera coordinate helpers. Do no
 
 ## AI rule
 
-Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding general gameplay controls. F6/F8/F9/F10/F11 operational views are owned by `RailDispatchMonoGame` and Myra while domain state remains in the relevant managers/models. Keep one owner for each action. Any new gameplay GUI must use the same world-input lock contract: while the GUI replaces the gameplay root, `InputManager.Update()` must not process world input.
+Do not introduce a second input singleton or coordinate system. Extend the existing `InputManager`/`InputState` flow when adding general gameplay controls. F6/F8/F9/F10/F11 operational views are owned by `RailDispatchMonoGame` and Myra while domain state remains in the relevant managers/models. Keep one owner for each action. Any new gameplay GUI must use the same world-input lock contract: while the GUI replaces the gameplay root, `InputManager.Update()` must not process world input; when a queued GUI action executes, that gameplay frame is consumed as well.
