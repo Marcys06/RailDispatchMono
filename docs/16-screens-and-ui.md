@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.3` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.2.4` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -22,35 +22,48 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 - `MyraGameplayView`
 - `MyraDepotView`
 - `MyraLocomotiveScheduleView` — locomotive timetable editor
+- `MyraTrackInfrastructureView` — F8 track infrastructure editor
 - `MyraRailwayDiagnosticsView` — full infrastructure/dispatcher diagnostics
 - `MyraUIManager`
 
-There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the locomotive timetable editor or diagnostics view and restores it on close.
+There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the locomotive timetable editor, infrastructure editor or diagnostics view and restores it on close.
 
-## 0.2.3 gameplay HUD and operational views
+## 0.2.4 gameplay controls
 
-`MyraGameplayView` is the operational dashboard. The train list exposes:
+- `F6` — dispatcher-only force passage;
+- `F8` — edit infrastructure metadata of the track under the mouse cursor;
+- `F9` — locomotive timetable editor;
+- `F10` — railway diagnostics.
 
-- `AUTO` / `RĘCZ` mode;
-- current timetable point `n/m`;
-- delay and speed;
-- selected-train marker.
+F8 changes only infrastructure metadata: track role, line class and traction (`BRAK`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
 
-The selected-train panel exposes current point, next point, ETA, required departure, delay and dispatcher state. It also contains explicit actions:
+New track built through `TrackBuilder` uses the builder's selected infrastructure defaults. The domain also exposes metadata-only configuration methods for existing track cells.
 
-- `WYMUSZENIE [F6]` — dispatcher-only override;
-- `ZWOLNIJ TRASĘ` — dispatcher release boundary;
-- `AUTO / RĘCZ` — toggle locomotive timetable execution without deleting the timetable.
+## 0.2.3 operational HUD retained
 
-Operational notification text reports selected-train waiting, route grant and delay states. Notifications are derived from domain state and do not own it.
+`MyraGameplayView` remains the operational dashboard. The train list exposes `AUTO` / `RĘCZ`, timetable point `n/m`, delay and speed. The selected-train panel exposes current point, next point, ETA, required departure, delay and dispatcher state.
 
-### Locomotive timetable editor — F9
+`WYMUSZENIE [F6]`, `ZWOLNIJ TRASĘ` and `AUTO / RĘCZ` remain explicit player actions. F6 does not clear physical block occupancy or change signal aspects.
+
+## Locomotive timetable editor — F9
 
 After selecting a train with a locomotive, **F9** opens `MyraLocomotiveScheduleView`.
 
 The editor supports adding/removing timetable points, station assignment, independent arrival/departure adjustment, reordering, enable/disable and validation before save. Wagon timetables are not edited by this view.
 
-### Railway diagnostics — F10
+## Track infrastructure editor — F8
+
+F8 samples the world position under the mouse cursor and opens `MyraTrackInfrastructureView` for that `TrackCell`.
+
+The editor displays geometry and condition and allows cycling:
+
+- `TrackType`: `Mainline`, `Secondary`, `Siding`, `Platform`;
+- `LineClass`: `Local`, `Regional`, `Mainline`, `Magistral`;
+- `TractionSystem`: `None`, `DC`, `AC`.
+
+The view is deliberately metadata-only. It does not become a second routing, block or signal controller.
+
+## Railway diagnostics — F10
 
 **F10** opens `MyraRailwayDiagnosticsView` and shows:
 
@@ -74,10 +87,11 @@ The diagnostic release action never writes `Block.IsOccupied` directly.
 - `DepotScreen` owns temporary builder state; train ownership remains in `TrainManager`;
 - `InputManager` owns world input and cursor selection;
 - F6 is the explicit dispatcher override;
+- F8 opens infrastructure editing for the cursor track;
 - F9/F10 open operational views;
-- domain managers own simulation state.
+- domain managers/models own simulation and infrastructure state.
 
-F6 does not clear physical block occupancy or change signal aspects. The HUD does not automate switches, signal aspects, coupling/decoupling or passenger transfers.
+The HUD does not automate switches, signal aspects, coupling/decoupling, passenger transfers or route repair.
 
 ## Passenger ownership boundary
 
@@ -85,4 +99,4 @@ F6 does not clear physical block occupancy or change signal aspects. The HUD doe
 
 ## AI rule
 
-Before changing Myra gameplay UI, inspect `MyraGameplayView`, `MyraUIManager`, `GameplayScreen`, `TrainManager`, `StationController`, `RailwayDispatcher`, `LocomotiveSchedule` and `WagonSchedule` together. Keep one Myra `Desktop`, keep domain state outside UI models and update this document plus the current-state/changelog documentation whenever the UI contract changes.
+Before changing Myra gameplay UI, inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `GameplayScreen`, `TrackBuilder`, `TrackCell` and the relevant domain owner together. Keep one Myra `Desktop`, keep domain state outside UI models and update this document plus the current-state/changelog documentation whenever the UI contract changes.
