@@ -37,7 +37,7 @@ F11 otwiera edytor nazwanych linii pracujący na tym zaznaczeniu.
 - wybór istniejącej linii;
 - dodawanie/usuwanie zaznaczenia z linii;
 - usuwanie linii bez usuwania torów;
-- masową zmianę `TrackType`, `LineClass` i `TractionSystem`;
+- masową zmianę `TrackType`, `LineClass`, `TractionSystem`;
 - zaznaczenie całego połączonego obszaru przez istniejącą topologię toru.
 
 Linia nie zastępuje bloków, sygnałów, zwrotnic, tras ani rozkładów jazdy.
@@ -53,6 +53,20 @@ Linia nie zastępuje bloków, sygnałów, zwrotnic, tras ani rozkładów jazdy.
 - cykliczny wybór `TrackType`, `LineClass` i `TractionSystem`;
 - masową zmianę parametrów na zaznaczeniu albo całej linii;
 - wybór połączonego obszaru torów.
+
+## Ochrona wejścia podczas GUI
+
+Każdy tymczasowy ekran Myra jest modalny względem świata gry. `MyraUIManager.IsGameplayOverlayOpen` informuje, że ekran GUI zastąpił główny root gameplayu. W tym stanie `GameplayScreen` nie wywołuje `InputManager.Update()`.
+
+W praktyce kliknięcie myszy w GUI ani poza nim nie może przejść do mapy i:
+
+- postawić toru, nawet jeżeli wcześniej aktywny był tryb `1`;
+- zaznaczyć/odznaczyć torów;
+- usunąć obiektu;
+- zmienić zwrotnicy lub sygnału;
+- przesunąć albo przybliżyć mapy przez world input.
+
+F8/F9/F10/F11 dodatkowo resetują `TrackBuilder.Mode` do `None` przed otwarciem GUI. Po zamknięciu okna nie pozostaje więc uzbrojony tryb budowy, a kliknięcie zamykające GUI nie powoduje budowy toru.
 
 ## Zapis
 
@@ -70,4 +84,4 @@ Pozostaje wariant B: przystępna symulacja. System daje graczowi narzędzia do s
 
 ## Weryfikacja
 
-Nie wykonano kompilacji Windows ani testu live gameplay. Po pobraniu należy sprawdzić F11, wielokrotne zaznaczanie, kontury linii, zapis/odczyt schematu 3 oraz zachowanie istniejących bloków, sygnałów, zwrotnic i F6.
+Nie wykonano kompilacji Windows ani testu live gameplay. Po pobraniu należy sprawdzić F11, wielokrotne zaznaczanie, kontury linii, zapis/odczyt schematu 3, blokadę wejścia świata podczas GUI oraz zachowanie istniejących bloków, sygnałów, zwrotnic i F6.
