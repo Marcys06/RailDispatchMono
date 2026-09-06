@@ -1,8 +1,8 @@
-# Current state — 0.2.5
+# Current state — 0.2.5a
 
 ## Cel wydania
 
-0.2.5 zamienia metadane infrastruktury z 0.2.4 w czytelną warstwę operacyjną i wizualną. Nadal nie dodaje ekonomii ani pełnej fizyki infrastruktury.
+0.2.5 zamienia metadane infrastruktury z 0.2.4 w czytelną warstwę operacyjną i wizualną. 0.2.5a jest poprawką bezpieczeństwa wejścia GUI i nie rozszerza zakresu funkcjonalnego infrastruktury.
 
 ## Wizualizacja torów
 
@@ -54,19 +54,18 @@ Linia nie zastępuje bloków, sygnałów, zwrotnic, tras ani rozkładów jazdy.
 - masową zmianę parametrów na zaznaczeniu albo całej linii;
 - wybór połączonego obszaru torów.
 
-## Ochrona wejścia podczas GUI
+## Ochrona wejścia podczas GUI — 0.2.5a
 
-Każdy tymczasowy ekran Myra jest modalny względem świata gry. `MyraUIManager.IsGameplayOverlayOpen` informuje, że ekran GUI zastąpił główny root gameplayu. W tym stanie `GameplayScreen` nie wywołuje `InputManager.Update()`.
+Ochrona ma teraz dwa poziomy:
 
-W praktyce kliknięcie myszy w GUI ani poza nim nie może przejść do mapy i:
+1. **GUI zastępujące gameplay root** — `MyraUIManager.IsGameplayOverlayOpen` blokuje `InputManager.Update()` przez cały czas działania tymczasowego okna.
+2. **Kliknięcie obsługujące akcję GUI** — `MyraUIManager.GameplayInputConsumedThisFrame` blokuje `InputManager.Update()` również w tej samej klatce, w której przycisk GUI wykonał akcję.
 
-- postawić toru, nawet jeżeli wcześniej aktywny był tryb `1`;
-- zaznaczyć/odznaczyć torów;
-- usunąć obiektu;
-- zmienić zwrotnicy lub sygnału;
-- przesunąć albo przybliżyć mapy przez world input.
+Drugi poziom jest istotny dla przycisków takich jak `Tor prosty`: wcześniej kliknięcie mogło najpierw ustawić `TrackBuildMode.Straight`, a następnie w tej samej klatce zostać ponownie odczytane przez świat jako LPM i postawić tor. W 0.2.5a ten klik jest konsumowany przez GUI.
 
-F8/F9/F10/F11 dodatkowo resetują `TrackBuilder.Mode` do `None` przed otwarciem GUI. Po zamknięciu okna nie pozostaje więc uzbrojony tryb budowy, a kliknięcie zamykające GUI nie powoduje budowy toru.
+Dodatkowo poprawiono cykl rootów Myra. Powrót z tymczasowego GUI do głównego rootu gameplayu czyści stan overlay zamiast zapisywać zamykany ekran jako kolejny `_previousRoot`. Dzięki temu po zamknięciu F8/F9/F10/F11 świat ponownie przyjmuje wejście.
+
+F8/F9/F10/F11 nadal resetują `TrackBuilder.Mode` do `None` przed otwarciem GUI. Zamknięcie okna nie pozostawia uzbrojonego trybu budowy.
 
 ## Zapis
 
@@ -84,4 +83,4 @@ Pozostaje wariant B: przystępna symulacja. System daje graczowi narzędzia do s
 
 ## Weryfikacja
 
-Nie wykonano kompilacji Windows ani testu live gameplay. Po pobraniu należy sprawdzić F11, wielokrotne zaznaczanie, kontury linii, zapis/odczyt schematu 3, blokadę wejścia świata podczas GUI oraz zachowanie istniejących bloków, sygnałów, zwrotnic i F6.
+Nie wykonano kompilacji Windows ani testu live gameplay. Kod został sprawdzony statycznie pod kątem cyklu rootów Myra i konsumpcji akcji GUI; kompilacja/runtime nadal wymaga sprawdzenia lokalnie.
