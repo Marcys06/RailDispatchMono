@@ -2,61 +2,62 @@
 
 ## Current development line
 
-**RailDispatchMono `0.2.3`** is the current development snapshot. The 0.2.3 line adds an operational dispatcher HUD and explicit player intervention while preserving the timetable, block, signal and player-control contracts from 0.2.2.
+**RailDispatchMono `0.2.4`** is the current development snapshot. The 0.2.4 line adds infrastructure metadata and electrical traction compatibility while preserving the timetable, block, signal and player-control contracts.
 
-## HUD contract
+## Infrastructure contract
 
-`MyraGameplayView` is the single gameplay HUD surface mounted by `MyraUIManager`. It presents global status, infrastructure tools, selected-train operations, dispatcher state, traffic, stations and wagons in one hierarchy.
+`TrackCell` separates geometric shape (`TrackGeometry`) from operational infrastructure:
 
-Selecting a train focuses the camera and exposes timetable point, next point, ETA, required departure, delay, dispatcher state and RadioStop diagnostics. The HUD provides explicit dispatcher actions but does not directly mutate physical infrastructure.
+- `TrackType`: `Mainline`, `Secondary`, `Siding`, `Platform`;
+- `LineClass`: `Local`, `Regional`, `Mainline`, `Magistral`;
+- `TractionSystem`: `None`, `DC`, `AC`;
+- `WearPercent` / `ConditionPercent` for future infrastructure wear.
 
-## Passenger/station contract
+`LineClassProfile` currently exposes prepared Vmax and axle-load limits. These are data for future infrastructure/physics rules; 0.2.4 does not replace the existing movement model with them.
 
-`StationController` owns station lifecycle, train stop/dwell coordination, passenger generation and locomotive timetable gating. `Passenger` remains owned by a concrete `Wagon` while onboard. Automatic passenger transfers remain outside the contract.
+## Traction contract
 
-## Locomotive timetable contract
+`TractionType` remains propulsion category (`Electric` / `Diesel`). Electric locomotives additionally declare a set of supported `TractionSystem` values. EP07 is DC, EU200 is AC. Diesel locomotives are independent of track electrification. The model supports multi-system electric locomotives.
 
-`Locomotive.Schedule` owns an optional `LocomotiveSchedule`. `LocomotiveSchedulePoint` contains station, expected arrival and required departure. `LocomotiveScheduleRuntime` stores current point, cycle, actual arrival/departure, travel duration, delay and required departure.
+0.2.4 does not automatically reroute trains, replace locomotives or solve incompatible infrastructure. No automatic “route infeasible” planning layer was added.
 
-Early arrival does not produce early departure. The timetable is cyclic. `TrainSchedule`/`ScheduleStorage` schema is `2`.
+## Infrastructure editing
+
+`TrackBuilder` carries selected infrastructure defaults for newly built track. It also exposes metadata-only configuration methods for existing cells.
+
+F8 opens `MyraTrackInfrastructureView` for the track under the cursor. The view can change track type, line class and traction without changing geometry, connections, blocks, signals or switches.
+
+## Persistence
+
+`MapSaveData` schema is `2`. Track persistence includes geometry, connections, switch position, track type, line class, traction and wear. Old saves are not a compatibility target.
 
 ## Dispatcher/block contract
 
-`RailwayDispatcher` arbitrates the next connected existing `Block` on a first-come-first-served basis. Requests retain target block and request timestamp; FCFS ordering is local to the requested block.
+`RailwayDispatcher` still arbitrates the next connected existing `Block` on a first-come-first-served basis. F6 calls `RailwayDispatcher.ForceProceed`; it does not clear physical occupancy, alter signals or move switches. Route release operates through `RailwayDispatcher.NotifyReleased`.
 
-F6 calls `RailwayDispatcher.ForceProceed`. This bypasses dispatcher arbitration for the selected train only. It does not clear physical occupancy, alter signals or move switches. Route release operates through `RailwayDispatcher.NotifyReleased`.
-
-The dispatcher does not set switches and does not change signal aspects. The player remains responsible for infrastructure configuration and unresolved operational situations.
+The dispatcher does not set switches and does not change signal aspects. Infrastructure metadata is not a replacement for the block/signal layer.
 
 ## Coupling and movement contract
 
-`CouplingService` is authoritative. `Composition.Vehicles` is physical order and is never reversed by coupling or decoupling. Coupling/decoupling remain manual.
+`CouplingService` is authoritative. `Composition.Vehicles` is physical order and is never reversed by coupling or decoupling. Coupling/decoupling remain manual. Existing rigid-consist, trajectory, acceleration, braking and Vmax contracts remain unchanged.
 
-F6 is now the explicit dispatcher override. F7 changes travel direction only at `0 km/h`. RadioStop remains a hard guard for normal automatic movement. Existing rigid-consist, trajectory, acceleration, braking and Vmax contracts remain unchanged.
+## UI contract
 
-## Architecture rules
+- F6 — dispatcher override;
+- F8 — track infrastructure editor under cursor;
+- F9 — locomotive timetable editor;
+- F10 — railway diagnostics.
 
-- One authoritative train lifecycle owner: `TrainManager`.
-- One authoritative ordered consist: `TrainComposition`.
-- One coupling mutation boundary: `CouplingService`.
-- One station lifecycle/timetable gate: `StationController`.
-- One block occupancy owner: `BlockController`/`Block`.
-- One block arbitration service: `RailwayDispatcher`.
-- One active passenger collection owner: `PassengerManager`.
-- One shared Myra `Desktop`: `MyraUIManager`.
-- One gameplay HUD: `MyraGameplayView`.
-- UI requests domain operations; it does not own domain state.
+There is one shared Myra `Desktop`. UI requests domain operations; it does not own domain state.
 
-## Platform scope
+## Roadmap contract
 
-0.2.x implementation target is Windows. Other host projects remain in the repository unless a later cleanup explicitly removes them.
+0.3.0 activates infrastructure management (electrification, classes, maintenance, wear), then 0.4.0 economy, 0.5.0 public timetable, 0.6.0 passenger demand, 0.7.0 physics, 0.8.0 crises, 0.9.0 network and 1.0.0 integrated release.
 
 ## Verification
 
-No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.3 specifically, verify F6 override, F9 timetable editing, F10 diagnostics, route release, AUTO/RĘCZ switching, multiple trains competing for one block, delay display and resized Myra layouts.
+No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.4 verify F8 editing, new-track defaults, map save/load schema 2, EP07/EU200/SU42 traction metadata and unchanged block/signal/F6 behaviour.
 
 ## AI rule
 
-Before HUD changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `GameplayScreen`, `TrainManager`, `StationController`, `RailwayDispatcher`, `LocomotiveSchedule` and `WagonSchedule` together. Before timetable changes inspect the timetable runtime/persistence chain. Before block/safety changes inspect `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement`, `TrainCollisionController` and `StationController` together. Before movement/coupling changes inspect `TrainComposition`, `CouplingService`, `TrainGeometry`, `TrainMovement`, `TrainDirection`, `SimulationScale` and vehicle-end connection contracts.
-
-Every UI or runtime contract change must update the maintained architecture/current-state documentation and the relevant changelog.
+Before infrastructure changes inspect `TrackCell`, `TrackBuilder`, `GameMap`, `MapSaveData`, `MapSaveService`, `LocomotiveDefinition`, `Locomotive`, `RollingStockCatalog`, `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement` and `StationController` together. Before UI changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame` and the relevant domain owner. Every runtime or UI contract change must update maintained architecture/current-state documentation and the relevant changelog.
