@@ -1,6 +1,6 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.1.7d`**  
+**Documentation baseline: `0.2.0`**  
 **Previous consolidated milestone: `0.1.6pre`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
@@ -32,21 +32,24 @@ This directory contains maintained project documentation. Historical release not
 23. [23-current-state-0.1.6pre.md](23-current-state-0.1.6pre.md) — historical `0.1.6pre` snapshot.
 24. [24-current-state-0.1.7a.md](24-current-state-0.1.7a.md) — historical `0.1.7a` snapshot.
 25. [25-current-state-0.1.7c.md](25-current-state-0.1.7c.md) — historical `0.1.7c` snapshot.
-26. [26-current-state-0.1.7d.md](26-current-state-0.1.7d.md) — authoritative current `0.1.7d` snapshot.
+26. [26-current-state-0.1.7d.md](26-current-state-0.1.7d.md) — historical `0.1.7d` snapshot.
+27. [27-current-state-0.2.0.md](27-current-state-0.2.0.md) — authoritative `0.2.0` snapshot.
 
-## Current 0.1.7d focus
+## Current 0.2.0 focus
 
-Wagons permanently own repeating loop timetables and the gameplay HUD exposes operational wagon and station details. The player defines a base route such as `A-B-C-D`; runtime expands it to `A-B-C-D-C-B-A`.
+0.2.0 connects locomotive-owned operational timetables with the existing station, signal and block runtime. A locomotive timetable contains expected arrival and required departure times. An automatically operated train waits at a scheduled station until the required departure time, records actual arrival and carries the resulting delay into runtime.
 
-The `WAGONY` HUD list shows each wagon's timetable delay and passenger occupancy. Hovering a wagon shows the ordered station stops from its timetable; when no timetable exists, the configured service route is used.
+Wagon timetables remain independent and preserve the existing wagon ownership model. Existing passenger boarding/alighting and station dwell processing remain active; automatic passenger transfers are not introduced here.
 
-The `STACJE` HUD list shows current waiting passenger count. Hovering a station shows the waiting passengers grouped by destination station and their counts.
+The existing signal system remains under player control. The new `RailwayDispatcher` only arbitrates the next connected block: occupied or reserved blocks belonging to another train can hold automatic movement. It does not set switches or change signal aspects. The player therefore remains responsible for infrastructure configuration and resolving situations that cannot be operated automatically.
 
-Runtime save schema is `2`; save metadata identifies game version `0.1.7d`.
+Manual shunting, coupling/decoupling, F6 control, F7 reversal and RadioStop retain their established semantics. The physical movement model is unchanged.
+
+Schedule persistence schema is now `2` and supports an optional locomotive timetable alongside wagon schedule definitions. Backward compatibility with old saves is not a 0.2.0 requirement.
 
 ## Version policy
 
-- `0.1.7d` is the current development snapshot.
-- `0.1.7c`, `0.1.7a` and earlier snapshots are historical.
+- `0.2.0` is the current development snapshot.
+- `0.1.7d` and earlier snapshots are historical.
 - Historical release notes remain immutable.
-- Maintained architecture/domain documentation is updated when the current contract changes.
+- Maintained architecture/domain documentation is updated whenever the current contract changes.
