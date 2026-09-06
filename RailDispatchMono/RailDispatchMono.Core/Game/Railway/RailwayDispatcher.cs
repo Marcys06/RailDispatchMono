@@ -9,23 +9,25 @@ public sealed class RailwayDispatcher
 {
     private readonly BlockController _blocks;
     private readonly Dictionary<Guid, Block> _reservations = new();
-    private long _sequence;
+    public static RailwayDispatcher? Current { get; private set; }
 
-    public RailwayDispatcher(BlockController blocks) => _blocks = blocks ?? throw new ArgumentNullException(nameof(blocks));
+    public RailwayDispatcher(BlockController blocks)
+    {
+        _blocks = blocks ?? throw new ArgumentNullException(nameof(blocks));
+        Current = this;
+    }
 
     public bool CanProceed(Train.Train train)
     {
         if (train == null) return false;
         var current = _blocks.GetBlockAtPosition(train.Position);
         if (current == null) return true;
-
         var next = current.NextBlock;
         if (next == null || next == current) return true;
         if (next.IsOccupied && !next.ContainsTrain(train)) return false;
         if (next.IsReserved && next.ReservedFor != train) return false;
         if (!next.TryReserve(train)) return false;
         _reservations[train.Id] = next;
-        _ = ++_sequence;
         return true;
     }
 
