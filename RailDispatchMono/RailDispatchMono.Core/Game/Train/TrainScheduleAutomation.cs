@@ -1,6 +1,5 @@
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Simulation;
-using System.Linq;
 
 namespace RailDispatchMono.Core.Game.Train;
 
@@ -34,12 +33,13 @@ public sealed partial class Train
 
         if (runtime.CurrentPointIndex >= 0 && runtime.State == LocomotiveScheduleState.WaitingAtStation)
         {
-            if (now < runtime.RequiredDepartureSeconds)
+            int requiredDeparture = runtime.GetExpectedDeparture(schedule, runtime.CurrentPointIndex);
+            if (now < requiredDeparture)
             {
                 Speed = 0f;
                 return true;
             }
-            runtime.State = LocomotiveScheduleState.Running;
+            runtime.RecordDeparture(schedule, runtime.CurrentPointIndex, now);
         }
 
         runtime.State = LocomotiveScheduleState.Running;

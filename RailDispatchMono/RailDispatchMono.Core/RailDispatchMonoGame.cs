@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using RailDispatchMono.Core.Game.Building;
 using RailDispatchMono.Core.Game.Railway;
 using RailDispatchMono.Core.Game.Save;
@@ -11,6 +12,7 @@ using RailDispatchMono.Core.Screens.UI;
 using RailDispatchMono.Core.ScreenManagers;
 using RailDispatchMono.Core.UI.Myra;
 using System;
+using System.Linq;
 using System.Reflection;
 
 namespace RailDispatchMono.Core;
@@ -24,6 +26,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     private GameplayScreen? _gameplay;
     private MyraGameplayView? _gameplayView;
     private double _gameplayUiRefreshTimer;
+    private KeyboardState _previousKeyboard;
 
     public static bool IsMobile => false;
     public static bool IsDesktop => true;
@@ -65,17 +68,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         bool loadExisting = !request.StartsWith("NEW:", StringComparison.Ordinal);
         string slotDirectory = request.StartsWith("NEW:", StringComparison.Ordinal) ? request[4..] : request;
         SaveSlotService.Activate(slotDirectory);
-
         if (_mainMenu != null)
         {
             _screenManager.RemoveScreen(_mainMenu);
             _mainMenu = null;
         }
-
         _gameplay = new GameplayScreen(GraphicsDevice, _screenManager, loadExisting);
         _screenManager.AddScreen(_gameplay, null);
         if (loadExisting) _gameplay.LoadSavedGame();
-
         _gameplayView = new MyraGameplayView(
             speed => _myraUI.QueueAction(() => GameClock.Current?.SetSpeed(speed)),
             train => _myraUI.QueueAction(() => FocusTrain(train)),
@@ -90,9 +90,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     {
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
-            camera.Position = train.Position - new Vector2(
-                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
-                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
+            camera.Position = train.Position - new Vector2(GraphicsDevice.Viewport.Width / (2f * camera.Zoom), GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
     }
 
     private void FocusStation(Station station)
@@ -100,12 +98,8 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         Camera? camera = GetGameplayField<Camera>("_camera");
         if (camera != null)
         {
-            Vector2 center = new(
-                station.Position.X + station.Width / 2f,
-                station.Position.Y + station.Height / 2f);
-            camera.Position = center - new Vector2(
-                GraphicsDevice.Viewport.Width / (2f * camera.Zoom),
-                GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
+            Vector2 center = new(station.Position.X + station.Width / 2f, station.Position.Y + station.Height / 2f);
+            camera.Position = center - new Vector2(GraphicsDevice.Viewport.Width / (2f * camera.Zoom), GraphicsDevice.Viewport.Height / (2f * camera.Zoom));
         }
     }
 
@@ -123,6 +117,69 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         modeField?.SetValue(input, !(bool)(modeField.GetValue(input) ?? false));
     }
 
+    private void OpenLocomotiveScheduleEditor()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        FieldInfo? selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (selectedField?.GetValue(_gameplayView) is not Train train || train.Composition.Locomotive == null) return;
+        var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController;
+        if (stations == null) return;
+        var editor = new MyraLocomotiveScheduleView(train, stations, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        _myraUI.SetRoot(editor.Root);
+    }
+
+    private void OpenRailwayDiagnostics()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        var manager = GetGameplayField<TrainManager>("_trainManager");
+        var signals = GetGameplayField<SignalController>("_signalController");
+        if (manager == null || signals == null) return;
+        var view = new MyraRailwayDiagnosticsView(manager, signals, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        _myraUI.SetRoot(view.Root);
+    }
+
+    private void RefreshTimetableHud()
+    {
+        if (_gameplayView == null || _gameplay == null) return;
+        var selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (selectedField?.GetValue(_gameplayView) is not Train train) return;
+        var detailField = typeof(MyraGameplayView).GetField("_selectionDetails", BindingFlags.Instance | BindingFlags.NonPublic);
+        object? label = detailField?.GetValue(_gameplayView);
+        if (label == null) return;
+        var textProperty = label.GetType().GetProperty("Text");
+        if (textProperty == null) return;
+
+        string text = $"Vmax składu: {train.MaxSpeed * 3.6f:0.0} km/h\nCel prędkości: {train.EffectiveTargetSpeed * 3.6f:0.0} km/h\nKierunek: {train.Direction}  •  {RailwayDispatcher.Current?.GetStatus(train) ?? "DISPATCHER NIEDOSTĘPNY"}";
+        var schedule = train.LocomotiveSchedule;
+        var runtime = train.LocomotiveScheduleRuntime;
+        if (schedule?.Enabled == true && schedule.Points.Count > 0)
+        {
+            if (runtime != null && runtime.CurrentPointIndex >= 0 && runtime.CurrentPointIndex < schedule.Points.Count)
+            {
+                int current = runtime.CurrentPointIndex;
+                int next = (current + 1) % schedule.Points.Count;
+                var currentPoint = schedule.Points[current];
+                var nextPoint = schedule.Points[next];
+                var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController.Stations;
+                string currentName = stations?.FirstOrDefault(s => s.Id == currentPoint.StationId)?.Name ?? "—";
+                string nextName = stations?.FirstOrDefault(s => s.Id == nextPoint.StationId)?.Name ?? "—";
+                int eta = runtime.GetExpectedArrival(schedule, next);
+                text += $"\nRozkład: {schedule.Name} • stan: {runtime.State}\nPunkt: {current + 1}/{schedule.Points.Count} • {currentName}\nNastępny: {nextName}\nETA: {FormatClock(eta)} • odjazd: {FormatClock(runtime.GetExpectedDeparture(schedule, current))}\nOpóźnienie: {runtime.DelaySeconds:+#;-#;0}s • propagowane: {runtime.PropagatedDelaySeconds}s";
+            }
+            else
+            {
+                text += $"\nRozkład: {schedule.Name} • oczekiwanie na pierwszy punkt";
+            }
+        }
+        textProperty.SetValue(label, text);
+    }
+
+    private static string FormatClock(int seconds)
+    {
+        int normalized = ((seconds % 86400) + 86400) % 86400;
+        return $"{normalized / 3600:D2}:{normalized / 60 % 60:D2}";
+    }
+
     private T? GetGameplayField<T>(string fieldName) where T : class
     {
         if (_gameplay == null) return null;
@@ -135,15 +192,20 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
     protected override void Update(GameTime gameTime)
     {
         _myraUI.Update(gameTime);
+        KeyboardState keyboard = Keyboard.GetState();
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
+            if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
+            if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
             if (_gameplayUiRefreshTimer >= 0.5d)
             {
                 _gameplayUiRefreshTimer = 0d;
                 _gameplayView.Refresh();
+                RefreshTimetableHud();
             }
         }
+        _previousKeyboard = keyboard;
         base.Update(gameTime);
     }
 

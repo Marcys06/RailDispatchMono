@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.1` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.2.2` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -21,26 +21,42 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 - `MyraPauseView`
 - `MyraGameplayView`
 - `MyraDepotView`
+- `MyraLocomotiveScheduleView` — locomotive timetable editor
+- `MyraRailwayDiagnosticsView` — full infrastructure/dispatcher diagnostics
 - `MyraUIManager`
 
-There is one shared Myra `Desktop` and one active root. Depot temporarily replaces the gameplay root and restores it on close.
+There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the locomotive timetable editor or diagnostics view and restores it on close.
 
-## 0.2.1 gameplay HUD
+## 0.2.2 gameplay HUD and operational views
 
-`MyraGameplayView` is now a complete operational dashboard rather than a collection of unrelated floating lists. The layout has four functional zones:
+`MyraGameplayView` remains the operational dashboard. It exposes automatic/manual train state, selected-train timetable information, dispatcher/block state, station passenger summaries and wagon occupancy/delay.
 
-1. **Top status bar** — game clock, day, simulation speed, global operating mode and speed controls.
-2. **Operations** — infrastructure build tools, wagon route entry point and simulation controls.
-3. **Operational centre** — selected-train summary, locomotive timetable state, dispatcher/block status and expandable diagnostics.
-4. **Traffic** — train list, station passenger summary and wagon summary.
+The selected-train timetable information now includes current point, next point, ETA, expected/planned departure, current delay and propagated delay. The runtime source remains `LocomotiveScheduleRuntime`; the HUD does not own timetable state.
 
-The bottom area also exposes the keyboard operating contract so the HUD and world controls describe the same workflow.
+### Locomotive timetable editor — F9
 
-Train rows explicitly distinguish `AUTO` from `RĘCZ`. Selecting a train focuses the camera and makes its timetable, effective signal speed, consist Vmax, dispatcher state and RadioStop state available in the operational centre.
+After selecting a train with a locomotive, **F9** opens `MyraLocomotiveScheduleView`.
 
-Station rows are expandable passenger summaries. Wagon rows show occupancy and timetable delay and retain route tooltips. The UI does not own or mutate passenger, train, block or timetable state.
+The editor supports:
 
-The HUD uses fixed side rails and a flexible centre column rather than the former collection of independent 280/350-pixel panels. Lists are scrollable and long labels wrap inside their widgets to prevent the previous overlap between sections.
+- adding/removing timetable points;
+- changing the station assigned to a point;
+- changing arrival and departure independently;
+- reordering points;
+- enabling/disabling the locomotive timetable;
+- validation and transactional save/cancel.
+
+Wagon timetables are not edited by this view.
+
+### Railway diagnostics — F10
+
+**F10** opens `MyraRailwayDiagnosticsView` and shows:
+
+- every block as `FREE`, `RESERVED` or `OCCUPIED`;
+- block cooldown and train ownership;
+- dispatcher FCFS queue;
+- signal aspects and their associated block state;
+- timetable runtime and dispatcher state for every train.
 
 ## World interaction boundary
 
@@ -52,6 +68,7 @@ The HUD uses fixed side rails and a flexible centre column rather than the forme
 - `GameplayScreen` owns pause state;
 - `DepotScreen` owns temporary builder state; train ownership remains in `TrainManager`;
 - `InputManager` owns world input and cursor selection;
+- F9/F10 open presentation-only operational views;
 - domain managers own simulation state.
 
 The HUD deliberately does not automate switches, signal aspects, coupling/decoupling or unresolved dispatching situations.

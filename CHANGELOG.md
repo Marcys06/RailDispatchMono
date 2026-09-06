@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.2.2] — Timetable authoring and operational diagnostics
+**Data:** 2026-09-06
+
+### Locomotive timetable editor
+
+- Added a dedicated Myra locomotive timetable editor.
+- F9 opens the editor for the selected train.
+- Points can be added, removed and reordered.
+- Stations can be changed per point.
+- Arrival and departure can be adjusted independently.
+- Timetable can be enabled/disabled before saving.
+- Draft changes are committed only after timetable validation succeeds.
+
+### Dispatcher and blocks
+
+- `RailwayDispatcher` now maintains an explicit first-come-first-served request queue.
+- A train waits when the next block is occupied, reserved or inside release cooldown.
+- A later request cannot overtake an earlier request for the dispatcher queue.
+- Queue state is available to diagnostics.
+- Existing `BlockController`/`Block` state remains authoritative; no parallel route-reservation model was introduced.
+
+### Timetable runtime
+
+- Runtime records actual departure time and observed travel duration.
+- Expected arrival/departure for future timetable points include propagated positive delay.
+- Early arrival does not propagate a negative delay and still waits until the required departure time.
+- Station departure control uses runtime expected departure.
+
+### Diagnostics
+
+- F10 opens a full railway diagnostics view.
+- Every block is shown as `FREE`, `RESERVED` or `OCCUPIED`, with cooldown/owner information.
+- Dispatcher FCFS queue is visible.
+- Every signal aspect is shown with its associated block state.
+- Train timetable runtime and dispatcher state are visible together.
+
+### Player responsibility
+
+- Dispatcher does not operate switches or change signal aspects.
+- Coupling/decoupling, RadioStop, manual driving and infrastructure decisions remain player-controlled.
+- Existing station braking/dwell logic remains the timetable's execution boundary.
+
+### Documentation
+
+- Documentation baseline moved to `0.2.2`.
+- Added `docs/29-current-state-0.2.2.md`.
+- Added `docs/changelog/0.2.2.md`.
+- Updated `docs/00-index.md`.
+
+### Verification
+
+A Windows build and live gameplay verification remain required. F9 timetable editing, cyclic execution, early/late arrivals, block contention, F10 diagnostics and resized Myra layouts should be checked manually.
+
 ## [0.2.1] — Myra gameplay HUD rebuild
 **Data:** 2026-09-06
 

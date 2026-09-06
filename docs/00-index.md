@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.1`**  
-**Previous consolidated milestone: `0.2.0`**
+**Documentation baseline: `0.2.2`**  
+**Previous consolidated milestone: `0.2.1`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -34,21 +34,22 @@ This directory contains maintained project documentation. Historical release not
 25. [25-current-state-0.1.7c.md](25-current-state-0.1.7c.md) — historical `0.1.7c` snapshot.
 26. [26-current-state-0.1.7d.md](26-current-state-0.1.7d.md) — historical `0.1.7d` snapshot.
 27. [27-current-state-0.2.0.md](27-current-state-0.2.0.md) — historical `0.2.0` snapshot.
-28. [28-current-state-0.2.1.md](28-current-state-0.2.1.md) — authoritative `0.2.1` snapshot.
+28. [28-current-state-0.2.1.md](28-current-state-0.2.1.md) — historical `0.2.1` snapshot.
+29. [29-current-state-0.2.2.md](29-current-state-0.2.2.md) — authoritative `0.2.2` snapshot.
 
-## Current 0.2.1 focus
+## Current 0.2.2 focus
 
-0.2.1 is a UI-only restructuring of the gameplay presentation. The Myra gameplay HUD is now one operational dashboard with a shared visual hierarchy: global status at the top, operations at left, selected-train/diagnostic state in the centre and traffic information at right, with wagon and control references at the bottom.
+0.2.2 closes the main operational gaps around locomotive timetable authoring, dispatcher diagnostics and timetable runtime propagation.
 
-The HUD exposes locomotive timetable state and dispatcher/block state without taking their decisions away from the player. It distinguishes automatic and manual trains, exposes occupancy/delay summaries and keeps station passenger breakdowns expandable.
+The player can now author a locomotive timetable in-game through F9. The dispatcher maintains an explicit FCFS queue over the existing block system. The runtime records actual departure/travel information and propagates positive delay to future timetable points. F10 exposes the complete infrastructure diagnostic state.
 
-The HUD remains a presentation layer. Train movement, station lifecycle, passengers, blocks, signals, switches, coupling and timetable state remain owned by their domain systems.
+The system remains deliberately player-dependent: switches and signal aspects are not automated by the dispatcher, coupling/decoupling remains manual, RadioStop remains authoritative, and infrastructure conflicts still require player intervention.
 
-Backward compatibility with the previous HUD layout is not a requirement.
+Backward compatibility with older saves is not a requirement.
 
 ## Version policy
 
-- `0.2.1` is the current development snapshot.
-- `0.2.0` and earlier snapshots are historical.
+- `0.2.2` is the current development snapshot.
+- `0.2.1`, `0.2.0` and earlier snapshots are historical.
 - Historical release notes remain immutable.
 - Maintained architecture/domain/UI documentation is updated whenever the current contract changes.
