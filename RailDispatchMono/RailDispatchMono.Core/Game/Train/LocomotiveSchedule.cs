@@ -12,7 +12,7 @@ public sealed class LocomotiveSchedule
     public List<LocomotiveSchedulePoint> Points { get; set; } = new();
     public bool Enabled { get; set; } = true;
 
-    public int CycleDurationSeconds => Points.Count < 2 ? 0 : Points[^1].DepartureSeconds - Points[0].ArrivalSeconds;
+    public int CycleDurationSeconds => Points.Count < 2 ? 0 : Math.Max(0, Points[^1].DepartureSeconds - Points[0].ArrivalSeconds);
 
     public bool IsValid(out string error)
     {
@@ -67,14 +67,19 @@ public sealed class LocomotiveScheduleRuntime
     public LocomotiveScheduleState State { get; set; } = LocomotiveScheduleState.NotStarted;
     public int DelaySeconds { get; set; }
     public int LastObservedArrivalSeconds { get; set; } = -1;
+    public int LastObservedDepartureSeconds { get; set; } = -1;
     public int LastObservedDay { get; set; } = -1;
     public int RequiredDepartureSeconds { get; set; } = -1;
+    public int ActualTravelSeconds { get; private set; } = -1;
+
+    public int PropagatedDelaySeconds => Math.Max(0, DelaySeconds);
 
     public void Reset(Guid scheduleId)
     {
         ScheduleId = scheduleId; CycleNumber = 0; CurrentPointIndex = -1;
         State = LocomotiveScheduleState.NotStarted; DelaySeconds = 0;
-        LastObservedArrivalSeconds = -1; LastObservedDay = -1; RequiredDepartureSeconds = -1;
+        LastObservedArrivalSeconds = -1; LastObservedDepartureSeconds = -1;
+        LastObservedDay = -1; RequiredDepartureSeconds = -1; ActualTravelSeconds = -1;
     }
 
     public int GetScheduledArrival(LocomotiveSchedule schedule, int pointIndex) =>
@@ -82,6 +87,30 @@ public sealed class LocomotiveScheduleRuntime
 
     public int GetScheduledDeparture(LocomotiveSchedule schedule, int pointIndex) =>
         schedule.Points[pointIndex].DepartureSeconds + CycleNumber * schedule.CycleDurationSeconds;
+
+    public int GetExpectedArrival(LocomotiveSchedule schedule, int pointIndex)
+    {
+        int scheduled = GetScheduledArrival(schedule, pointIndex);
+        if (pointIndex == CurrentPointIndex) return Math.Max(scheduled, LastObservedArrivalSeconds);
+        return scheduled + PropagatedDelaySeconds;
+    }
+
+    public int GetExpectedDeparture(LocomotiveSchedule schedule, int pointIndex)
+    {
+        int scheduled = GetScheduledDeparture(schedule, pointIndex);
+        if (pointIndex == CurrentPointIndex) return Math.Max(scheduled, RequiredDepartureSeconds);
+        return scheduled + PropagatedDelaySeconds;
+    }
+
+    public void RecordDeparture(LocomotiveSchedule schedule, int pointIndex, int actualSeconds)
+    {
+        if (pointIndex < 0 || pointIndex >= schedule.Points.Count) return;
+        LastObservedDepartureSeconds = actualSeconds;
+        RequiredDepartureSeconds = GetScheduledDeparture(schedule, pointIndex);
+        if (LastObservedArrivalSeconds >= 0)
+            ActualTravelSeconds = Math.Max(0, actualSeconds - LastObservedArrivalSeconds);
+        State = LocomotiveScheduleState.Running;
+    }
 
     public void RecordArrival(LocomotiveSchedule schedule, int pointIndex, int actualSeconds, int day)
     {
@@ -92,6 +121,6 @@ public sealed class LocomotiveScheduleRuntime
         LastObservedArrivalSeconds = actualSeconds;
         LastObservedDay = day;
         RequiredDepartureSeconds = GetScheduledDeparture(schedule, pointIndex);
-        State = pointIndex == schedule.Points.Count - 1 ? LocomotiveScheduleState.Completed : LocomotiveScheduleState.WaitingAtStation;
+        State = LocomotiveScheduleState.WaitingAtStation;
     }
 }
