@@ -127,6 +127,16 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         _myraUI.SetRoot(editor.Root);
     }
 
+    private void OpenRailwayDiagnostics()
+    {
+        if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
+        var manager = GetGameplayField<TrainManager>("_trainManager");
+        var signals = GetGameplayField<SignalController>("_signalController");
+        if (manager == null || signals == null) return;
+        var view = new MyraRailwayDiagnosticsView(manager, signals, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        _myraUI.SetRoot(view.Root);
+    }
+
     private T? GetGameplayField<T>(string fieldName) where T : class
     {
         if (_gameplay == null) return null;
@@ -143,6 +153,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
             if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
+            if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
             if (_gameplayUiRefreshTimer >= 0.5d)
             {
