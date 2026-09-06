@@ -43,7 +43,7 @@ public sealed class MapSaveService
 
         var data = new MapSaveData
         {
-            GameVersion = "0.2.4",
+            GameVersion = "0.2.5",
             Map = new MapInfoSaveData { Width = map.Size.Width, Height = map.Size.Height }
         };
 
@@ -65,6 +65,19 @@ public sealed class MapSaveService
                 Traction = track.Traction,
                 WearPercent = track.WearPercent
             });
+        }
+
+        foreach (var line in map.RailwayLines.Lines)
+        {
+            var saved = new RailwayLineSaveData
+            {
+                Id = line.Id,
+                Name = line.Name,
+                ColorIndex = line.ColorIndex
+            };
+            foreach (var position in line.TrackPositions.OrderBy(p => p.Y).ThenBy(p => p.X))
+                saved.Tracks.Add(new MapPositionSaveData { X = position.X, Y = position.Y });
+            data.RailwayLines.Add(saved);
         }
 
         foreach (var signal in signals.GetAllSignals().OrderBy(s => s.Position.Y).ThenBy(s => s.Position.X))
@@ -142,7 +155,7 @@ public sealed class MapSaveService
 
         var data = JsonSerializer.Deserialize<MapSaveData>(File.ReadAllText(MapFilePath), _jsonOptions)
             ?? throw new InvalidDataException("map.json is empty or invalid.");
-        if (data.SchemaVersion != 2) throw new InvalidDataException($"Unsupported map schema version: {data.SchemaVersion}.");
+        if (data.SchemaVersion != 3) throw new InvalidDataException($"Unsupported map schema version: {data.SchemaVersion}.");
         if (data.Map.Width != map.Size.Width || data.Map.Height != map.Size.Height)
             throw new InvalidDataException($"Map size {data.Map.Width}x{data.Map.Height} does not match runtime map {map.Size.Width}x{map.Size.Height}.");
 
@@ -162,6 +175,15 @@ public sealed class MapSaveService
             track.SetInfrastructure(saved.Type, saved.LineClass, saved.Traction);
             track.SetWear(saved.WearPercent);
             map.AddTrack(track);
+        }
+
+        foreach (var saved in data.RailwayLines)
+        {
+            var positions = saved.Tracks
+                .Select(p => new MapPosition(p.X, p.Y))
+                .Where(map.HasTrack)
+                .ToList();
+            map.RailwayLines.Create(saved.Name, positions, saved.Id, saved.ColorIndex);
         }
 
         foreach (var saved in data.Signals)
