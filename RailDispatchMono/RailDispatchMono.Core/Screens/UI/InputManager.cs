@@ -37,6 +37,7 @@ namespace RailDispatchMono.Core.Screens.UI
         private readonly DepotRenderer _depotRenderer;
         private readonly SignalRenderer _signalRenderer;
         private readonly WagonRouteMenu _wagonRouteMenu;
+        private readonly HashSet<MapPosition> _selectedTracks = new();
 
         private SpriteFont? _tooltipFont;
         private Texture2D? _tooltipPixel;
@@ -50,6 +51,7 @@ namespace RailDispatchMono.Core.Screens.UI
         private int _stationSizeIndex;
 
         public event Action<Depot>? DepotSelected;
+        public IReadOnlyCollection<MapPosition> SelectedTracks => _selectedTracks;
 
         public InputManager(
             GraphicsDevice graphicsDevice,
@@ -103,6 +105,7 @@ namespace RailDispatchMono.Core.Screens.UI
             _wagonRouteMenu = new WagonRouteMenu(_graphicsDevice);
             _wagonRouteMenu.LoadContent();
             _wagonRouteMenu.RouteChanged += OnWagonRouteChanged;
+            SyncTrackSelection();
         }
 
         private void OnDirectionSelected(object? sender, SignalDirectionMenu.SignalDirectionSelectedEventArgs e)
@@ -114,6 +117,22 @@ namespace RailDispatchMono.Core.Screens.UI
             _wagonRouteMenu.SetFont(font);
         }
 
+        public void SetTrackSelection(IEnumerable<MapPosition> positions)
+        {
+            _selectedTracks.Clear();
+            foreach (var position in positions)
+                if (_map.HasTrack(position)) _selectedTracks.Add(position);
+            SyncTrackSelection();
+        }
+
+        public void ClearTrackSelection()
+        {
+            _selectedTracks.Clear();
+            SyncTrackSelection();
+        }
+
+        private void SyncTrackSelection() => _renderer.SetSelectedTracks(_selectedTracks);
+
         public void Update(GameTime gameTime)
         {
             var mouse = Mouse.GetState();
@@ -122,51 +141,36 @@ namespace RailDispatchMono.Core.Screens.UI
             if (_wagonRouteMenu.IsOpen)
             {
                 _wagonRouteMenu.Update(mouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _wagonRouteMenu.Close();
-
-                // Closing the timetable editor from any path (Escape or its buttons)
-                // must also leave the S edit mode. Otherwise the next S press toggles
-                // the stale edit-mode flag off instead of reopening the editor.
-                if (!_wagonRouteMenu.IsOpen)
-                    _wagonRouteEditMode = false;
-
+                if (IsKeyPressed(keyboard, Keys.Escape)) _wagonRouteMenu.Close();
+                if (!_wagonRouteMenu.IsOpen) _wagonRouteEditMode = false;
                 RememberInput(mouse, keyboard);
                 return;
             }
-
             if (_junctionRadialMenu.IsOpen)
             {
                 _junctionRadialMenu.Update(mouse, _previousMouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _junctionRadialMenu.Close();
+                if (IsKeyPressed(keyboard, Keys.Escape)) _junctionRadialMenu.Close();
                 RememberInput(mouse, keyboard);
                 return;
             }
-
             if (_signalRadialMenu.IsOpen)
             {
                 _signalRadialMenu.Update(mouse, _previousMouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _signalRadialMenu.Close();
+                if (IsKeyPressed(keyboard, Keys.Escape)) _signalRadialMenu.Close();
                 RememberInput(mouse, keyboard);
                 return;
             }
-
             if (_signalDirectionMenu.IsOpen)
             {
                 _signalDirectionMenu.Update(mouse, _previousMouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _signalDirectionMenu.Close();
+                if (IsKeyPressed(keyboard, Keys.Escape)) _signalDirectionMenu.Close();
                 RememberInput(mouse, keyboard);
                 return;
             }
-
             if (_signalSelectionMenu.IsOpen)
             {
                 _signalSelectionMenu.Update(mouse, _previousMouse);
-                if (IsKeyPressed(keyboard, Keys.Escape))
-                    _signalSelectionMenu.Close();
+                if (IsKeyPressed(keyboard, Keys.Escape)) _signalSelectionMenu.Close();
                 RememberInput(mouse, keyboard);
                 return;
             }
@@ -174,8 +178,7 @@ namespace RailDispatchMono.Core.Screens.UI
             if (mouse.MiddleButton == ButtonState.Pressed && _previousMouse.MiddleButton == ButtonState.Pressed)
             {
                 Vector2 delta = new(mouse.X - _previousMouse.X, mouse.Y - _previousMouse.Y);
-                if (_camera.Zoom > 0)
-                    _camera.Move(-delta / _camera.Zoom);
+                if (_camera.Zoom > 0) _camera.Move(-delta / _camera.Zoom);
             }
 
             int scroll = mouse.ScrollWheelValue;
@@ -190,37 +193,25 @@ namespace RailDispatchMono.Core.Screens.UI
 
         private void HandleKeyboardInput(KeyboardState keyboard)
         {
-            if (IsKeyPressed(keyboard, Keys.D1) || IsKeyPressed(keyboard, Keys.NumPad1))
-                _builder.Mode = TrackBuildMode.Straight;
-            if (IsKeyPressed(keyboard, Keys.D2) || IsKeyPressed(keyboard, Keys.NumPad2))
-                _builder.Mode = TrackBuildMode.Curve;
-            if (IsKeyPressed(keyboard, Keys.D3) || IsKeyPressed(keyboard, Keys.NumPad3))
-                _builder.Mode = TrackBuildMode.Junction;
-            if (IsKeyPressed(keyboard, Keys.D4) || IsKeyPressed(keyboard, Keys.NumPad4))
-                _builder.Mode = TrackBuildMode.Signal;
-            if (IsKeyPressed(keyboard, Keys.D5) || IsKeyPressed(keyboard, Keys.NumPad5))
-                _builder.Mode = TrackBuildMode.Station;
-            if (IsKeyPressed(keyboard, Keys.D9) || IsKeyPressed(keyboard, Keys.NumPad9))
-                _builder.Mode = TrackBuildMode.Depot;
+            if (IsKeyPressed(keyboard, Keys.D1) || IsKeyPressed(keyboard, Keys.NumPad1)) _builder.Mode = TrackBuildMode.Straight;
+            if (IsKeyPressed(keyboard, Keys.D2) || IsKeyPressed(keyboard, Keys.NumPad2)) _builder.Mode = TrackBuildMode.Curve;
+            if (IsKeyPressed(keyboard, Keys.D3) || IsKeyPressed(keyboard, Keys.NumPad3)) _builder.Mode = TrackBuildMode.Junction;
+            if (IsKeyPressed(keyboard, Keys.D4) || IsKeyPressed(keyboard, Keys.NumPad4)) _builder.Mode = TrackBuildMode.Signal;
+            if (IsKeyPressed(keyboard, Keys.D5) || IsKeyPressed(keyboard, Keys.NumPad5)) _builder.Mode = TrackBuildMode.Station;
+            if (IsKeyPressed(keyboard, Keys.D9) || IsKeyPressed(keyboard, Keys.NumPad9)) _builder.Mode = TrackBuildMode.Depot;
 
             if (IsKeyPressed(keyboard, Keys.S))
             {
                 _wagonRouteEditMode = !_wagonRouteEditMode;
                 _builder.Mode = TrackBuildMode.None;
-                if (!_wagonRouteEditMode)
-                    _wagonRouteMenu.Close();
+                if (!_wagonRouteEditMode) _wagonRouteMenu.Close();
             }
 
-            if (IsKeyPressed(keyboard, Keys.F1))
-                DebugManager.ToggleCategory(DebugManager.DebugCategory.Block);
-            if (IsKeyPressed(keyboard, Keys.F2))
-                DebugManager.ToggleCategory(DebugManager.DebugCategory.Signal);
-            if (IsKeyPressed(keyboard, Keys.F3))
-                DebugManager.ToggleCategory(DebugManager.DebugCategory.Train);
-            if (IsKeyPressed(keyboard, Keys.F4))
-                DebugManager.ToggleCategory(DebugManager.DebugCategory.TrainMovement);
-            if (IsKeyPressed(keyboard, Keys.F5))
-                ToggleAllDebugCategories();
+            if (IsKeyPressed(keyboard, Keys.F1)) DebugManager.ToggleCategory(DebugManager.DebugCategory.Block);
+            if (IsKeyPressed(keyboard, Keys.F2)) DebugManager.ToggleCategory(DebugManager.DebugCategory.Signal);
+            if (IsKeyPressed(keyboard, Keys.F3)) DebugManager.ToggleCategory(DebugManager.DebugCategory.Train);
+            if (IsKeyPressed(keyboard, Keys.F4)) DebugManager.ToggleCategory(DebugManager.DebugCategory.TrainMovement);
+            if (IsKeyPressed(keyboard, Keys.F5)) ToggleAllDebugCategories();
             if (IsKeyPressed(keyboard, Keys.F12))
             {
                 string file = $"debug_log_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.txt";
@@ -235,12 +226,9 @@ namespace RailDispatchMono.Core.Screens.UI
 
             if (IsKeyPressed(keyboard, Keys.R))
             {
-                if (_builder.Mode == TrackBuildMode.Straight)
-                    _builder.StraightHorizontal = !_builder.StraightHorizontal;
-                else if (_builder.Mode == TrackBuildMode.Curve)
-                    _builder.Curve = (CurveDirection)(((int)_builder.Curve + 1) % 4);
-                else if (_builder.Mode == TrackBuildMode.Junction)
-                    _builder.Junction = (JunctionType)(((int)_builder.Junction + 1) % 12);
+                if (_builder.Mode == TrackBuildMode.Straight) _builder.StraightHorizontal = !_builder.StraightHorizontal;
+                else if (_builder.Mode == TrackBuildMode.Curve) _builder.Curve = (CurveDirection)(((int)_builder.Curve + 1) % 4);
+                else if (_builder.Mode == TrackBuildMode.Junction) _builder.Junction = (JunctionType)(((int)_builder.Junction + 1) % 12);
                 else if (_builder.Mode == TrackBuildMode.Station)
                 {
                     _stationSizeIndex = (_stationSizeIndex + 1) % StationSizes.Length;
@@ -248,8 +236,7 @@ namespace RailDispatchMono.Core.Screens.UI
                 }
             }
 
-            if (IsKeyPressed(keyboard, Keys.J))
-                ToggleSignalOrSwitch();
+            if (IsKeyPressed(keyboard, Keys.J)) ToggleSignalOrSwitch();
         }
 
         private void ToggleAllDebugCategories()
@@ -257,18 +244,10 @@ namespace RailDispatchMono.Core.Screens.UI
             bool all = true;
             foreach (DebugManager.DebugCategory c in Enum.GetValues(typeof(DebugManager.DebugCategory)))
             {
-                if (c == DebugManager.DebugCategory.All || c == DebugManager.DebugCategory.General)
-                    continue;
-                if (!DebugManager.IsCategoryEnabled(c))
-                {
-                    all = false;
-                    break;
-                }
+                if (c == DebugManager.DebugCategory.All || c == DebugManager.DebugCategory.General) continue;
+                if (!DebugManager.IsCategoryEnabled(c)) { all = false; break; }
             }
-            if (all)
-                DebugManager.DisableAll();
-            else
-                DebugManager.EnableAll();
+            if (all) DebugManager.DisableAll(); else DebugManager.EnableAll();
         }
 
         private void ToggleSignalOrSwitch()
@@ -282,9 +261,7 @@ namespace RailDispatchMono.Core.Screens.UI
                     signal.SetAspect(signal.Aspect == SignalAspect.Stop ? SignalAspect.Clear : SignalAspect.Stop);
                 return;
             }
-
-            if (_map.TryGetTrack(pos, out var track) && track != null && track.IsJunction)
-                track.ToggleSwitch();
+            if (_map.TryGetTrack(pos, out var track) && track != null && track.IsJunction) track.ToggleSwitch();
         }
 
         private void HandleMouseInput(MouseState mouse, KeyboardState keyboard)
@@ -292,6 +269,7 @@ namespace RailDispatchMono.Core.Screens.UI
             Vector2 screen = new(mouse.X, mouse.Y);
             MapPosition pos = ToMapPosition(screen);
             bool shift = keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift);
+            bool control = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl);
 
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released)
             {
@@ -313,12 +291,11 @@ namespace RailDispatchMono.Core.Screens.UI
                     return;
                 }
 
-                if (_builder.Mode == TrackBuildMode.Signal)
-                    PlaceSignal(pos, screen);
-                else if (_builder.Mode == TrackBuildMode.Station)
-                    PlaceStation(pos);
-                else if (_builder.Mode == TrackBuildMode.Depot)
-                    PlaceDepot(pos);
+                if (_builder.Mode == TrackBuildMode.Signal) PlaceSignal(pos, screen);
+                else if (_builder.Mode == TrackBuildMode.Station) PlaceStation(pos);
+                else if (_builder.Mode == TrackBuildMode.Depot) PlaceDepot(pos);
+                else if (_builder.Mode == TrackBuildMode.None && _map.HasTrack(pos))
+                    SelectTrack(pos, shift, control);
                 else
                     _builder.BuildAt(pos);
             }
@@ -328,85 +305,80 @@ namespace RailDispatchMono.Core.Screens.UI
                 var depot = _depotController.GetDepotAt(pos);
                 if (depot != null)
                 {
-                    if (shift)
-                        _depotController.RemoveDepot(depot);
+                    if (shift) _depotController.RemoveDepot(depot);
                     return;
                 }
 
                 var signals = _signalController.GetSignalsAt(pos);
                 if (signals.Count > 0)
                 {
-                    if (shift)
-                        _signalController.RemoveSignalsAt(pos);
-                    else if (signals.Count == 1)
-                        _signalRadialMenu.Open(screen, signals[0]);
-                    else
-                        _signalSelectionMenu.Open(screen, signals);
+                    if (shift) _signalController.RemoveSignalsAt(pos);
+                    else if (signals.Count == 1) _signalRadialMenu.Open(screen, signals[0]);
+                    else _signalSelectionMenu.Open(screen, signals);
                     return;
                 }
 
                 var station = _stationController.GetStationAt(pos);
                 if (station != null)
                 {
-                    if (shift)
-                        _stationController.RemoveStation(station);
+                    if (shift) _stationController.RemoveStation(station);
                     return;
                 }
 
                 if (_map.TryGetTrack(pos, out var track) && track != null && track.IsJunction)
                 {
-                    if (shift)
-                        _builder.Remove(pos);
-                    else
-                        _junctionRadialMenu.Open(screen, track);
+                    if (shift) _builder.Remove(pos);
+                    else _junctionRadialMenu.Open(screen, track);
                     return;
                 }
 
-                if (_map.TryGetTrack(pos, out var existing) && existing != null)
-                    _builder.Remove(pos);
+                if (_map.TryGetTrack(pos, out var existing) && existing != null) _builder.Remove(pos);
             }
+        }
+
+        private void SelectTrack(MapPosition position, bool shift, bool control)
+        {
+            if (control)
+            {
+                if (!_selectedTracks.Add(position)) _selectedTracks.Remove(position);
+            }
+            else if (shift)
+            {
+                _selectedTracks.Add(position);
+            }
+            else
+            {
+                _selectedTracks.Clear();
+                _selectedTracks.Add(position);
+            }
+            SyncTrackSelection();
         }
 
         private void PlaceDepot(MapPosition pos)
         {
             var depot = new Depot($"Depot {_depotController.Depots.Count + 1}", pos);
-            if (_depotController.AddDepot(depot))
-                _builder.Mode = TrackBuildMode.None;
+            if (_depotController.AddDepot(depot)) _builder.Mode = TrackBuildMode.None;
         }
 
         private void PlaceSignal(MapPosition pos, Vector2 screen)
         {
-            if (!_map.TryGetTrack(pos, out var track) || track == null)
-                return;
-
+            if (!_map.TryGetTrack(pos, out var track) || track == null) return;
             var directions = track.GetAvailableDirections();
-            if (directions.Count == 0)
-                return;
-
-            if (directions.Count == 1)
-                _signalController.AddSignal(pos, directions[0]);
-            else
-                _signalDirectionMenu.Open(screen, pos, directions);
+            if (directions.Count == 0) return;
+            if (directions.Count == 1) _signalController.AddSignal(pos, directions[0]);
+            else _signalDirectionMenu.Open(screen, pos, directions);
         }
 
         private void PlaceStation(MapPosition pos)
         {
-            var origin = new MapPosition(
-                pos.X - (_stationWidth - 1) / 2,
-                pos.Y - (_stationHeight - 1) / 2);
-
+            var origin = new MapPosition(pos.X - (_stationWidth - 1) / 2, pos.Y - (_stationHeight - 1) / 2);
             for (int y = 0; y < _stationHeight; y++)
-            {
                 for (int x = 0; x < _stationWidth; x++)
                 {
                     var cell = new MapPosition(origin.X + x, origin.Y + y);
-                    if (!_map.TryGetTrack(cell, out var track) || track == null)
-                        return;
-                    if (_stationController.GetStationAt(cell) != null)
-                        return;
+                    if (!_map.TryGetTrack(cell, out var track) || track == null) return;
+                    if (_stationController.GetStationAt(cell) != null) return;
                 }
-            }
-
             var station = new Station($"Stacja {_stationController.Stations.Count + 1}", origin, _stationWidth, _stationHeight);
             _stationController.AddStation(station);
         }
@@ -415,8 +387,7 @@ namespace RailDispatchMono.Core.Screens.UI
         {
             foreach (var train in _trainManager.Trains)
             {
-                if (!train.Composition.Vehicles.Contains(wagon))
-                    continue;
+                if (!train.Composition.Vehicles.Contains(wagon)) continue;
                 SaveSchedule(train);
                 break;
             }
@@ -425,34 +396,14 @@ namespace RailDispatchMono.Core.Screens.UI
         private void SaveSchedule(Train train)
         {
             var schedule = new TrainSchedule { TrainId = train.Id };
-
             for (int i = 0; i < train.Composition.Vehicles.Count; i++)
-            {
                 if (train.Composition.Vehicles[i] is Wagon wagon)
-                {
-                    schedule.Wagons.Add(new WagonScheduleEntry
-                    {
-                        WagonIndex = i,
-                        WagonType = wagon.WagonType,
-                        StationIds = wagon.Route.StationIds.ToList()
-                    });
-                }
-            }
-
-            try
-            {
-                ScheduleStorage.Save(schedule);
-            }
-            catch (IOException)
-            {
-            }
+                    schedule.Wagons.Add(new WagonScheduleEntry { WagonIndex = i, WagonType = wagon.WagonType, StationIds = wagon.Route.StationIds.ToList() });
+            try { ScheduleStorage.Save(schedule); } catch (IOException) { }
         }
 
-        private MapPosition ToMapPosition(Vector2 position)
-            => _camera.ScreenToMap(position);
-
-        private bool IsKeyPressed(KeyboardState keyboard, Keys key)
-            => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
+        private MapPosition ToMapPosition(Vector2 position) => _camera.ScreenToMap(position);
+        private bool IsKeyPressed(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && _previousKeyboard.IsKeyUp(key);
 
         private void RememberInput(MouseState mouse, KeyboardState keyboard)
         {
@@ -464,113 +415,63 @@ namespace RailDispatchMono.Core.Screens.UI
         public void Draw(GameTime gameTime)
         {
             _graphicsDevice.Clear(Color.CornflowerBlue);
-
             var mouse = Mouse.GetState();
             Vector2 screen = new(mouse.X, mouse.Y);
             MapPosition pos = _camera.ScreenToMap(screen);
 
             _spriteBatch.Begin(transformMatrix: _camera.Transform, samplerState: SamplerState.PointClamp);
-
             _renderer.Draw(_spriteBatch, _camera);
             _signalRenderer.Draw(_spriteBatch, _camera);
             _stationRenderer.Draw(_spriteBatch);
             _depotRenderer.Draw(_spriteBatch);
             _trainRenderer.Draw(_spriteBatch, _trainManager);
-
             _renderer.DrawPreview(_spriteBatch, pos, _builder.Mode, _builder.StraightHorizontal, _builder.Curve, _builder.Junction);
-
-            if (_builder.Mode == TrackBuildMode.Station)
-                _stationRenderer.DrawPreview(_spriteBatch, pos, _stationWidth, _stationHeight);
-            else if (_builder.Mode == TrackBuildMode.Depot)
-                _depotRenderer.DrawPreview(_spriteBatch, pos);
-
+            if (_builder.Mode == TrackBuildMode.Station) _stationRenderer.DrawPreview(_spriteBatch, pos, _stationWidth, _stationHeight);
+            else if (_builder.Mode == TrackBuildMode.Depot) _depotRenderer.DrawPreview(_spriteBatch, pos);
             _spriteBatch.End();
 
             DrawStationTooltip(screen, pos);
             DrawWagonTooltip(screen);
 
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-
-            if (_junctionRadialMenu.IsOpen)
-                _junctionRadialMenu.Draw(_spriteBatch);
-            if (_signalRadialMenu.IsOpen)
-                _signalRadialMenu.Draw(_spriteBatch);
-            if (_signalDirectionMenu.IsOpen)
-                _signalDirectionMenu.Draw(_spriteBatch);
-            if (_signalSelectionMenu.IsOpen)
-                _signalSelectionMenu.Draw(_spriteBatch);
-
+            if (_junctionRadialMenu.IsOpen) _junctionRadialMenu.Draw(_spriteBatch);
+            if (_signalRadialMenu.IsOpen) _signalRadialMenu.Draw(_spriteBatch);
+            if (_signalDirectionMenu.IsOpen) _signalDirectionMenu.Draw(_spriteBatch);
+            if (_signalSelectionMenu.IsOpen) _signalSelectionMenu.Draw(_spriteBatch);
             _spriteBatch.End();
 
             var font = GetTooltipFont();
-            if (font != null)
-                _wagonRouteMenu.SetFont(font);
-
-            if (_wagonRouteMenu.IsOpen)
-                _wagonRouteMenu.Draw(_spriteBatch);
+            if (font != null) _wagonRouteMenu.SetFont(font);
+            if (_wagonRouteMenu.IsOpen) _wagonRouteMenu.Draw(_spriteBatch);
         }
 
         private void DrawWagonTooltip(Vector2 mouse)
         {
-            if (_wagonRouteMenu.IsOpen || _wagonRouteEditMode)
-                return;
-
+            if (_wagonRouteMenu.IsOpen || _wagonRouteEditMode) return;
             var world = _camera.ScreenToWorld(mouse);
             var hit = _trainRenderer.GetVehicleAtPosition(_trainManager, world);
-            if (!hit.HasValue)
-                return;
-
+            if (!hit.HasValue) return;
             var result = hit.Value;
             var vehicle = result.train.Composition.Vehicles[result.vehicleIndex];
-            if (vehicle is not Wagon wagon)
-                return;
-
+            if (vehicle is not Wagon wagon) return;
             var font = GetTooltipFont();
             var pixel = GetTooltipPixel();
-            if (font == null || pixel == null)
-                return;
-
+            if (font == null || pixel == null) return;
             string route = wagon.Route.IsEmpty ? "Trasa: BRAK" : $"Trasa: {wagon.Route.StationIds.Count} st.";
-            string next = wagon.Route.NextStationId.HasValue
-                ? "Następny: " + wagon.Route.NextStationId.Value.ToString()[..8]
-                : "Następny: -";
-
-            string[] lines = {
-                "WAGON",
-                $"Pociąg: {result.train.Id.ToString()[..8]}",
-                $"Wagon: {result.vehicleIndex + 1}/{result.train.Composition.Vehicles.Count}",
-                $"Pasażerowie: {wagon.PassengerCount}/{wagon.PassengerCapacity}",
-                route,
-                next,
-                "S + LPM: edytuj trasę"
-            };
-
+            string next = wagon.Route.NextStationId.HasValue ? "Następny: " + wagon.Route.NextStationId.Value.ToString()[..8] : "Następny: -";
+            string[] lines = { "WAGON", $"Pociąg: {result.train.Id.ToString()[..8]}", $"Wagon: {result.vehicleIndex + 1}/{result.train.Composition.Vehicles.Count}", $"Pasażerowie: {wagon.PassengerCount}/{wagon.PassengerCapacity}", route, next, "S + LPM: edytuj trasę" };
             DrawTooltip(mouse, lines, new Color(30, 90, 150, 230));
         }
 
         private void DrawStationTooltip(Vector2 mouse, MapPosition pos)
         {
             var station = _stationController.GetStationAt(pos);
-            if (station == null)
-                return;
-
+            if (station == null) return;
             var font = GetTooltipFont();
             var pixel = GetTooltipPixel();
-            if (font == null || pixel == null)
-                return;
-
+            if (font == null || pixel == null) return;
             var waiting = _stationController.Passengers.GetWaitingAt(station).ToList();
-            string[] lines = {
-                "STACJA",
-                station.Name,
-                "ID: " + station.Id.ToString()[..8],
-                $"Rozmiar: {station.Width}x{station.Height}",
-                "Oczekujący: " + waiting.Count,
-                "Różne cele: " + waiting.Select(p => p.DestinationStation.Id).Distinct().Count(),
-                "Obsługa: " + (station.PassengerServiceEnabled ? "TAK" : "NIE"),
-                "Postój: " + station.DwellTimeSeconds.ToString("F1") + " s"
-            };
-
+            string[] lines = { "STACJA", station.Name, "ID: " + station.Id.ToString()[..8], $"Rozmiar: {station.Width}x{station.Height}", "Oczekujący: " + waiting.Count, "Różne cele: " + waiting.Select(p => p.DestinationStation.Id).Distinct().Count(), "Obsługa: " + (station.PassengerServiceEnabled ? "TAK" : "NIE"), "Postój: " + station.DwellTimeSeconds.ToString("F1") + " s" };
             DrawTooltip(mouse, lines, new Color(30, 90, 150, 230));
         }
 
@@ -578,68 +479,38 @@ namespace RailDispatchMono.Core.Screens.UI
         {
             var font = GetTooltipFont();
             var pixel = GetTooltipPixel();
-            if (font == null || pixel == null)
-                return;
-
+            if (font == null || pixel == null) return;
             float padding = 8f;
             float lineHeight = font.MeasureString("A").Y * 0.75f + 3f;
             float width = lines.Max(x => font.MeasureString(x).X * 0.75f) + padding * 2;
             float height = lines.Length * lineHeight + padding * 2;
-
             Vector2 position = mouse + new Vector2(15);
             var viewport = _graphicsDevice.Viewport;
-
-            if (position.X + width > viewport.Width)
-                position.X = mouse.X - width - 15;
-            if (position.Y + height > viewport.Height)
-                position.Y = mouse.Y - height - 15;
-
+            if (position.X + width > viewport.Width) position.X = mouse.X - width - 15;
+            if (position.Y + height > viewport.Height) position.Y = mouse.Y - height - 15;
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-
             Rectangle rect = new((int)position.X, (int)position.Y, (int)width, (int)height);
             _spriteBatch.Draw(pixel, rect, background);
-
             Vector2 text = position + new Vector2(padding);
             for (int i = 0; i < lines.Length; i++)
             {
-                _spriteBatch.DrawString(
-                    font,
-                    lines[i],
-                    text,
-                    i == 0 ? Color.Yellow : Color.White,
-                    0f,
-                    Vector2.Zero,
-                    0.75f,
-                    SpriteEffects.None,
-                    0f);
+                _spriteBatch.DrawString(font, lines[i], text, i == 0 ? Color.Yellow : Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
                 text.Y += lineHeight;
             }
-
             _spriteBatch.End();
         }
 
         private SpriteFont? GetTooltipFont()
         {
-            if (_tooltipFont != null)
-                return _tooltipFont;
-
-            try
-            {
-                _tooltipFont = _screenManager.Game.Content.Load<SpriteFont>("Arial24");
-            }
-            catch (InvalidOperationException)
-            {
-                return null;
-            }
-
+            if (_tooltipFont != null) return _tooltipFont;
+            try { _tooltipFont = _screenManager.Game.Content.Load<SpriteFont>("Arial24"); }
+            catch (InvalidOperationException) { return null; }
             return _tooltipFont;
         }
 
         private Texture2D GetTooltipPixel()
         {
-            if (_tooltipPixel != null)
-                return _tooltipPixel;
-
+            if (_tooltipPixel != null) return _tooltipPixel;
             _tooltipPixel = new Texture2D(_graphicsDevice, 1, 1);
             _tooltipPixel.SetData(new[] { Color.White });
             return _tooltipPixel;
