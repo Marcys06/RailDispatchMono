@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.5`**  
-**Previous consolidated milestone: `0.2.4`**
+**Documentation baseline: `0.2.5a`**  
+**Previous consolidated milestone: `0.2.5`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -38,20 +38,16 @@ This directory contains maintained project documentation. Historical release not
 29. [29-current-state-0.2.2.md](29-current-state-0.2.2.md) — historical `0.2.2` snapshot.
 30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — historical `0.2.3` snapshot.
 31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — historical `0.2.4` snapshot.
-32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — authoritative `0.2.5` snapshot.
+32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — current `0.2.5a` implementation state.
 33. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
 
-## Current 0.2.5 focus
+## Current 0.2.5a focus
 
-0.2.5 makes infrastructure metadata visible and useful. Traction is encoded by color: black = non-electrified, orange/red = DC, blue = AC. Line class is encoded by thickness from Local to Magistral.
+0.2.5a is a corrective release for GUI/world input ownership. The gameplay dashboard and temporary Myra editors now have an explicit two-stage input barrier: temporary GUI roots suspend world input, and queued GUI actions consume the gameplay frame in which they execute.
 
-`RailwayLine` is now a usable player-facing logical grouping concept. The map supports multi-selection with LPM/Shift+LPM/Ctrl+LPM and F11 opens the named-line editor. Named lines can be created, renamed through the active name field, selected, extended/reduced and used as the scope for bulk `TrackType`, `LineClass` and `TractionSystem` changes.
+This prevents the common failure where a button changes `TrackBuildMode` and the same mouse click is then interpreted by `InputManager` as a world click. It also fixes the temporary-root lifecycle so closing F8/F9/F10/F11 restores normal world input instead of leaving the overlay state stale.
 
-Named lines are rendered as colored contours while the underlying traction color and line-class thickness remain visible. The active multi-track selection uses a white contour. Connected-area selection reuses the existing track topology and does not alter blocks, signals or routes.
-
-Named lines are persisted in map save schema 3. Older schemas are intentionally not supported by the current loader.
-
-F6 remains dispatcher override, F8 infrastructure editing, F9 locomotive timetable editing, F10 diagnostics and F11 named railway line editing.
+The 0.2.5 infrastructure model remains unchanged: traction is encoded by color, line class by thickness, named `RailwayLine` groups provide bulk-edit scope, and map persistence uses schema 3.
 
 ## Roadmap
 
