@@ -12,6 +12,11 @@ public sealed class TrackBuilder
     public JunctionType Junction { get; set; } = JunctionType.South_NorthEast;
     public bool StraightHorizontal { get; set; } = true;
 
+    /// <summary>Infrastructure defaults used when a new track cell is created.</summary>
+    public TrackType SelectedTrackType { get; set; } = TrackType.Mainline;
+    public LineClass SelectedLineClass { get; set; } = LineClass.Mainline;
+    public TractionSystem SelectedTraction { get; set; } = TractionSystem.None;
+
     public TrackBuilder(GameMap map) => _map = map;
 
     public void BuildAt(MapPosition position)
@@ -31,6 +36,7 @@ public sealed class TrackBuilder
         var track = GetOrCreate(position);
         track.SetGeometry(TrackGeometry.Straight);
         track.SetConnections(connections);
+        ApplySelectedInfrastructure(track);
         ConnectNeighbours(position, connections);
     }
 
@@ -39,6 +45,7 @@ public sealed class TrackBuilder
         if (!IsInsideMap(position)) return;
         var track = GetOrCreate(position);
         track.ConfigureJunction(stem, straight, diverging);
+        ApplySelectedInfrastructure(track);
         ConnectNeighbours(position, track.Connections);
     }
 
@@ -77,7 +84,37 @@ public sealed class TrackBuilder
         var track = GetOrCreate(position);
         track.SetGeometry(TrackGeometry.Curve);
         track.SetConnections(connections);
+        ApplySelectedInfrastructure(track);
         ConnectNeighbours(position, connections);
+    }
+
+    /// <summary>Changes infrastructure metadata of an existing track without changing geometry or connections.</summary>
+    public bool ConfigureInfrastructure(MapPosition position, TrackType type, LineClass lineClass, TractionSystem traction)
+    {
+        if (!_map.TryGetTrack(position, out var track) || track is null) return false;
+        track.SetInfrastructure(type, lineClass, traction);
+        return true;
+    }
+
+    public bool SetTraction(MapPosition position, TractionSystem traction)
+    {
+        if (!_map.TryGetTrack(position, out var track) || track is null) return false;
+        track.SetInfrastructure(track.Type, track.LineClass, traction);
+        return true;
+    }
+
+    public bool SetTrackType(MapPosition position, TrackType type)
+    {
+        if (!_map.TryGetTrack(position, out var track) || track is null) return false;
+        track.SetInfrastructure(type, track.LineClass, track.Traction);
+        return true;
+    }
+
+    public bool SetLineClass(MapPosition position, LineClass lineClass)
+    {
+        if (!_map.TryGetTrack(position, out var track) || track is null) return false;
+        track.SetInfrastructure(track.Type, lineClass, track.Traction);
+        return true;
     }
 
     public void Remove(MapPosition position)
@@ -99,6 +136,9 @@ public sealed class TrackBuilder
         _map.AddTrack(track);
         return track;
     }
+
+    private void ApplySelectedInfrastructure(TrackCell track)
+        => track.SetInfrastructure(SelectedTrackType, SelectedLineClass, SelectedTraction);
 
     private void ConnectNeighbours(MapPosition position, TrackConnections connections)
     {
