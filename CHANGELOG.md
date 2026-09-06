@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.2.6] — Rebuilt gameplay HUD
+**Data:** 2026-09-06
+
+### HUD
+
+- Rebuilt the gameplay HUD around explicit operational areas.
+- Added a visible `ZAZNACZANIE / BRAK TRYBU [0]` action that sets `TrackBuildMode.None`.
+- Grouped build tools behind a collapsible section so selection is immediately accessible.
+- Added clearer selected-train, dispatcher, timetable, traffic, station, wagon and passenger summaries.
+- Consolidated the active control contract in the HUD.
+
+### Selection workflow
+
+- LPM on an existing track starts a new selection.
+- Shift+LPM adds a track.
+- Ctrl+LPM toggles a track.
+- F11 remains the named railway line and bulk infrastructure editor.
+
+### Safety
+
+- Existing GUI/world input lock remains in force.
+- Opening F8/F9/F10/F11 continues to cancel active build mode.
+- HUD build actions use the existing `SetBuildMode` ownership instead of directly modifying world state.
+
+### Scope
+
+- No economy added.
+- No automatic route repair added.
+- No automatic switch/signal control added.
+- No movement or physics rewrite added.
+
+### Documentation
+
+- Added `docs/33-current-state-0.2.6.md`.
+- Added `docs/changelog/0.2.6.md`.
+- Updated `docs/00-index.md`.
+
+### Verification
+
+No Windows build or live gameplay verification was performed in this environment.
+
 ## [0.2.5a] — GUI input lock correction
 **Data:** 2026-09-06
 
