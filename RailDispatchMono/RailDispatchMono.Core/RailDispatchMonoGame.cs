@@ -81,7 +81,10 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
             train => _myraUI.QueueAction(() => FocusTrain(train)),
             station => _myraUI.QueueAction(() => FocusStation(station)),
             mode => _myraUI.QueueAction(() => SetBuildMode(mode)),
-            () => _myraUI.QueueAction(ToggleRouteEditMode));
+            () => _myraUI.QueueAction(ToggleRouteEditMode),
+            train => _myraUI.QueueAction(() => RailwayDispatcher.ForceProceed(train)),
+            train => _myraUI.QueueAction(() => RailwayDispatcher.NotifyReleased(train)),
+            train => _myraUI.QueueAction(() => ToggleTrainAutomation(train)));
         _myraUI.SetRoot(_gameplayView.Root);
         _gameplayUiRefreshTimer = 0d;
     }
@@ -117,6 +120,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         modeField?.SetValue(input, !(bool)(modeField.GetValue(input) ?? false));
     }
 
+    private void ToggleTrainAutomation(Train train)
+    {
+        var schedule = train.LocomotiveSchedule;
+        if (schedule == null) return;
+        schedule.Enabled = !schedule.Enabled;
+        if (!schedule.Enabled) RailwayDispatcher.ClearForceProceed(train);
+    }
+
     private void OpenLocomotiveScheduleEditor()
     {
         if (_gameplayView == null || _gameplay == null || _myraUI.Desktop.Root != _gameplayView.Root) return;
@@ -124,7 +135,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         if (selectedField?.GetValue(_gameplayView) is not Train train || train.Composition.Locomotive == null) return;
         var stations = GetGameplayField<TrainManager>("_trainManager")?.StationController;
         if (stations == null) return;
-        var editor = new MyraLocomotiveScheduleView(train, stations, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        var editor = new MyraLocomotiveScheduleView(train, stations, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
         _myraUI.SetRoot(editor.Root);
     }
 
@@ -134,7 +145,7 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         var manager = GetGameplayField<TrainManager>("_trainManager");
         var signals = GetGameplayField<SignalController>("_signalController");
         if (manager == null || signals == null) return;
-        var view = new MyraRailwayDiagnosticsView(manager, signals, () => _myraUI.QueueAction(() => _myraUI.Clear()));
+        var view = new MyraRailwayDiagnosticsView(manager, signals, () => _myraUI.QueueAction(() => _myraUI.SetRoot(_gameplayView.Root)));
         _myraUI.SetRoot(view.Root);
     }
 
@@ -164,16 +175,14 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
                 string currentName = stations?.FirstOrDefault(s => s.Id == currentPoint.StationId)?.Name ?? "—";
                 string nextName = stations?.FirstOrDefault(s => s.Id == nextPoint.StationId)?.Name ?? "—";
                 int eta = runtime.GetExpectedArrival(schedule, next);
-                text += $"\nRozkład: {schedule.Name} • stan: {runtime.State}\nPunkt: {current + 1}/{schedule.Points.Count} • {currentName}\nNastępny: {nextName}\nETA: {FormatClock(eta)} • odjazd: {FormatClock(runtime.GetExpectedDeparture(schedule, current))}\nOpóźnienie: {runtime.DelaySeconds:+#;-#;0}s • propagowane: {runtime.PropagatedDelaySeconds}s";
+                text += $"\nRozkład: {schedule.Name} • stan: {runtime.State}\nPunkt: {current + 1}/{schedule.Points.Count} • {currentName}\nNastępny: {nextName}\nETA: {FormatClock(eta)} • odjazd: {FormatClock(runtime.GetExpectedDeparture(schedule, current))}\nOpóźnienie: {FormatDelay(runtime.DelaySeconds)} • propagowane: {FormatDelay(runtime.PropagatedDelaySeconds)}";
             }
-            else
-            {
-                text += $"\nRozkład: {schedule.Name} • oczekiwanie na pierwszy punkt";
-            }
+            else text += $"\nRozkład: {schedule.Name} • oczekiwanie na pierwszy punkt";
         }
         textProperty.SetValue(label, text);
     }
 
+    private static string FormatDelay(int seconds) => seconds == 0 ? "0 s" : $"{(seconds > 0 ? "+" : "−")}{Math.Abs(seconds) / 60}m {Math.Abs(seconds) % 60:D2}s";
     private static string FormatClock(int seconds)
     {
         int normalized = ((seconds % 86400) + 86400) % 86400;
@@ -195,6 +204,12 @@ public sealed class RailDispatchMonoGame : Microsoft.Xna.Framework.Game
         KeyboardState keyboard = Keyboard.GetState();
         if (_gameplayView != null && _myraUI.Desktop.Root == _gameplayView.Root)
         {
+            // F6 is the explicit dispatcher override. It does not alter block occupancy or signals.
+            if (keyboard.IsKeyDown(Keys.F6) && _previousKeyboard.IsKeyUp(Keys.F6))
+            {
+                var selectedField = typeof(MyraGameplayView).GetField("_selectedTrain", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (selectedField?.GetValue(_gameplayView) is Train train) RailwayDispatcher.ForceProceed(train);
+            }
             if (keyboard.IsKeyDown(Keys.F9) && _previousKeyboard.IsKeyUp(Keys.F9)) OpenLocomotiveScheduleEditor();
             if (keyboard.IsKeyDown(Keys.F10) && _previousKeyboard.IsKeyUp(Keys.F10)) OpenRailwayDiagnostics();
             _gameplayUiRefreshTimer += gameTime.ElapsedGameTime.TotalSeconds;
