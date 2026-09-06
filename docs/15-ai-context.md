@@ -2,7 +2,7 @@
 
 ## Current development line
 
-**RailDispatchMono `0.2.4`** is the current development snapshot. The 0.2.4 line adds infrastructure metadata and electrical traction compatibility while preserving the timetable, block, signal and player-control contracts.
+**RailDispatchMono `0.2.5`** is the current development snapshot. The 0.2.5 line makes infrastructure metadata operationally usable through multi-track selection and named railway-line grouping while preserving timetable, block, signal and player-control contracts.
 
 ## Infrastructure contract
 
@@ -13,29 +13,43 @@
 - `TractionSystem`: `None`, `DC`, `AC`;
 - `WearPercent` / `ConditionPercent` for future infrastructure wear.
 
-`LineClassProfile` currently exposes prepared Vmax and axle-load limits. These are data for future infrastructure/physics rules; 0.2.4 does not replace the existing movement model with them.
+`LineClassProfile` currently exposes prepared Vmax and axle-load limits. These are data for future infrastructure/physics rules; current movement remains unchanged.
 
 ## Traction contract
 
-`TractionType` remains propulsion category (`Electric` / `Diesel`). Electric locomotives additionally declare a set of supported `TractionSystem` values. EP07 is DC, EU200 is AC. Diesel locomotives are independent of track electrification. The model supports multi-system electric locomotives.
+`TractionType` remains propulsion category (`Electric` / `Diesel`). Electric locomotives additionally declare supported `TractionSystem` values. EP07 is DC, EU200 is AC. Diesel locomotives are independent of track electrification. The model supports multi-system electric locomotives.
 
-0.2.4 does not automatically reroute trains, replace locomotives or solve incompatible infrastructure. No automatic “route infeasible” planning layer was added.
+The project does not automatically reroute trains, replace locomotives or solve incompatible infrastructure.
 
-## Infrastructure editing
+## Named railway lines
 
-`TrackBuilder` carries selected infrastructure defaults for newly built track. It also exposes metadata-only configuration methods for existing cells.
+`RailwayLine` is a player-defined logical collection of `MapPosition` track cells. `RailwayLineManager` owns line creation, deletion, membership, bulk infrastructure changes and connected-track discovery.
 
-F8 opens `MyraTrackInfrastructureView` for the track under the cursor. The view can change track type, line class and traction without changing geometry, connections, blocks, signals or switches.
+Named lines are metadata only. They do not replace `Block`, `SignalController`, junction state, route topology or timetable logic.
+
+Each line has a stable ID, player-visible name and deterministic display color index. Removing a physical track removes that position from all lines.
+
+## Multi-track selection and UI
+
+`InputManager` owns the active map selection:
+
+- LPM on existing track in `TrackBuildMode.None` replaces the selection;
+- Shift+LPM adds;
+- Ctrl+LPM toggles.
+
+`TrackRenderer` visualizes named lines with colored contours and the active selection with a white contour while preserving traction color and line-class thickness.
+
+F11 opens `MyraRailwayLineView`. It creates/renames/selects/deletes named lines and applies `TrackType`, `LineClass` and `TractionSystem` to either the active selection or the selected line. It can also add/remove selection membership and select a connected track area.
 
 ## Persistence
 
-`MapSaveData` schema is `2`. Track persistence includes geometry, connections, switch position, track type, line class, traction and wear. Old saves are not a compatibility target.
+`MapSaveData` schema is `3`. Named line persistence includes ID, name, color index and track positions. Old map schemas are intentionally not a compatibility target.
 
 ## Dispatcher/block contract
 
 `RailwayDispatcher` still arbitrates the next connected existing `Block` on a first-come-first-served basis. F6 calls `RailwayDispatcher.ForceProceed`; it does not clear physical occupancy, alter signals or move switches. Route release operates through `RailwayDispatcher.NotifyReleased`.
 
-The dispatcher does not set switches and does not change signal aspects. Infrastructure metadata is not a replacement for the block/signal layer.
+The dispatcher does not set switches and does not change signal aspects. Infrastructure metadata and named lines are not a replacement for the block/signal layer.
 
 ## Coupling and movement contract
 
@@ -46,7 +60,8 @@ The dispatcher does not set switches and does not change signal aspects. Infrast
 - F6 — dispatcher override;
 - F8 — track infrastructure editor under cursor;
 - F9 — locomotive timetable editor;
-- F10 — railway diagnostics.
+- F10 — railway diagnostics;
+- F11 — named railway line and bulk infrastructure editor.
 
 There is one shared Myra `Desktop`. UI requests domain operations; it does not own domain state.
 
@@ -56,8 +71,8 @@ There is one shared Myra `Desktop`. UI requests domain operations; it does not o
 
 ## Verification
 
-No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.4 verify F8 editing, new-track defaults, map save/load schema 2, EP07/EU200/SU42 traction metadata and unchanged block/signal/F6 behaviour.
+No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.5 verify F11 editing, Shift/Ctrl selection, named-line contours, schema 3 save/load and unchanged block/signal/F6 behaviour.
 
 ## AI rule
 
-Before infrastructure changes inspect `TrackCell`, `TrackBuilder`, `GameMap`, `MapSaveData`, `MapSaveService`, `LocomotiveDefinition`, `Locomotive`, `RollingStockCatalog`, `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement` and `StationController` together. Before UI changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame` and the relevant domain owner. Every runtime or UI contract change must update maintained architecture/current-state documentation and the relevant changelog.
+Before infrastructure changes inspect `TrackCell`, `TrackBuilder`, `GameMap`, `MapSaveData`, `MapSaveService`, `RailwayLine`, `RailwayLineManager`, `LocomotiveDefinition`, `Locomotive`, `RollingStockCatalog`, `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement` and `StationController` together. Before UI changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `InputManager`, `MyraRailwayLineView` and the relevant domain owner. Every runtime or UI contract change must update maintained architecture/current-state documentation and the relevant changelog.
