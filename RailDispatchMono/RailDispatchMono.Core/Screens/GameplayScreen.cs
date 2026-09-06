@@ -202,7 +202,18 @@ public sealed class GameplayScreen : GameScreen
 
     private void CreateTestTrack()
     {
-        for (int x = 8; x <= 32; x++) _builder.BuildStraight(new MapPosition(x, 20), true);
+        // Buduję mini-pętlę 4x4 (kwadrat)
+        // Górna krawędź: idziemy na wschód od (8,20) do (12,20)
+        for (int x = 8; x < 12; x++) _builder.BuildStraight(new MapPosition(x, 20), true);
+
+        // Prawa krawędź: idziemy na południe od (12,20) do (12,24)
+        for (int y = 20; y < 24; y++) _builder.BuildStraight(new MapPosition(12, y), false); // false = pion
+
+        // Dolna krawędź: idziemy na zachód od (12,24) do (8,24)
+        for (int x = 12; x > 8; x--) _builder.BuildStraight(new MapPosition(x, 24), true);
+
+        // Lewa krawędź: idziemy na północ od (8,24) do (8,20)
+        for (int y = 24; y > 20; y--) _builder.BuildStraight(new MapPosition(8, y), false); // false = pion
     }
 
     private void SnapshotWagonPassengers()
