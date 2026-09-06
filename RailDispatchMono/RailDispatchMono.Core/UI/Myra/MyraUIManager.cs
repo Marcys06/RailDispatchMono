@@ -14,6 +14,14 @@ public sealed class MyraUIManager
     public Desktop Desktop { get; private set; } = null!;
     public bool IsInitialized => _initialized;
 
+    /// <summary>
+    /// True when a temporary Myra GUI replaced the gameplay root.
+    /// Gameplay/world mouse input must be ignored in this state so a selected
+    /// build mode cannot place tracks underneath the GUI.
+    /// </summary>
+    public bool IsGameplayOverlayOpen =>
+        _initialized && _previousRoot != null && Desktop.Root != _previousRoot;
+
     public void Initialize(Microsoft.Xna.Framework.Game game)
     {
         if (_initialized) return;
