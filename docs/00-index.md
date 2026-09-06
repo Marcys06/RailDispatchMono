@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.3`**  
-**Previous consolidated milestone: `0.2.2`**
+**Documentation baseline: `0.2.4`**  
+**Previous consolidated milestone: `0.2.3`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -36,21 +36,36 @@ This directory contains maintained project documentation. Historical release not
 27. [27-current-state-0.2.0.md](27-current-state-0.2.0.md) — historical `0.2.0` snapshot.
 28. [28-current-state-0.2.1.md](28-current-state-0.2.1.md) — historical `0.2.1` snapshot.
 29. [29-current-state-0.2.2.md](29-current-state-0.2.2.md) — historical `0.2.2` snapshot.
-30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — authoritative `0.2.3` snapshot.
+30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — historical `0.2.3` snapshot.
+31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — authoritative `0.2.4` snapshot.
+32. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
 
-## Current 0.2.3 focus
+## Current 0.2.4 focus
 
-0.2.3 is the operational dispatcher UI milestone. The gameplay HUD exposes timetable position, delay and dispatcher state; F10 exposes infrastructure and FCFS diagnostics; F6 is the explicit manual dispatcher override.
+0.2.4 adds infrastructure metadata to existing track segments without replacing the existing railway graph. Track geometry, operational track type, line class, traction and wear are separate concerns.
 
-The dispatcher keeps FCFS ordering local to the requested block. Route release operates through the dispatcher boundary rather than directly mutating block occupancy. AUTO/RĘCZ is a mode switch for locomotive timetable execution and does not delete the timetable.
+Track traction is `None`, `DC` or `AC`. Electric locomotives declare supported electrical systems; diesel locomotives remain independent of electrification. No automatic route repair or automatic infrastructure decisions are introduced.
 
-The system remains deliberately player-dependent: switches and signal aspects are not automated by the dispatcher, F6 does not alter physical block occupancy, coupling/decoupling remains manual and RadioStop remains authoritative.
+F8 opens the infrastructure editor for the track under the cursor. It changes type, line class and traction without changing geometry, block occupancy, signals or switches. F6 remains the dispatcher override, F9 remains the locomotive timetable editor and F10 remains diagnostics.
 
-Backward compatibility with older saves and HUD layouts is not a requirement.
+`map.json` schema is `2` and persists the new infrastructure metadata. Old saves are not required to remain compatible.
+
+## Roadmap
+
+- `0.3.0` — infrastructure management: active electrification, classes, maintenance, wear;
+- `0.4.0` — economy: revenue, costs, budget, investments;
+- `0.5.0` — public timetable and coordination;
+- `0.6.0` — passenger demand, satisfaction and modal choice;
+- `0.7.0` — richer physics: curves, gradients, braking recovery;
+- `0.8.0` — failures, weather and crisis management;
+- `0.9.0` — inter-city network and hub stations;
+- `1.0.0` — integrated full release, balance and campaign.
+
+See [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) for the dependency plan.
 
 ## Version policy
 
-- `0.2.3` is the current development snapshot.
-- `0.2.2`, `0.2.1`, `0.2.0` and earlier snapshots are historical.
+- `0.2.4` is the current development snapshot.
+- `0.2.3`, `0.2.2`, `0.2.1`, `0.2.0` and earlier snapshots are historical.
 - Historical release notes remain immutable.
 - Maintained architecture/domain/UI documentation is updated whenever the current contract changes.
