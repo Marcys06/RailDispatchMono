@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.4` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.2.5` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -22,80 +22,79 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 - `MyraGameplayView`
 - `MyraDepotView`
 - `MyraLocomotiveScheduleView` — locomotive timetable editor
-- `MyraTrackInfrastructureView` — F8 track infrastructure editor
+- `MyraTrackInfrastructureView` — F8 single-track infrastructure editor
 - `MyraRailwayDiagnosticsView` — full infrastructure/dispatcher diagnostics
+- `MyraRailwayLineView` — F11 named railway line and bulk infrastructure editor
 - `MyraUIManager`
 
-There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the locomotive timetable editor, infrastructure editor or diagnostics view and restores it on close.
+There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the timetable, infrastructure, diagnostics or railway-line editor and restores it on close.
 
-## 0.2.4 gameplay controls
+## 0.2.5 gameplay controls
 
 - `F6` — dispatcher-only force passage;
 - `F8` — edit infrastructure metadata of the track under the mouse cursor;
 - `F9` — locomotive timetable editor;
-- `F10` — railway diagnostics.
+- `F10` — railway diagnostics;
+- `F11` — named railway line editor.
 
-F8 changes only infrastructure metadata: track role, line class and traction (`BRAK`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
+F8 changes only infrastructure metadata: track role, line class and traction (`None`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
 
-New track built through `TrackBuilder` uses the builder's selected infrastructure defaults. The domain also exposes metadata-only configuration methods for existing track cells.
+## Multi-track selection
 
-## 0.2.3 operational HUD retained
+In `TrackBuildMode.None`, existing track cells can be selected directly on the map:
 
-`MyraGameplayView` remains the operational dashboard. The train list exposes `AUTO` / `RĘCZ`, timetable point `n/m`, delay and speed. The selected-train panel exposes current point, next point, ETA, required departure, delay and dispatcher state.
+- LPM — replace selection;
+- Shift+LPM — add to selection;
+- Ctrl+LPM — toggle selection.
 
-`WYMUSZENIE [F6]`, `ZWOLNIJ TRASĘ` and `AUTO / RĘCZ` remain explicit player actions. F6 does not clear physical block occupancy or change signal aspects.
+`TrackRenderer` draws a white contour around the active selection. The selection is owned by `InputManager` and is passed to the F11 editor; it is not a second domain model.
+
+## Railway line editor — F11
+
+`MyraRailwayLineView` supports:
+
+- naming and creating a line from the current selection;
+- listing and selecting existing named lines;
+- selecting a line's tracks back on the map;
+- adding/removing the current selection from a line;
+- mass-applying `TrackType`, `LineClass` and `TractionSystem` to the selection or selected line;
+- selecting a connected track area using the existing topology;
+- deleting a named line without deleting physical track.
+
+Named lines are organizational infrastructure metadata only. They do not become a routing, block, signal or dispatcher subsystem.
+
+## Map presentation of named lines
+
+Each named line receives a deterministic display color. `TrackRenderer` draws this color as a contour behind the normal track. The normal traction color remains visible in the track center and line-class thickness remains unchanged. This lets the player read both infrastructure properties and the named-line grouping at the same time.
 
 ## Locomotive timetable editor — F9
 
-After selecting a train with a locomotive, **F9** opens `MyraLocomotiveScheduleView`.
-
-The editor supports adding/removing timetable points, station assignment, independent arrival/departure adjustment, reordering, enable/disable and validation before save. Wagon timetables are not edited by this view.
+After selecting a train with a locomotive, F9 opens `MyraLocomotiveScheduleView`.
 
 ## Track infrastructure editor — F8
 
 F8 samples the world position under the mouse cursor and opens `MyraTrackInfrastructureView` for that `TrackCell`.
 
-The editor displays geometry and condition and allows cycling:
-
-- `TrackType`: `Mainline`, `Secondary`, `Siding`, `Platform`;
-- `LineClass`: `Local`, `Regional`, `Mainline`, `Magistral`;
-- `TractionSystem`: `None`, `DC`, `AC`.
-
-The view is deliberately metadata-only. It does not become a second routing, block or signal controller.
-
 ## Railway diagnostics — F10
 
-**F10** opens `MyraRailwayDiagnosticsView` and shows:
-
-- every block as `FREE`, `RESERVED` or `OCCUPIED`;
-- block cooldown and train ownership;
-- FCFS queue with target block and wait time;
-- signal aspects and their associated block state;
-- timetable runtime and dispatcher state for every train;
-- safe dispatcher actions for force-proceed and route release.
-
-The diagnostic release action never writes `Block.IsOccupied` directly.
+F10 opens `MyraRailwayDiagnosticsView` and shows blocks, FCFS requests, signal aspects, timetable runtime and dispatcher state.
 
 ## World interaction boundary
 
-`TrainRenderer`, `StationRenderer`, `SignalRenderer` and track rendering remain outside Myra. Myra presents operational state and invokes domain actions; it does not become a second world renderer or simulation controller.
+`TrainRenderer`, `StationRenderer`, `SignalRenderer` and track rendering remain outside Myra. Myra presents operational state and invokes domain actions; it does not become a second simulation controller.
 
 ## Input ownership
 
 - Myra Desktop handles migrated widget interaction;
 - `GameplayScreen` owns pause state;
 - `DepotScreen` owns temporary builder state; train ownership remains in `TrainManager`;
-- `InputManager` owns world input and cursor selection;
+- `InputManager` owns world input and multi-track selection;
 - F6 is the explicit dispatcher override;
-- F8 opens infrastructure editing for the cursor track;
-- F9/F10 open operational views;
+- F8/F9/F10/F11 open operational views;
+- `RailwayLineManager` owns named-line domain state;
 - domain managers/models own simulation and infrastructure state.
 
 The HUD does not automate switches, signal aspects, coupling/decoupling, passenger transfers or route repair.
-
-## Passenger ownership boundary
-
-`StationController`, `PassengerManager`, `DefaultPassengerService` and `Wagon` remain authoritative. A passenger belongs to a concrete wagon, not to a UI model or directly to a train. Coupling/decoupling therefore must not trigger UI-owned passenger migration.
 
 ## AI rule
 
