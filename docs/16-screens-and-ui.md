@@ -39,6 +39,16 @@ There is one shared Myra `Desktop` and one active root. Gameplay temporarily rep
 
 F8 changes only infrastructure metadata: track role, line class and traction (`None`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
 
+## GUI/world input separation
+
+A temporary Myra GUI is modal with respect to the gameplay world. When `MyraUIManager.IsGameplayOverlayOpen` is true, `GameplayScreen` does not call `InputManager.Update()`.
+
+Therefore the mouse can interact with the GUI without interacting with the map underneath it. In particular, a previously selected build mode such as `1` cannot cause a track to be placed by clicking the GUI or its surrounding area.
+
+Opening F8/F9/F10/F11 also resets `TrackBuilder.Mode` to `None`. Closing the GUI therefore cannot leave a pending track-placement action armed.
+
+This is intentionally a world-input lock, not a replacement Myra input system: Myra owns GUI pointer interaction while `InputManager` owns world interaction only when the gameplay GUI is not modal.
+
 ## Multi-track selection
 
 In `TrackBuildMode.None`, existing track cells can be selected directly on the map:
@@ -88,7 +98,8 @@ F10 opens `MyraRailwayDiagnosticsView` and shows blocks, FCFS requests, signal a
 - Myra Desktop handles migrated widget interaction;
 - `GameplayScreen` owns pause state;
 - `DepotScreen` owns temporary builder state; train ownership remains in `TrainManager`;
-- `InputManager` owns world input and multi-track selection;
+- `InputManager` owns world input and multi-track selection only while no modal Myra gameplay GUI is open;
+- `MyraUIManager` exposes the modal gameplay-overlay state;
 - F6 is the explicit dispatcher override;
 - F8/F9/F10/F11 open operational views;
 - `RailwayLineManager` owns named-line domain state;
@@ -98,4 +109,4 @@ The HUD does not automate switches, signal aspects, coupling/decoupling, passeng
 
 ## AI rule
 
-Before changing Myra gameplay UI, inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `GameplayScreen`, `TrackBuilder`, `TrackCell` and the relevant domain owner together. Keep one Myra `Desktop`, keep domain state outside UI models and update this document plus the current-state/changelog documentation whenever the UI contract changes.
+Before changing Myra gameplay UI, inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `GameplayScreen`, `InputManager` and the relevant domain owner together. Every gameplay GUI must preserve the modal world-input lock: GUI pointer actions must never fall through to track placement, selection, deletion, switch/signal actions or camera movement.
