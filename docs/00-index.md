@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.4`**  
-**Previous consolidated milestone: `0.2.3`**
+**Documentation baseline: `0.2.5`**  
+**Previous consolidated milestone: `0.2.4`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -37,18 +37,19 @@ This directory contains maintained project documentation. Historical release not
 28. [28-current-state-0.2.1.md](28-current-state-0.2.1.md) — historical `0.2.1` snapshot.
 29. [29-current-state-0.2.2.md](29-current-state-0.2.2.md) — historical `0.2.2` snapshot.
 30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — historical `0.2.3` snapshot.
-31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — authoritative `0.2.4` snapshot.
-32. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
+31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — historical `0.2.4` snapshot.
+32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — authoritative `0.2.5` snapshot.
+33. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
 
-## Current 0.2.4 focus
+## Current 0.2.5 focus
 
-0.2.4 adds infrastructure metadata to existing track segments without replacing the existing railway graph. Track geometry, operational track type, line class, traction and wear are separate concerns.
+0.2.5 makes infrastructure metadata visible and useful. Traction is encoded by color: black = non-electrified, orange/red = DC, blue = AC. Line class is encoded by thickness from Local to Magistral.
 
-Track traction is `None`, `DC` or `AC`. Electric locomotives declare supported electrical systems; diesel locomotives remain independent of electrification. No automatic route repair or automatic infrastructure decisions are introduced.
+`RailwayLine` is the player-facing logical grouping concept for future mass editing. A line is a collection of track cells and can later become the scope for maintenance, electrification upgrades and other infrastructure actions. It never replaces blocks or railway topology.
 
-F8 opens the infrastructure editor for the track under the cursor. It changes type, line class and traction without changing geometry, block occupancy, signals or switches. F6 remains the dispatcher override, F9 remains the locomotive timetable editor and F10 remains diagnostics.
+The grouping domain already supports connected-track discovery and bulk application of track type, line class and traction. The UI can build on this without introducing a second infrastructure model.
 
-`map.json` schema is `2` and persists the new infrastructure metadata. Old saves are not required to remain compatible.
+F6 remains dispatcher override, F8 infrastructure editing, F9 locomotive timetable editing and F10 diagnostics.
 
 ## Roadmap
 
@@ -62,10 +63,3 @@ F8 opens the infrastructure editor for the track under the cursor. It changes ty
 - `1.0.0` — integrated full release, balance and campaign.
 
 See [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) for the dependency plan.
-
-## Version policy
-
-- `0.2.4` is the current development snapshot.
-- `0.2.3`, `0.2.2`, `0.2.1`, `0.2.0` and earlier snapshots are historical.
-- Historical release notes remain immutable.
-- Maintained architecture/domain/UI documentation is updated whenever the current contract changes.
