@@ -20,6 +20,9 @@ internal sealed class MyraRailwayLineView
     private readonly Label _status;
     private readonly VerticalStackPanel _linesPanel;
     private readonly Label _selectionLabel;
+    private readonly Label _trackTypeLabel;
+    private readonly Label _lineClassLabel;
+    private readonly Label _tractionLabel;
     private TrackType _trackType = TrackType.Mainline;
     private LineClass _lineClass = LineClass.Mainline;
     private TractionSystem _traction = TractionSystem.None;
@@ -35,73 +38,101 @@ internal sealed class MyraRailwayLineView
 
         var root = new VerticalStackPanel
         {
-            Width = 1200,
+            Width = 1160,
+            Height = 700,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 6
+            Spacing = 5
         };
 
         root.Widgets.Add(new Label { Text = "LINIE KOLEJOWE — F11", Wrap = true });
         root.Widgets.Add(new Label
         {
-            Text = "LPM na mapie: nowe zaznaczenie • Shift+LPM: dodaj tor • Ctrl+LPM: przełącz tor. F11 otwiera ten ekran.",
+            Text = "Zarządzanie nazwanymi liniami i masowe parametry infrastruktury. LPM: nowe zaznaczenie • Shift+LPM: dodaj • Ctrl+LPM: przełącz.",
             Wrap = true
         });
 
-        // Wiersz tworzenia i zarządzania linią
-        var createRow = new HorizontalStackPanel { Spacing = 5 };
-        _nameBox = new TextBox { Text = "Nowa linia", Width = 280 };
-        createRow.Widgets.Add(_nameBox);
-        createRow.Widgets.Add(CreateButton("UTWÓRZ Z ZAZNACZENIA", 220, CreateLine));
-        createRow.Widgets.Add(CreateButton("ZMIEŃ NAZWĘ", 130, RenameCurrentLine));
-        createRow.Widgets.Add(CreateButton("ZAZNACZ LINIĘ", 150, SelectCurrentLine));
-        createRow.Widgets.Add(CreateButton("USUŃ LINIĘ", 130, DeleteCurrentLine));
-        root.Widgets.Add(createRow);
+        var content = new VerticalStackPanel { Spacing = 7 };
 
+        // 1. Zaznaczenie i podstawowe operacje na linii.
+        content.Widgets.Add(new Label { Text = "AKTYWNE ZAZNACZENIE", Wrap = true });
         _selectionLabel = new Label { Wrap = true };
-        root.Widgets.Add(_selectionLabel);
+        content.Widgets.Add(_selectionLabel);
 
-        // Sekcja masowych zmian
-        var bulk = new VerticalStackPanel { Spacing = 4 };
-        bulk.Widgets.Add(new Label { Text = "MASOWA ZMIANA PARAMETRÓW", Wrap = true });
+        var selectionRow = new HorizontalStackPanel { Spacing = 5 };
+        selectionRow.Widgets.Add(CreateButton("ZAZNACZ POŁĄCZONY OBSZAR", 220, SelectConnectedArea));
+        selectionRow.Widgets.Add(CreateButton("WYCZYŚĆ ZAZNACZENIE", 190, () =>
+        {
+            _setSelection(Array.Empty<MapPosition>());
+            _status.Text = "Zaznaczenie wyczyszczone.";
+            Refresh();
+        }));
+        content.Widgets.Add(selectionRow);
 
-        var bulkRow1 = new HorizontalStackPanel { Spacing = 4 };
-        var trackTypeLabel = new Label { Text = "TrackType: " + _trackType, Width = 180 };
-        bulkRow1.Widgets.Add(trackTypeLabel);
-        bulkRow1.Widgets.Add(CreateButton("◀", 45, () => CycleTrackType(-1)));
-        bulkRow1.Widgets.Add(CreateButton("▶", 45, () => CycleTrackType(1)));
-        bulkRow1.Widgets.Add(CreateButton("ZASTOSUJ DO ZAZNACZENIA", 220, ApplyToSelection));
-        bulkRow1.Widgets.Add(CreateButton("ZASTOSUJ DO LINII", 170, ApplyToLine));
-        bulk.Widgets.Add(bulkRow1);
+        // 2. Tworzenie, wybór, zmiana nazwy i usuwanie.
+        content.Widgets.Add(new Label { Text = "ZARZĄDZANIE LINIĄ", Wrap = true });
+        var nameRow = new HorizontalStackPanel { Spacing = 5 };
+        _nameBox = new TextBox { Text = "Nowa linia", Width = 270 };
+        nameRow.Widgets.Add(_nameBox);
+        nameRow.Widgets.Add(CreateButton("UTWÓRZ Z ZAZNACZENIA", 210, CreateLine));
+        nameRow.Widgets.Add(CreateButton("ZMIEŃ NAZWĘ", 145, RenameCurrentLine));
+        nameRow.Widgets.Add(CreateButton("ZAZNACZ LINIĘ", 145, SelectCurrentLine));
+        nameRow.Widgets.Add(CreateButton("USUŃ LINIĘ", 125, DeleteCurrentLine));
+        content.Widgets.Add(nameRow);
 
-        var bulkRow2 = new HorizontalStackPanel { Spacing = 4 };
-        var lineClassLabel = new Label { Text = "LineClass: " + _lineClass, Width = 180 };
-        bulkRow2.Widgets.Add(lineClassLabel);
-        bulkRow2.Widgets.Add(CreateButton("◀", 45, () => CycleLineClass(-1)));
-        bulkRow2.Widgets.Add(CreateButton("▶", 45, () => CycleLineClass(1)));
-        bulkRow2.Widgets.Add(CreateButton("DODAJ ZAZNACZENIE DO LINII", 220, AddSelectionToLine));
-        bulkRow2.Widgets.Add(CreateButton("USUŃ ZAZNACZENIE Z LINII", 220, RemoveSelectionFromLine));
-        bulk.Widgets.Add(bulkRow2);
+        // 3. Masowa zmiana parametrów — każdy parametr ma niezależny wybór i zastosowanie.
+        content.Widgets.Add(new Label { Text = "MASOWA ZMIANA PARAMETRÓW INFRASTRUKTURY", Wrap = true });
 
-        var bulkRow3 = new HorizontalStackPanel { Spacing = 4 };
-        var tractionLabel = new Label { Text = "TractionSystem: " + _traction, Width = 180 };
-        bulkRow3.Widgets.Add(tractionLabel);
-        bulkRow3.Widgets.Add(CreateButton("◀", 45, () => CycleTraction(-1)));
-        bulkRow3.Widgets.Add(CreateButton("▶", 45, () => CycleTraction(1)));
-        bulkRow3.Widgets.Add(CreateButton("ZAZNACZ POŁĄCZONY OBSZAR", 220, SelectConnectedArea));
-        bulkRow3.Widgets.Add(CreateButton("WYCZYŚĆ ZAZNACZENIE", 170, () => { _setSelection(Array.Empty<MapPosition>()); Refresh(); }));
-        bulk.Widgets.Add(bulkRow3);
-        root.Widgets.Add(bulk);
+        var trackTypeRow = new HorizontalStackPanel { Spacing = 5 };
+        _trackTypeLabel = new Label { Text = "TrackType: " + _trackType, Width = 210, Wrap = true };
+        trackTypeRow.Widgets.Add(_trackTypeLabel);
+        trackTypeRow.Widgets.Add(CreateButton("◀", 45, () => CycleTrackType(-1)));
+        trackTypeRow.Widgets.Add(CreateButton("▶", 45, () => CycleTrackType(1)));
+        trackTypeRow.Widgets.Add(CreateButton("ZASTOSUJ DO ZAZNACZENIA", 230, ApplyToSelection));
+        trackTypeRow.Widgets.Add(CreateButton("ZASTOSUJ DO WYBRANEJ LINII", 235, ApplyToLine));
+        content.Widgets.Add(trackTypeRow);
 
-        // Lista zapisanych linii
+        var lineClassRow = new HorizontalStackPanel { Spacing = 5 };
+        _lineClassLabel = new Label { Text = "LineClass: " + _lineClass, Width = 210, Wrap = true };
+        lineClassRow.Widgets.Add(_lineClassLabel);
+        lineClassRow.Widgets.Add(CreateButton("◀", 45, () => CycleLineClass(-1)));
+        lineClassRow.Widgets.Add(CreateButton("▶", 45, () => CycleLineClass(1)));
+        lineClassRow.Widgets.Add(CreateButton("ZASTOSUJ DO ZAZNACZENIA", 230, ApplyToSelection));
+        lineClassRow.Widgets.Add(CreateButton("ZASTOSUJ DO WYBRANEJ LINII", 235, ApplyToLine));
+        content.Widgets.Add(lineClassRow);
+
+        var tractionRow = new HorizontalStackPanel { Spacing = 5 };
+        _tractionLabel = new Label { Text = "TractionSystem: " + _traction, Width = 210, Wrap = true };
+        tractionRow.Widgets.Add(_tractionLabel);
+        tractionRow.Widgets.Add(CreateButton("◀", 45, () => CycleTraction(-1)));
+        tractionRow.Widgets.Add(CreateButton("▶", 45, () => CycleTraction(1)));
+        tractionRow.Widgets.Add(CreateButton("ZASTOSUJ DO ZAZNACZENIA", 230, ApplyToSelection));
+        tractionRow.Widgets.Add(CreateButton("ZASTOSUJ DO WYBRANEJ LINII", 235, ApplyToLine));
+        content.Widgets.Add(tractionRow);
+
+        // 4. Operacje członkostwa linii są osobno, żeby nie znikały poza szerokością okna.
+        content.Widgets.Add(new Label { Text = "CZŁONKOSTWO W WYBRANEJ LINII", Wrap = true });
+        var membershipRow = new HorizontalStackPanel { Spacing = 5 };
+        membershipRow.Widgets.Add(CreateButton("DODAJ ZAZNACZENIE DO LINII", 250, AddSelectionToLine));
+        membershipRow.Widgets.Add(CreateButton("USUŃ ZAZNACZENIE Z LINII", 250, RemoveSelectionFromLine));
+        membershipRow.Widgets.Add(new Label
+        {
+            Text = "Operacje nie usuwają fizycznego toru.",
+            Width = 300,
+            Wrap = true
+        });
+        content.Widgets.Add(membershipRow);
+
+        // 5. Lista linii ma własny scroll, ale cały ekran również jest przewijalny.
+        content.Widgets.Add(new Label { Text = "ZAPISANE LINIE", Wrap = true });
         _linesPanel = new VerticalStackPanel { Spacing = 4 };
-        root.Widgets.Add(new Label { Text = "ZAPISANE LINIE", Wrap = true });
-        root.Widgets.Add(new ScrollViewer { Height = 520, Content = _linesPanel });
+        content.Widgets.Add(new ScrollViewer { Height = 260, Content = _linesPanel });
 
         _status = new Label { Wrap = true };
-        root.Widgets.Add(_status);
-        root.Widgets.Add(CreateButton("POWRÓT", 140, _close));
+        content.Widgets.Add(_status);
+        content.Widgets.Add(CreateButton("POWRÓT", 140, _close));
 
+        root.Widgets.Add(new ScrollViewer { Height = 635, Content = content });
         Root = root;
         Refresh();
     }
@@ -200,6 +231,7 @@ internal sealed class MyraRailwayLineView
     {
         int count = _lines.ApplyInfrastructure(_getSelection(), _trackType, _lineClass, _traction);
         _status.Text = $"Zmieniono parametry {count} zaznaczonych segmentów.";
+        Refresh();
     }
 
     private void ApplyToLine()
@@ -211,7 +243,8 @@ internal sealed class MyraRailwayLineView
         }
 
         int count = _lines.ApplyInfrastructure(line, _trackType, _lineClass, _traction);
-        _status.Text = $"Zmieniono parametry {count} segmentów linii „{line.Name}”."; // Poprawiono: dodano cudzysłów zamykający
+        _status.Text = $"Zmieniono parametry {count} segmentów linii „{line.Name}”.";
+        Refresh();
     }
 
     private void SelectConnectedArea()
@@ -253,7 +286,10 @@ internal sealed class MyraRailwayLineView
     {
         var current = CurrentLine;
         _selectionLabel.Text = $"Zaznaczenie: {_getSelection().Count} torów" +
-                               (current == null ? "" : $" • linia: {current.Name} ({current.TrackPositions.Count} segmentów)");
+                               (current == null ? "" : $" • wybrana linia: {current.Name} ({current.TrackPositions.Count} segmentów)");
+        _trackTypeLabel.Text = "TrackType: " + _trackType;
+        _lineClassLabel.Text = "LineClass: " + _lineClass;
+        _tractionLabel.Text = "TractionSystem: " + _traction;
 
         _linesPanel.Widgets.Clear();
 
@@ -265,36 +301,32 @@ internal sealed class MyraRailwayLineView
             row.Widgets.Add(new Label
             {
                 Text = $"{line.Name} • {line.TrackPositions.Count} torów • kolor {line.ColorIndex + 1}",
-                Width = 520,
+                Width = 500,
                 Wrap = true
             });
 
-            row.Widgets.Add(CreateButton("WYBIERZ", 100, () =>
+            row.Widgets.Add(CreateButton("WYBIERZ", 95, () =>
             {
                 _selectedLineId = local.Id;
                 _nameBox.Text = local.Name;
                 Refresh();
             }));
-
-            row.Widgets.Add(CreateButton("ZAZNACZ", 100, () =>
+            row.Widgets.Add(CreateButton("ZAZNACZ", 95, () =>
             {
                 _selectedLineId = local.Id;
                 SelectCurrentLine();
             }));
-
-            row.Widgets.Add(CreateButton("+ ZAZNACZENIE", 130, () =>
+            row.Widgets.Add(CreateButton("+ ZAZNACZENIE", 125, () =>
             {
                 _selectedLineId = local.Id;
                 AddSelectionToLine();
             }));
-
-            row.Widgets.Add(CreateButton("− ZAZNACZENIE", 130, () =>
+            row.Widgets.Add(CreateButton("− ZAZNACZENIE", 125, () =>
             {
                 _selectedLineId = local.Id;
                 RemoveSelectionFromLine();
             }));
-
-            row.Widgets.Add(CreateButton("USUŃ", 80, () =>
+            row.Widgets.Add(CreateButton("USUŃ", 75, () =>
             {
                 _selectedLineId = local.Id;
                 DeleteCurrentLine();
