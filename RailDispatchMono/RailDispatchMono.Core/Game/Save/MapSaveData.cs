@@ -5,11 +5,11 @@ using RailDispatchMono.Core.Game.Railway;
 
 namespace RailDispatchMono.Core.Game.Save;
 
-/// <summary>Serializable DTOs for the 0.0.15 map save format.</summary>
+/// <summary>Serializable DTOs for the current infrastructure save format.</summary>
 public sealed class MapSaveData
 {
-    public int SchemaVersion { get; set; } = 1;
-    public string GameVersion { get; set; } = "0.0.15b";
+    public int SchemaVersion { get; set; } = 2;
+    public string GameVersion { get; set; } = "0.2.4";
     public MapInfoSaveData Map { get; set; } = new();
     public List<TrackSaveData> Tracks { get; set; } = new();
     public List<SignalSaveData> Signals { get; set; } = new();
@@ -20,9 +20,18 @@ public sealed class MapSaveData
 public sealed class MapInfoSaveData { public int Width { get; set; } public int Height { get; set; } }
 public sealed class TrackSaveData
 {
-    public int X { get; set; } public int Y { get; set; } public TrackGeometry Geometry { get; set; }
-    public TrackConnections Connections { get; set; } public SwitchPosition SwitchPosition { get; set; }
-    public TrackConnections CommonStem { get; set; } public TrackConnections StraightConnection { get; set; } public TrackConnections DivergingConnection { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
+    public TrackGeometry Geometry { get; set; }
+    public TrackConnections Connections { get; set; }
+    public SwitchPosition SwitchPosition { get; set; }
+    public TrackConnections CommonStem { get; set; }
+    public TrackConnections StraightConnection { get; set; }
+    public TrackConnections DivergingConnection { get; set; }
+    public TrackType Type { get; set; } = TrackType.Mainline;
+    public LineClass LineClass { get; set; } = LineClass.Mainline;
+    public TractionSystem Traction { get; set; } = TractionSystem.None;
+    public float WearPercent { get; set; }
 }
 public sealed class SignalSaveData
 {
