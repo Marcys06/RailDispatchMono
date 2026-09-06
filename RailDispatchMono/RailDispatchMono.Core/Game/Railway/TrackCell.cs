@@ -18,11 +18,27 @@ public sealed class TrackCell
     public TrackConnections StraightConnection { get; private set; } = TrackConnections.None;
     public TrackConnections DivergingConnection { get; private set; } = TrackConnections.None;
     public TrackConnections CommonStem { get; private set; } = TrackConnections.None;
+
+    /// <summary>Operational role of this track segment, independent of its geometric shape.</summary>
+    public TrackType Type { get; private set; } = TrackType.Mainline;
+
+    /// <summary>Infrastructure class used by future speed and operating rules.</summary>
+    public LineClass LineClass { get; private set; } = LineClass.Mainline;
+
+    /// <summary>Electrical system carried by this segment. None means non-electrified.</summary>
+    public TractionSystem Traction { get; private set; } = TractionSystem.None;
+
+    /// <summary>Wear percentage: 0 = new, 100 = fully worn. Simulation is introduced later.</summary>
+    public float WearPercent { get; private set; }
+
     public bool IsJunction => Geometry == TrackGeometry.Junction;
     public bool IsSwitchedToDiverging => CurrentSwitchPosition == SwitchPosition.Diverging;
     public TrackConnections StraightSide => StraightConnection;
     public TrackConnections DivergingSide => DivergingConnection;
     public TrackConnections StemSide => CommonStem;
+    public float ConditionPercent => 100f - WearPercent;
+    public float InfrastructureMaxSpeedKmh => LineClassProfile.MaxSpeedKmh(LineClass);
+    public float InfrastructureMaxAxleLoadTons => LineClassProfile.MaxAxleLoadTons(LineClass);
 
     public TrackCell(MapPosition position, TrackGeometry geometry, TrackConnections connections)
     {
@@ -33,6 +49,22 @@ public sealed class TrackCell
 
     public void SetGeometry(TrackGeometry geometry) => Geometry = geometry;
     public void SetConnections(TrackConnections connections) => Connections = connections;
+
+    public void SetInfrastructure(TrackType type, LineClass lineClass, TractionSystem traction)
+    {
+        Type = type;
+        LineClass = lineClass;
+        Traction = traction;
+    }
+
+    public void SetWear(float wearPercent)
+    {
+        WearPercent = System.Math.Clamp(wearPercent, 0f, 100f);
+    }
+
+    public void ApplyWear(float amount) => SetWear(WearPercent + amount);
+
+    public void Repair() => WearPercent = 0f;
 
     public void SetSwitchPosition(SwitchPosition position)
     {
