@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.5a`**  
-**Previous consolidated milestone: `0.2.5`**
+**Documentation baseline: `0.2.6`**  
+**Previous consolidated milestone: `0.2.5a`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -38,14 +38,15 @@ This directory contains maintained project documentation. Historical release not
 29. [29-current-state-0.2.2.md](29-current-state-0.2.2.md) — historical `0.2.2` snapshot.
 30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — historical `0.2.3` snapshot.
 31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — historical `0.2.4` snapshot.
-32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — current `0.2.5a` implementation state.
-33. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
+32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — historical `0.2.5/0.2.5a` implementation state.
+33. [33-current-state-0.2.6.md](33-current-state-0.2.6.md) — authoritative `0.2.6` snapshot.
+34. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
 
-## Current 0.2.5a focus
+## Current 0.2.6 focus
 
-0.2.5a is a corrective release for GUI/world input ownership. The gameplay dashboard and temporary Myra editors now have an explicit two-stage input barrier: temporary GUI roots suspend world input, and queued GUI actions consume the gameplay frame in which they execute.
+0.2.6 rebuilds the gameplay HUD around explicit player actions. The most important change is a visible `ZAZNACZANIE / BRAK TRYBU [0]` button that sets `TrackBuildMode.None`, making multi-track selection directly accessible without relying on an undocumented state.
 
-This prevents the common failure where a button changes `TrackBuildMode` and the same mouse click is then interpreted by `InputManager` as a world click. It also fixes the temporary-root lifecycle so closing F8/F9/F10/F11 restores normal world input instead of leaving the overlay state stale.
+Build tools are grouped under a collapsible section. The center panel exposes the selected train, dispatcher status, timetable state and operational actions. Traffic, stations, wagons and passenger occupancy are presented separately. F6 remains `Wymuś przejazd`; F8/F9/F10/F11 retain their operational screens.
 
 The 0.2.5 infrastructure model remains unchanged: traction is encoded by color, line class by thickness, named `RailwayLine` groups provide bulk-edit scope, and map persistence uses schema 3.
 
