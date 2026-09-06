@@ -45,11 +45,13 @@ This directory contains maintained project documentation. Historical release not
 
 0.2.5 makes infrastructure metadata visible and useful. Traction is encoded by color: black = non-electrified, orange/red = DC, blue = AC. Line class is encoded by thickness from Local to Magistral.
 
-`RailwayLine` is the player-facing logical grouping concept for future mass editing. A line is a collection of track cells and can later become the scope for maintenance, electrification upgrades and other infrastructure actions. It never replaces blocks or railway topology.
+`RailwayLine` is now a usable player-facing logical grouping concept. The map supports multi-selection with LPM/Shift+LPM/Ctrl+LPM and F11 opens the named-line editor. Named lines can be created, renamed through the active name field, selected, extended/reduced and used as the scope for bulk `TrackType`, `LineClass` and `TractionSystem` changes.
 
-The grouping domain already supports connected-track discovery and bulk application of track type, line class and traction. The UI can build on this without introducing a second infrastructure model.
+Named lines are rendered as colored contours while the underlying traction color and line-class thickness remain visible. The active multi-track selection uses a white contour. Connected-area selection reuses the existing track topology and does not alter blocks, signals or routes.
 
-F6 remains dispatcher override, F8 infrastructure editing, F9 locomotive timetable editing and F10 diagnostics.
+Named lines are persisted in map save schema 3. Older schemas are intentionally not supported by the current loader.
+
+F6 remains dispatcher override, F8 infrastructure editing, F9 locomotive timetable editing, F10 diagnostics and F11 named railway line editing.
 
 ## Roadmap
 
