@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.6`**  
-**Previous consolidated milestone: `0.2.5a`**
+**Documentation baseline: `0.2.6a`**  
+**Previous consolidated milestone: `0.2.6`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -39,14 +39,17 @@ This directory contains maintained project documentation. Historical release not
 30. [30-current-state-0.2.3.md](30-current-state-0.2.3.md) — historical `0.2.3` snapshot.
 31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — historical `0.2.4` snapshot.
 32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — historical `0.2.5/0.2.5a` implementation state.
-33. [33-current-state-0.2.6.md](33-current-state-0.2.6.md) — authoritative `0.2.6` snapshot.
-34. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
+33. [33-current-state-0.2.6.md](33-current-state-0.2.6.md) — historical `0.2.6` snapshot.
+34. [34-current-state-0.2.6a.md](34-current-state-0.2.6a.md) — authoritative `0.2.6a` snapshot.
+35. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
 
-## Current 0.2.6 focus
+## Current 0.2.6a focus
 
-0.2.6 rebuilds the gameplay HUD around explicit player actions. The most important change is a visible `ZAZNACZANIE / BRAK TRYBU [0]` button that sets `TrackBuildMode.None`, making multi-track selection directly accessible without relying on an undocumented state.
+0.2.6a corrects the F11 named-line editor so the full documented feature set is actually accessible. The screen now uses a scrollable main content area and a separate scrollable saved-line list. Selection, line management, membership and bulk infrastructure operations are separated into explicit sections.
 
-Build tools are grouped under a collapsible section. The center panel exposes the selected train, dispatcher status, timetable state and operational actions. Traffic, stations, wagons and passenger occupancy are presented separately. F6 remains `Wymuś przejazd`; F8/F9/F10/F11 retain their operational screens.
+F11 now clearly exposes creation, selection, rename, map selection, deletion, adding/removing selected tracks, connected-area selection, selection clearing, and independent bulk application of `TrackType`, `LineClass` and `TractionSystem` to either the current selection or the selected named line.
+
+The 0.2.6 HUD remains the gameplay baseline. F6 is still `Wymuś przejazd`; F8/F9/F10/F11 retain their operational screens; GUI/world input locking remains mandatory.
 
 The 0.2.5 infrastructure model remains unchanged: traction is encoded by color, line class by thickness, named `RailwayLine` groups provide bulk-edit scope, and map persistence uses schema 3.
 
