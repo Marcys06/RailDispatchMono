@@ -127,7 +127,7 @@ public sealed class TrackRenderer
             if (line != null)
             {
                 Color lineColor = GetLineColor(line.ColorIndex);
-                DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, line.LineClass, line.Traction, lineColor, GetLineThickness(line.LineClass, line.Type) + 0.075f);
+                DrawTrackLines(spriteBatch, track.Position, track.Geometry, track.Connections, false, track.Type, track.LineClass, track.Traction, lineColor, GetLineThickness(track.LineClass, track.Type) + 0.075f);
             }
 
             if (_selectedTracks.Contains(track.Position))
