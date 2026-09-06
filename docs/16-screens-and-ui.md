@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.1.6e` is the current documented baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.2.1` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -25,32 +25,26 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 
 There is one shared Myra `Desktop` and one active root. Depot temporarily replaces the gameplay root and restores it on close.
 
-## Gameplay HUD
+## 0.2.1 gameplay HUD
 
-The HUD exposes clock/GameDay, simulation controls, build tools and train/station information. Passenger exchange may also produce domain-level feedback through `FloatingTextManager`.
+`MyraGameplayView` is now a complete operational dashboard rather than a collection of unrelated floating lists. The layout has four functional zones:
 
-Passenger domain state remains outside the UI. There is no dedicated passenger transfer, route-choice, fare/economy or platform-crowd UI.
+1. **Top status bar** — game clock, day, simulation speed, global operating mode and speed controls.
+2. **Operations** — infrastructure build tools, wagon route entry point and simulation controls.
+3. **Operational centre** — selected-train summary, locomotive timetable state, dispatcher/block status and expandable diagnostics.
+4. **Traffic** — train list, station passenger summary and wagon summary.
 
-## Depot
+The bottom area also exposes the keyboard operating contract so the HUD and world controls describe the same workflow.
 
-Depot selection is raised by `InputManager.DepotSelected` and opens `DepotScreen`. The builder uses `RollingStockCatalog` definitions and creates the final train through `TrainManager.CreateTrainFromComposition()`.
+Train rows explicitly distinguish `AUTO` from `RĘCZ`. Selecting a train focuses the camera and makes its timetable, effective signal speed, consist Vmax, dispatcher state and RadioStop state available in the operational centre.
 
-## Train controls relevant to UI
+Station rows are expandable passenger summaries. Wagon rows show occupancy and timetable delay and retain route tooltips. The UI does not own or mutate passenger, train, block or timetable state.
 
-- `C` — couple nearest valid order-preserving boundary candidate; fixed `6 km/h` limit;
-- `X` — decouple wagon under cursor; only below `6 km/h`;
-- `F6` — manual shunting toward `3 km/h` for the train under cursor;
-- `F7` — reverse travel direction at `0 km/h` without reordering/repositioning the consist.
+The HUD uses fixed side rails and a flexible centre column rather than the former collection of independent 280/350-pixel panels. Lists are scrollable and long labels wrap inside their widgets to prevent the previous overlap between sections.
 
-The former F6/F7/F8 coupling-speed selector no longer exists.
+## World interaction boundary
 
-## Passenger ownership boundary
-
-`StationController`, `PassengerManager`, `DefaultPassengerService` and `Wagon` remain authoritative. A passenger belongs to a concrete wagon, not to a UI model or directly to a train. Coupling/decoupling therefore must not trigger UI-owned passenger migration.
-
-## Rendering boundary
-
-`TrainRenderer` renders rolling stock using the train/trajectory transforms. `StationRenderer` and `DepotRenderer` render world objects. Railway/world rendering is not a Myra responsibility.
+`TrainRenderer`, `StationRenderer`, `SignalRenderer` and track rendering remain outside Myra. Myra presents operational state and invokes domain actions; it does not become a second world renderer or simulation controller.
 
 ## Input ownership
 
@@ -60,6 +54,12 @@ The former F6/F7/F8 coupling-speed selector no longer exists.
 - `InputManager` owns world input and cursor selection;
 - domain managers own simulation state.
 
+The HUD deliberately does not automate switches, signal aspects, coupling/decoupling or unresolved dispatching situations.
+
+## Passenger ownership boundary
+
+`StationController`, `PassengerManager`, `DefaultPassengerService` and `Wagon` remain authoritative. A passenger belongs to a concrete wagon, not to a UI model or directly to a train. Coupling/decoupling therefore must not trigger UI-owned passenger migration.
+
 ## AI rule
 
-Before adding passenger/station UI, inspect the existing Myra views and the domain chain first. Do not duplicate passenger, wagon, train or station state in UI models and do not create a second Myra `Desktop`.
+Before changing Myra gameplay UI, inspect `MyraGameplayView`, `MyraUIManager`, `GameplayScreen`, `TrainManager`, `StationController`, `RailwayDispatcher`, `LocomotiveSchedule` and `WagonSchedule` together. Keep one Myra `Desktop`, keep domain state outside UI models and update this document plus the current-state/changelog documentation whenever the UI contract changes.
