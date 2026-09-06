@@ -39,7 +39,17 @@ Each line has a stable ID, player-visible name and deterministic display color i
 
 `TrackRenderer` visualizes named lines with colored contours and the active selection with a white contour while preserving traction color and line-class thickness.
 
-F11 opens `MyraRailwayLineView`. It creates/renames/selects/deletes named lines and applies `TrackType`, `LineClass` and `TractionSystem` to either the active selection or the selected line. It can also add/remove selection membership and select a connected track area.
+F11 opens `MyraRailwayLineView`. It creates/selects/deletes named lines and applies `TrackType`, `LineClass` and `TractionSystem` to either the active selection or the selected line. It can also add/remove selection membership and select a connected track area.
+
+## Modal GUI input lock
+
+Any temporary Myra gameplay GUI is modal over the world. `MyraUIManager.IsGameplayOverlayOpen` becomes true when a temporary root replaces the gameplay root. `GameplayScreen` then skips `InputManager.Update()` entirely.
+
+As a result, mouse input cannot fall through a GUI into the map: no track placement, track selection, object deletion, switch/signal interaction, camera movement or zoom is processed by the gameplay world while the GUI is open.
+
+F8/F9/F10/F11 additionally reset `TrackBuilder.Mode` to `None` before opening their GUI, so closing the GUI does not leave a pending build action armed.
+
+Any future gameplay GUI must preserve this contract.
 
 ## Persistence
 
@@ -71,8 +81,8 @@ There is one shared Myra `Desktop`. UI requests domain operations; it does not o
 
 ## Verification
 
-No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.5 verify F11 editing, Shift/Ctrl selection, named-line contours, schema 3 save/load and unchanged block/signal/F6 behaviour.
+No automated Core test project or CI build establishes compilation for this snapshot. A local Windows solution build and live UI verification remain required after pulling changes. For 0.2.5 verify F11 editing, Shift/Ctrl selection, named-line contours, schema 3 save/load, modal GUI input lock and unchanged block/signal/F6 behaviour.
 
 ## AI rule
 
-Before infrastructure changes inspect `TrackCell`, `TrackBuilder`, `GameMap`, `MapSaveData`, `MapSaveService`, `RailwayLine`, `RailwayLineManager`, `LocomotiveDefinition`, `Locomotive`, `RollingStockCatalog`, `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement` and `StationController` together. Before UI changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `InputManager`, `MyraRailwayLineView` and the relevant domain owner. Every runtime or UI contract change must update maintained architecture/current-state documentation and the relevant changelog.
+Before infrastructure changes inspect `TrackCell`, `TrackBuilder`, `GameMap`, `MapSaveData`, `MapSaveService`, `RailwayLine`, `RailwayLineManager`, `LocomotiveDefinition`, `Locomotive`, `RollingStockCatalog`, `Block`, `BlockController`, `RailwayDispatcher`, `SignalController`, `TrainMovement` and `StationController` together. Before UI changes inspect `MyraGameplayView`, `MyraUIManager`, `RailDispatchMonoGame`, `GameplayScreen`, `InputManager`, `MyraRailwayLineView` and the relevant domain owner. Every runtime or UI contract change must update maintained architecture/current-state documentation and the relevant changelog.
