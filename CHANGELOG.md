@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.3.0] — Infrastructure maintenance
+**Data:** 2026-09-14
+
+### Infrastructure
+
+- Activated simulation-driven track wear through `InfrastructureMaintenanceManager`.
+- Tracks occupied by trains wear faster than unused infrastructure.
+- Wear rate accounts for `LineClass`, `TrackType` and `TractionSystem`.
+- Added `Good`, `Warning` and `Critical` maintenance states.
+- Added maintenance summary and worst-track inspection APIs.
+- Added repair-all and repair-critical operations.
+
+### F10
+
+- Added average infrastructure condition, warning/critical counts and simulated maintenance time.
+- Added list of the most worn track cells.
+- Added `NAPRAW KRYTYCZNE` and `NAPRAW WSZYSTKIE` actions.
+
+### Persistence
+
+- Continued using `map.json` schema 3.
+- Existing `TrackCell.WearPercent` persistence is reused; no migration was introduced.
+
+### Domain boundary
+
+- `GameMap.Maintenance` owns maintenance simulation.
+- `TrackCell` remains the owner of the current wear value.
+- Dispatcher, blocks, signals, switches, routes and timetable logic are unchanged.
+- Maintenance does not automatically close tracks or alter dispatcher decisions.
+
+### Documentation
+
+- Added `docs/35-current-state-0.3.0.md`.
+- Added `docs/changelog/0.3.0.md`.
+- Updated `docs/00-index.md`, `docs/16-screens-and-ui.md` and `docs/roadmap-0.3.0-to-1.0.0.md`.
+
+### Verification
+
+No Windows build or live gameplay verification was performed in this environment.
+
 ## [0.2.6a] — Complete F11 railway line editor
 **Data:** 2026-09-06
 
