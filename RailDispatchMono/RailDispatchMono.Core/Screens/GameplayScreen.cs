@@ -269,3 +269,113 @@ public sealed class GameplayScreen : GameScreen
         }
         catch (Exception ex) { DebugManager.Log("[SAVE] " + ex); }
     }
+
+    private void LoadMap()
+    {
+        try
+        {
+            _mapSaveService.Load(_map, _signalController, _trainManager.StationController, _depotController);
+            _blockController.Initialize(_map, _trainManager, _signalController);
+            _trainManager.Initialize(_blockController);
+            _builder.Mode = TrackBuildMode.None;
+            _spawnArmed = false;
+            _floatingText.Add("WCZYTANO", _camera.Position);
+            SnapshotWagonPassengers();
+        }
+        catch (Exception ex) { DebugManager.Log("[LOAD] " + ex); }
+    }
+
+    private void ShowQuitConfirmation()
+    {
+        MessageBoxScreen confirmQuitMessageBox = new MessageBoxScreen(Localization.Resources.QuitQuestion);
+        confirmQuitMessageBox.Accepted += ConfirmQuitMessageBoxAccepted;
+        confirmQuitMessageBox.Cancelled += ConfirmQuitMessageBoxCancelled;
+        ScreenManager.AddScreen(confirmQuitMessageBox, null);
+    }
+
+    private void ConfirmQuitMessageBoxAccepted(object? sender, PlayerIndexEventArgs e) => QuitToMainMenu();
+    private void ConfirmQuitMessageBoxCancelled(object? sender, PlayerIndexEventArgs e) { }
+    private void QuitToMainMenu() { ResumeGame(); ScreenManager?.Game.Exit(); }
+
+    public override void Draw(GameTime gameTime)
+    {
+        _inputManager.Draw(gameTime);
+        _floatingText.Draw(_spriteBatch, _camera);
+        DrawHud();
+        DrawTooltip();
+    }
+
+    private void DrawHud()
+    {
+        if (_builder.Mode == TrackBuildMode.Depot)
+        {
+            if (_tooltipFont == null || _pixel == null) return;
+            _spriteBatch.Begin();
+            DrawRect(new Rectangle(10, 75, 380, 50), new Color(20, 20, 20, 230));
+            _spriteBatch.DrawString(_tooltipFont, "TRYB DEPOTU — kliknij, aby postawić budynek", new Vector2(20, 85), Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            _spriteBatch.End();
+        }
+        else if (_spawnArmed)
+        {
+            if (_tooltipFont == null || _pixel == null) return;
+            _spriteBatch.Begin();
+            DrawRect(new Rectangle(10, 75, 370, 50), new Color(20, 20, 20, 230));
+            _spriteBatch.DrawString(_tooltipFont, "Kliknij istniejący tor, aby ustawić pociąg", new Vector2(20, 85), Color.Yellow, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+            _spriteBatch.End();
+        }
+    }
+
+    private void DrawTooltip()
+    {
+        if (_tooltipFont == null || _pixel == null) return;
+        MouseState mouseState = Mouse.GetState();
+        Vector2 mouseScreenPos = new(mouseState.X, mouseState.Y);
+        Vector2 mouseWorldPos = _camera.ScreenToWorld(mouseScreenPos);
+        var vehicleInfo = _trainRenderer.GetVehicleAtPosition(_trainManager, mouseWorldPos);
+        if (!vehicleInfo.HasValue) return;
+        (Train train, int vehicleIndex, Vector2 worldPos) = vehicleInfo.Value;
+        Vehicle vehicle = train.Composition.Vehicles[vehicleIndex];
+        bool isLoco = vehicle is Locomotive;
+        Color bgColor = isLoco ? new Color(180, 30, 30, 230) : new Color(30, 30, 180, 230);
+        List<string> linesList = new()
+        {
+            isLoco ? "LOKOMOTYWA" : "WAGON",
+            "ID pociągu: " + train.Id.ToString()[..8],
+            "Pojazd: " + (vehicleIndex + 1) + "/" + train.Composition.Vehicles.Count,
+            "Prędkość: " + (train.Speed * 3.6f).ToString("F1") + " km/h",
+            "Docelowa: " + (train.EffectiveTargetSpeed * 3.6f).ToString("F1") + " km/h",
+            "Vmax składu: " + (train.MaxSpeed * 3.6f).ToString("F1") + " km/h",
+            "Masa: " + vehicle.Parameters.MassTons.ToString("F1") + " t",
+            "Długość: " + vehicle.Parameters.LengthMeters.ToString("F1") + " m",
+            "Kierunek: " + train.Direction
+        };
+        if (vehicle is Wagon wagon)
+        {
+            linesList.Add("Typ wagonu: " + wagon.WagonType);
+            linesList.Add("Pasażerowie: " + wagon.PassengerCount + "/" + wagon.PassengerCapacity);
+            linesList.Add("Wolne miejsca: " + wagon.AvailablePassengerCapacity);
+            var destinationGroups = wagon.Passengers.GroupBy(p => p.DestinationStation.Id).Select(g => new { Destination = g.First().DestinationStation, Count = g.Count() }).OrderByDescending(x => x.Count).Take(5).ToList();
+            linesList.Add(destinationGroups.Count == 0 ? "Cele: brak" : "Cele pasażerów:");
+            foreach (var group in destinationGroups) linesList.Add("  " + group.Destination.Name + ": " + group.Count);
+        }
+        float padding = 8f;
+        float lineHeight = _tooltipFont.LineSpacing * 0.65f;
+        float width = linesList.Max(line => _tooltipFont.MeasureString(line).X * 0.65f) + padding * 2;
+        float height = linesList.Count * lineHeight + padding * 2;
+        Vector2 position = mouseScreenPos + new Vector2(15, 15);
+        if (position.X + width > _graphicsDevice.Viewport.Width) position.X = mouseScreenPos.X - width - 15;
+        if (position.Y + height > _graphicsDevice.Viewport.Height) position.Y = mouseScreenPos.Y - height - 15;
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+        Rectangle rect = new((int)position.X, (int)position.Y, (int)width, (int)height);
+        _spriteBatch.Draw(_pixel, rect, bgColor);
+        Vector2 text = position + new Vector2(padding);
+        for (int i = 0; i < linesList.Count; i++)
+        {
+            _spriteBatch.DrawString(_tooltipFont, linesList[i], text, i == 0 ? Color.Yellow : Color.White, 0f, Vector2.Zero, 0.75f, SpriteEffects.None, 0f);
+            text.Y += lineHeight;
+        }
+        _spriteBatch.End();
+    }
+
+    private void DrawRect(Rectangle rectangle, Color color) => _spriteBatch.Draw(_pixel!, rectangle, color);
+}
