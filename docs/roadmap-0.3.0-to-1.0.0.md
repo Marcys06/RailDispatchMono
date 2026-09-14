@@ -8,17 +8,24 @@ Profil docelowy to **B — przystępna symulacja**: zależności mają być wiar
 
 ## 0.3.0 — Zarządzanie infrastrukturą
 
-**Cel:** przejście od statycznych parametrów toru do aktywnego zarządzania siecią.
+**Stan: aktywowane 2026-09-14.**
 
-Zakres:
+Zaimplementowana baza:
 
-- elektryfikacja AC/DC jako realne ograniczenie eksploatacyjne;
-- klasy linii i ich konsekwencje dla ruchu;
+- zużycie torów napędzane czasem symulacji;
+- szybsze zużycie odcinków aktualnie używanych przez pociągi;
+- współczynniki zużycia wynikające z `LineClass`, `TrackType` i `TractionSystem`;
+- progi ostrzegawczy i krytyczny;
+- diagnostyka stanu infrastruktury w F10;
+- naprawa krytycznych odcinków lub całej sieci;
+- wykorzystanie istniejącego `TrackCell.WearPercent` i schema 3 zapisu.
+
+Pozostała część zakresu 0.3.x:
+
+- aktywne ograniczenia eksploatacyjne wynikające ze stanu toru;
 - koszty utrzymania infrastruktury;
-- zużycie torów i urządzeń;
-- modernizacje/naprawy;
-- czytelne ostrzeżenia o stanie infrastruktury;
-- dalsze wykorzystanie `TrackCell.WearPercent` zamiast nowego modelu torów.
+- bardziej szczegółowe modernizacje;
+- rozszerzenie utrzymania na urządzenia infrastruktury.
 
 Poza zakresem: pełna ekonomia przedsiębiorstwa.
 
