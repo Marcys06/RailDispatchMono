@@ -13,6 +13,7 @@ public sealed class InfrastructureMaintenanceManager
 
     public const float WarningThresholdPercent = 60f;
     public const float CriticalThresholdPercent = 85f;
+    public const float SevereThresholdPercent = 95f;
 
     public double SimulatedHours { get; private set; }
     public static InfrastructureMaintenanceManager? Current { get; private set; }
@@ -23,29 +24,24 @@ public sealed class InfrastructureMaintenanceManager
         Current = this;
     }
 
-    /// <summary>
-    /// Advances wear using simulation time. Tracks currently used by trains receive the full traffic rate;
-    /// unused tracks receive a small environmental baseline so abandoned infrastructure still ages.
-    /// </summary>
+    /// <summary>Advances wear using simulation time. Traffic and existing wear both affect degradation.</summary>
     public int Update(float simulationSeconds, IEnumerable<MapPosition>? occupiedTracks = null)
     {
         if (simulationSeconds <= 0f) return 0;
 
         double hours = simulationSeconds / 3600d;
         SimulatedHours += hours;
-        var occupied = occupiedTracks == null
-            ? new HashSet<MapPosition>()
-            : occupiedTracks.ToHashSet();
-
+        var occupied = occupiedTracks == null ? new HashSet<MapPosition>() : occupiedTracks.ToHashSet();
         int changed = 0;
+
         foreach (var entry in _map.GetAllTracks())
         {
             TrackCell track = entry.Value;
-            double ratePerHour = WearRatePerHour(track);
-            if (ratePerHour <= 0d) continue;
+            if (track.WearPercent >= 100f) continue;
 
-            double multiplier = occupied.Contains(entry.Key) ? 1d : 0.04d;
-            double amount = ratePerHour * hours * multiplier;
+            double ratePerHour = WearRatePerHour(track);
+            double trafficMultiplier = occupied.Contains(entry.Key) ? 1d : 0.04d;
+            double amount = ratePerHour * hours * trafficMultiplier * DegradationMultiplier(track.WearPercent);
             if (amount <= 0d) continue;
 
             double remainder = _wearRemainders.TryGetValue(entry.Key, out var previous) ? previous : 0d;
@@ -65,21 +61,11 @@ public sealed class InfrastructureMaintenanceManager
         return changed;
     }
 
-    public int RepairAll()
-    {
-        int repaired = 0;
-        foreach (var entry in _map.GetAllTracks())
-        {
-            if (entry.Value.WearPercent <= 0f) continue;
-            entry.Value.Repair();
-            _wearRemainders.Remove(entry.Key);
-            repaired++;
-        }
-        return repaired;
-    }
+    public int RepairAll() => RepairWhere(_ => true);
 
-    public int RepairCritical()
-        => RepairWhere(t => t.WearPercent >= CriticalThresholdPercent);
+    public int RepairCritical() => RepairWhere(t => t.WearPercent >= CriticalThresholdPercent);
+
+    public int RepairSevere() => RepairWhere(t => t.WearPercent >= SevereThresholdPercent);
 
     public int RepairWhere(Func<TrackCell, bool> predicate)
     {
@@ -99,32 +85,44 @@ public sealed class InfrastructureMaintenanceManager
     {
         if (limit <= 0) return Array.Empty<TrackConditionSummary>();
         return _map.GetAllTracks()
-            .Select(x => new TrackConditionSummary(
-                x.Key,
-                x.Value.WearPercent,
-                x.Value.ConditionPercent,
-                ConditionStateFor(x.Value.WearPercent),
-                x.Value.Type,
-                x.Value.LineClass,
-                x.Value.Traction))
-            .OrderByDescending(x => x.WearPercent)
+            .Select(x => ToSummary(x.Key, x.Value))
+            .OrderByDescending(x => x.PriorityScore)
+            .ThenByDescending(x => x.WearPercent)
             .ThenBy(x => x.Position.Y)
             .ThenBy(x => x.Position.X)
             .Take(limit)
             .ToList();
     }
 
+    public IReadOnlyList<TrackConditionSummary> GetTracksByState(MaintenanceState state)
+        => _map.GetAllTracks()
+            .Select(x => ToSummary(x.Key, x.Value))
+            .Where(x => x.State == state)
+            .OrderByDescending(x => x.PriorityScore)
+            .ThenBy(x => x.Position.Y)
+            .ThenBy(x => x.Position.X)
+            .ToList();
+
+    public TrackConditionSummary? GetMostUrgentTrack()
+    {
+        if (_map.TrackCount == 0) return null;
+        return _map.GetAllTracks()
+            .Select(x => ToSummary(x.Key, x.Value))
+            .OrderByDescending(x => x.PriorityScore)
+            .ThenByDescending(x => x.WearPercent)
+            .First();
+    }
+
     public MaintenanceSummary GetSummary()
     {
-        int total = 0;
-        int warning = 0;
-        int critical = 0;
+        int total = 0, warning = 0, critical = 0, severe = 0;
         float wear = 0f;
         foreach (var entry in _map.GetAllTracks())
         {
             total++;
             wear += entry.Value.WearPercent;
-            if (entry.Value.WearPercent >= CriticalThresholdPercent) critical++;
+            if (entry.Value.WearPercent >= SevereThresholdPercent) severe++;
+            else if (entry.Value.WearPercent >= CriticalThresholdPercent) critical++;
             else if (entry.Value.WearPercent >= WarningThresholdPercent) warning++;
         }
 
@@ -132,6 +130,7 @@ public sealed class InfrastructureMaintenanceManager
             total,
             warning,
             critical,
+            severe,
             total == 0 ? 100f : 100f - wear / total,
             SimulatedHours);
     }
@@ -140,6 +139,31 @@ public sealed class InfrastructureMaintenanceManager
         => wearPercent >= CriticalThresholdPercent ? MaintenanceState.Critical
          : wearPercent >= WarningThresholdPercent ? MaintenanceState.Warning
          : MaintenanceState.Good;
+
+    /// <summary>Operational recommendation used by future movement/dispatcher constraints.</summary>
+    public static float RecommendedSpeedMultiplier(float wearPercent)
+        => wearPercent >= SevereThresholdPercent ? 0.50f
+         : wearPercent >= CriticalThresholdPercent ? 0.65f
+         : wearPercent >= WarningThresholdPercent ? 0.85f
+         : 1.0f;
+
+    private static double DegradationMultiplier(float wearPercent)
+        => wearPercent >= SevereThresholdPercent ? 2.5d
+         : wearPercent >= CriticalThresholdPercent ? 1.7d
+         : wearPercent >= WarningThresholdPercent ? 1.2d
+         : 1.0d;
+
+    private static TrackConditionSummary ToSummary(MapPosition position, TrackCell track)
+    {
+        float priority = track.WearPercent * 0.7f
+            + (track.Type == TrackType.Mainline ? 15f : 0f)
+            + (track.LineClass == LineClass.Magistral ? 15f : 0f)
+            + (track.IsJunction ? 10f : 0f);
+        return new TrackConditionSummary(
+            position, track.WearPercent, track.ConditionPercent,
+            ConditionStateFor(track.WearPercent), track.Type,
+            track.LineClass, track.Traction, priority);
+    }
 
     private static double WearRatePerHour(TrackCell track)
     {
@@ -151,7 +175,6 @@ public sealed class InfrastructureMaintenanceManager
             LineClass.Magistral => 0.34d,
             _ => 0.2d
         };
-
         double typeFactor = track.Type switch
         {
             TrackType.Mainline => 1.15d,
@@ -160,18 +183,12 @@ public sealed class InfrastructureMaintenanceManager
             TrackType.Platform => 0.6d,
             _ => 1d
         };
-
         double tractionFactor = track.Traction == TractionSystem.None ? 0.95d : 1.05d;
         return lineFactor * typeFactor * tractionFactor;
     }
 }
 
-public enum MaintenanceState
-{
-    Good,
-    Warning,
-    Critical
-}
+public enum MaintenanceState { Good, Warning, Critical }
 
 public readonly record struct TrackConditionSummary(
     MapPosition Position,
@@ -180,11 +197,16 @@ public readonly record struct TrackConditionSummary(
     MaintenanceState State,
     TrackType Type,
     LineClass LineClass,
-    TractionSystem Traction);
+    TractionSystem Traction,
+    float PriorityScore)
+{
+    public float RecommendedSpeedMultiplier => InfrastructureMaintenanceManager.RecommendedSpeedMultiplier(WearPercent);
+}
 
 public readonly record struct MaintenanceSummary(
     int TrackCount,
     int WarningTracks,
     int CriticalTracks,
+    int SevereTracks,
     float AverageConditionPercent,
     double SimulatedHours);
