@@ -10,21 +10,31 @@ Profil docelowy to **B — przystępna symulacja**: zależności mają być wiar
 
 **Stan: aktywowane 2026-09-14.**
 
-Zaimplementowana baza:
-
 - zużycie torów napędzane czasem symulacji;
 - szybsze zużycie odcinków aktualnie używanych przez pociągi;
-- współczynniki zużycia wynikające z `LineClass`, `TrackType` i `TractionSystem`;
-- progi ostrzegawczy i krytyczny;
-- diagnostyka stanu infrastruktury w F10;
-- naprawa krytycznych odcinków lub całej sieci;
-- wykorzystanie istniejącego `TrackCell.WearPercent` i schema 3 zapisu.
+- współczynniki `LineClass`, `TrackType` i `TractionSystem`;
+- diagnostyka F10 i naprawy;
+- istniejący `TrackCell.WearPercent` oraz schema 3 zapisu.
 
-Pozostała część zakresu 0.3.x:
+## 0.3.1 — Degradacja i priorytety utrzymania
 
-- aktywne ograniczenia eksploatacyjne wynikające ze stanu toru;
+**Stan: zaimplementowana 2026-09-14.**
+
+- przyspieszona degradacja zużytych odcinków;
+- stan `Severe` od 95%;
+- priorytet inspekcji zależny od zużycia i znaczenia odcinka;
+- filtrowanie infrastruktury według stanu;
+- identyfikacja najbardziej pilnego odcinka;
+- zalecane ograniczenia prędkości i nacisku osi;
+- naprawy `Critical` i `Severe`;
+- brak zmiany schema 3 i kompatybilność zapisów 0.3.0.
+
+### Pozostałe 0.3.x
+
+- egzekwowanie ograniczeń eksploatacyjnych w ruchu pociągów;
+- planowane okna prac utrzymaniowych;
 - koszty utrzymania infrastruktury;
-- bardziej szczegółowe modernizacje;
+- modernizacje i wymiana infrastruktury;
 - rozszerzenie utrzymania na urządzenia infrastruktury.
 
 Poza zakresem: pełna ekonomia przedsiębiorstwa.
@@ -42,88 +52,29 @@ Zakres:
 - finansowanie rozwoju infrastruktury;
 - konsekwencje decyzji inwestycyjnych.
 
-Warstwa ekonomiczna ma konsumować dane z infrastruktury i ruchu, nie sterować nimi bezpośrednio.
-
 ## 0.5.0 — Rozkład jazdy
 
-**Cel:** przejście od rozkładu operacyjnego lokomotywy do publicznego planu przewozów.
-
-Zakres:
-
-- publiczny rozkład jazdy;
-- planowanie kursów;
-- koordynacja pociągów;
-- konflikty planowe;
-- zależność planu od dostępnej infrastruktury;
-- zachowanie obecnej zasady: rozkład jest planem, runtime jest obserwacją.
+**Cel:** publiczny plan przewozów i koordynacja kursów.
 
 ## 0.6.0 — Symulacja pasażerska
 
-**Cel:** modelowanie popytu i decyzji pasażerów.
-
-Zakres:
-
-- generowanie popytu;
-- wybór połączenia/środka transportu;
-- oczekiwanie i przesiadki;
-- zadowolenie;
-- wpływ opóźnień i jakości obsługi.
-
-Własność pasażera nadal pozostaje przy konkretnym `Wagon` podczas przejazdu.
+**Cel:** popyt, wybór połączeń, oczekiwanie, przesiadki i zadowolenie.
 
 ## 0.7.0 — Fizyka
 
-**Cel:** wykorzystanie danych infrastruktury w modelu ruchu.
-
-Zakres:
-
-- ograniczenia prędkości na łukach;
-- gradienty;
-- zależność osiągów od masy i infrastruktury;
-- hamowanie;
-- hamowanie odzyskowe dla odpowiedniego taboru;
-- dalsza kalibracja istniejącego modelu ruchu zamiast jego wymiany.
+**Cel:** krzywizny, gradienty, osiągi, hamowanie i odzysk energii.
 
 ## 0.8.0 — Kryzysy
 
-**Cel:** sytuacje zakłócające normalną eksploatację.
-
-Zakres:
-
-- awarie infrastruktury;
-- awarie taboru;
-- pogoda;
-- ograniczenia ruchowe;
-- zarządzanie kryzysowe;
-- priorytety działań gracza.
-
-Zużycie z 0.3.0 ma być jednym z wejść do prawdopodobieństwa awarii.
+**Cel:** awarie infrastruktury i taboru, pogoda, ograniczenia ruchowe i zarządzanie kryzysowe.
 
 ## 0.9.0 — Sieć
 
-**Cel:** przejście z pojedynczego obszaru mapy do sieci kolejowej.
-
-Zakres:
-
-- połączenia między miastami;
-- stacje węzłowe;
-- dłuższe trasy;
-- przesiadki;
-- rozkład jazdy na poziomie sieci;
-- przepustowość i ograniczenia infrastruktury.
+**Cel:** miasta, stacje węzłowe, długie trasy, przesiadki i przepustowość sieci.
 
 ## 1.0.0 — Full release
 
-**Cel:** zintegrowana wersja gry.
-
-Zakres:
-
-- pełna integracja infrastruktury, ekonomii, rozkładu, pasażerów, fizyki, kryzysów i sieci;
-- balans;
-- spójny onboarding;
-- kampania/scenariusze;
-- stabilny zapis gry;
-- pełna dokumentacja aktualnego kontraktu.
+**Cel:** pełna integracja, balans, onboarding, kampania/scenariusze, stabilny zapis i aktualna dokumentacja.
 
 ## Kolejność zależności
 
@@ -131,7 +82,10 @@ Zakres:
 0.2.4 infrastruktura danych
         |
         v
-0.3.0 zarządzanie infrastrukturą
+0.3.0 zużycie i utrzymanie
+        |
+        v
+0.3.1 degradacja i ograniczenia
         |
         +----> 0.4.0 ekonomia
         |
@@ -152,4 +106,4 @@ Zakres:
 1.0.0 integracja
 ```
 
-Ta kolejność jest roadmapą architektoniczną, nie obowiązkiem implementowania wszystkich elementów w jednym wydaniu. Każda wersja powinna kończyć się aktualizacją bieżącego snapshotu i changelogu.
+Każda wersja kończy się aktualizacją snapshotu, changelogu i dokumentacji bieżącego kontraktu.
