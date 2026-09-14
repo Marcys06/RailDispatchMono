@@ -19,16 +19,9 @@ public sealed class TrackCell
     public TrackConnections DivergingConnection { get; private set; } = TrackConnections.None;
     public TrackConnections CommonStem { get; private set; } = TrackConnections.None;
 
-    /// <summary>Operational role of this track segment, independent of its geometric shape.</summary>
     public TrackType Type { get; private set; } = TrackType.Mainline;
-
-    /// <summary>Infrastructure class used by future speed and operating rules.</summary>
     public LineClass LineClass { get; private set; } = LineClass.Mainline;
-
-    /// <summary>Electrical system carried by this segment. None means non-electrified.</summary>
     public TractionSystem Traction { get; private set; } = TractionSystem.None;
-
-    /// <summary>Wear percentage: 0 = new, 100 = fully worn. Simulation is introduced later.</summary>
     public float WearPercent { get; private set; }
 
     public bool IsJunction => Geometry == TrackGeometry.Junction;
@@ -37,8 +30,16 @@ public sealed class TrackCell
     public TrackConnections DivergingSide => DivergingConnection;
     public TrackConnections StemSide => CommonStem;
     public float ConditionPercent => 100f - WearPercent;
+    public MaintenanceState MaintenanceState => InfrastructureMaintenanceManager.ConditionStateFor(WearPercent);
+    public bool RequiresInspection => WearPercent >= InfrastructureMaintenanceManager.WarningThresholdPercent;
+    public bool IsCriticalForMaintenance => WearPercent >= InfrastructureMaintenanceManager.CriticalThresholdPercent;
+    public bool IsSeverelyWorn => WearPercent >= InfrastructureMaintenanceManager.SevereThresholdPercent;
+    public float MaintenanceSpeedMultiplier => InfrastructureMaintenanceManager.RecommendedSpeedMultiplier(WearPercent);
     public float InfrastructureMaxSpeedKmh => LineClassProfile.MaxSpeedKmh(LineClass);
     public float InfrastructureMaxAxleLoadTons => LineClassProfile.MaxAxleLoadTons(LineClass);
+    public float RecommendedOperationalSpeedKmh => InfrastructureMaxSpeedKmh * MaintenanceSpeedMultiplier;
+    public float RecommendedOperationalAxleLoadTons => InfrastructureMaxAxleLoadTons *
+        (IsSeverelyWorn ? 0.70f : IsCriticalForMaintenance ? 0.85f : RequiresInspection ? 0.95f : 1f);
 
     public TrackCell(MapPosition position, TrackGeometry geometry, TrackConnections connections)
     {
