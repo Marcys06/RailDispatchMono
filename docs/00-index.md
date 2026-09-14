@@ -1,7 +1,7 @@
 # RailDispatchMono Documentation
 
-**Documentation baseline: `0.2.6a`**  
-**Previous consolidated milestone: `0.2.6`**
+**Documentation baseline: `0.3.0`**  
+**Previous consolidated milestone: `0.2.6a`**
 
 This directory contains maintained project documentation. Historical release notes belong in `docs/changelog/`; source code and current call sites remain authoritative if documentation conflicts with implementation.
 
@@ -40,22 +40,23 @@ This directory contains maintained project documentation. Historical release not
 31. [31-current-state-0.2.4.md](31-current-state-0.2.4.md) — historical `0.2.4` snapshot.
 32. [32-current-state-0.2.5.md](32-current-state-0.2.5.md) — historical `0.2.5/0.2.5a` implementation state.
 33. [33-current-state-0.2.6.md](33-current-state-0.2.6.md) — historical `0.2.6` snapshot.
-34. [34-current-state-0.2.6a.md](34-current-state-0.2.6a.md) — authoritative `0.2.6a` snapshot.
-35. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — planned development line from infrastructure management through full release.
+34. [34-current-state-0.2.6a.md](34-current-state-0.2.6a.md) — historical `0.2.6a` snapshot.
+35. [35-current-state-0.3.0.md](35-current-state-0.3.0.md) — authoritative `0.3.0` snapshot.
+36. [roadmap-0.3.0-to-1.0.0.md](roadmap-0.3.0-to-1.0.0.md) — development line from infrastructure management through full release.
 
-## Current 0.2.6a focus
+## Current 0.3.0 focus
 
-0.2.6a corrects the F11 named-line editor so the full documented feature set is actually accessible. The screen now uses a scrollable main content area and a separate scrollable saved-line list. Selection, line management, membership and bulk infrastructure operations are separated into explicit sections.
+0.3.0 activates infrastructure maintenance. `TrackCell.WearPercent` is now advanced from simulation time, with traffic-sensitive wear and modifiers for line class, track role and traction system.
 
-F11 now clearly exposes creation, selection, rename, map selection, deletion, adding/removing selected tracks, connected-area selection, selection clearing, and independent bulk application of `TrackType`, `LineClass` and `TractionSystem` to either the current selection or the selected named line.
+F10 now exposes infrastructure condition, the most worn tracks and repair actions. `GameMap.Maintenance` is the runtime owner of maintenance simulation; it does not control dispatcher decisions, signals or switches.
 
-The 0.2.6 HUD remains the gameplay baseline. F6 is still `Wymuś przejazd`; F8/F9/F10/F11 retain their operational screens; GUI/world input locking remains mandatory.
+Wear remains persisted through the existing `map.json` schema 3. No save migration was required.
 
-The 0.2.5 infrastructure model remains unchanged: traction is encoded by color, line class by thickness, named `RailwayLine` groups provide bulk-edit scope, and map persistence uses schema 3.
+The 0.2.6a F11 named-line editor remains available, including multi-track selection and bulk infrastructure editing. The GUI/world input lock remains mandatory.
 
 ## Roadmap
 
-- `0.3.0` — infrastructure management: active electrification, classes, maintenance, wear;
+- `0.3.0` — infrastructure management: active wear and maintenance;
 - `0.4.0` — economy: revenue, costs, budget, investments;
 - `0.5.0` — public timetable and coordination;
 - `0.6.0` — passenger demand, satisfaction and modal choice;
