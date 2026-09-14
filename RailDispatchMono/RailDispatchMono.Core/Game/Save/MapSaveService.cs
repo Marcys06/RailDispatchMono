@@ -43,7 +43,7 @@ public sealed class MapSaveService
 
         var data = new MapSaveData
         {
-            GameVersion = "0.2.5",
+            GameVersion = "0.3.0",
             Map = new MapInfoSaveData { Width = map.Size.Width, Height = map.Size.Height }
         };
 
