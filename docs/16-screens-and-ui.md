@@ -2,7 +2,7 @@
 
 ## Current development line
 
-`0.2.6a` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
+`0.3.0` is the current documented UI baseline. Myra remains the single migrated UI integration boundary through `MyraUIManager`.
 
 ## Concrete screens
 
@@ -23,22 +23,37 @@ Pause is gameplay state owned by `GameplayScreen`; presentation is `MyraPauseVie
 - `MyraDepotView`
 - `MyraLocomotiveScheduleView` — locomotive timetable editor
 - `MyraTrackInfrastructureView` — F8 single-track infrastructure editor
-- `MyraRailwayDiagnosticsView` — full infrastructure/dispatcher diagnostics
+- `MyraRailwayDiagnosticsView` — F10 full infrastructure/dispatcher/maintenance diagnostics
 - `MyraRailwayLineView` — F11 named railway line and complete bulk infrastructure editor
 - `MyraUIManager`
 
 There is one shared Myra `Desktop` and one active root. Gameplay temporarily replaces the gameplay root with the timetable, infrastructure, diagnostics or railway-line editor and restores it on close.
 
-## 0.2.6a gameplay controls
+## 0.3.0 gameplay controls
 
 - `F6` — dispatcher-only force passage;
 - `F8` — edit infrastructure metadata of the track under the mouse cursor;
 - `F9` — locomotive timetable editor;
-- `F10` — railway diagnostics;
+- `F10` — railway and maintenance diagnostics;
 - `F11` — complete named railway line and bulk infrastructure editor;
 - `0` / `NumPad0` — explicit track selection / `TrackBuildMode.None`.
 
 F8 changes only infrastructure metadata: track role, line class and traction (`None`, `DC`, `AC`). It does not modify track geometry, connections, block occupancy, signals or switches.
+
+## Infrastructure maintenance — F10
+
+The F10 diagnostics surface now includes:
+
+- average network infrastructure condition;
+- warning and critical track counts;
+- simulation hours consumed by the maintenance subsystem;
+- the eight most worn track cells with position, wear, role, class and traction;
+- `NAPRAW KRYTYCZNE` — repairs tracks at or above the critical threshold;
+- `NAPRAW WSZYSTKIE` — restores all worn tracks to zero wear.
+
+Wear is advanced automatically from `GameClock` simulation seconds. A track currently occupied by a train receives the full traffic wear rate; unused tracks receive a low environmental baseline. `LineClass`, `TrackType` and `TractionSystem` affect the rate.
+
+The maintenance UI is diagnostic/operational only. It does not automatically close tracks, change signals, move switches, reserve blocks or alter dispatcher decisions.
 
 ## GUI/world input separation
 
@@ -115,7 +130,7 @@ F8 samples the world position under the mouse cursor and opens `MyraTrackInfrast
 
 ## Railway diagnostics — F10
 
-F10 opens `MyraRailwayDiagnosticsView` and shows blocks, FCFS requests, signal aspects, timetable runtime and dispatcher state.
+F10 opens `MyraRailwayDiagnosticsView` and shows maintenance state, blocks, FCFS requests, signal aspects, timetable runtime and dispatcher state.
 
 ## World interaction boundary
 
@@ -124,13 +139,14 @@ F10 opens `MyraRailwayDiagnosticsView` and shows blocks, FCFS requests, signal a
 ## Input ownership
 
 - Myra Desktop handles migrated widget interaction;
-- `GameplayScreen` owns pause state;
+- `GameplayScreen` owns pause state and advances maintenance with simulation time;
 - `DepotScreen` owns temporary builder state; train ownership remains in `TrainManager`;
 - `InputManager` owns world input and multi-track selection only while no modal Myra gameplay GUI is open;
 - `MyraUIManager` exposes the modal gameplay-overlay state;
 - F6 is the explicit dispatcher override;
 - F8/F9/F10/F11 open operational views;
 - `RailwayLineManager` owns named-line domain state;
+- `InfrastructureMaintenanceManager` owns maintenance simulation while `TrackCell` owns the current wear value;
 - domain managers/models own simulation and infrastructure state.
 
 The HUD does not automate switches, signal aspects, coupling/decoupling, passenger transfers or route repair.
