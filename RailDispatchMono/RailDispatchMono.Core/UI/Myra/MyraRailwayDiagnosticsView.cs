@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace RailDispatchMono.Core.UI.Myra;
 
-/// <summary>F10 infrastructure diagnostics: blocks, FCFS dispatcher queue, signals and safe dispatcher actions.</summary>
+/// <summary>F10 infrastructure diagnostics: blocks, dispatcher queue, signals, maintenance and safe dispatcher actions.</summary>
 internal sealed class MyraRailwayDiagnosticsView
 {
     public Widget Root { get; }
@@ -40,6 +40,41 @@ internal sealed class MyraRailwayDiagnosticsView
         _content.Widgets.Clear();
         var dispatcher = RailwayDispatcher.Current;
         _content.Widgets.Add(new Label { Text = $"POCIĄGI: {_manager.Trains.Count} • BLOKI: {_manager.BlockController?.BlockCount ?? 0} • KOLEJKA FCFS: {dispatcher?.PendingRequestCount ?? 0}", Wrap = true });
+
+        var maintenance = InfrastructureMaintenanceManager.Current;
+        if (maintenance != null)
+        {
+            var summary = maintenance.GetSummary();
+            _content.Widgets.Add(new Label
+            {
+                Text = $"UTRZYMANIE TORÓW: stan średni {summary.AverageConditionPercent:0.0}% • ostrzeżenia {summary.WarningTracks} • krytyczne {summary.CriticalTracks} • czas symulacji {summary.SimulatedHours:0.0} h",
+                Wrap = true
+            });
+            var maintenanceButtons = new HorizontalStackPanel { Spacing = 5 };
+            var repairCritical = new Button { Content = new Label { Text = "NAPRAW KRYTYCZNE" }, Width = 180 };
+            repairCritical.Click += (_, _) => { maintenance.RepairCritical(); Refresh(); };
+            var repairAll = new Button { Content = new Label { Text = "NAPRAW WSZYSTKIE" }, Width = 180 };
+            repairAll.Click += (_, _) => { maintenance.RepairAll(); Refresh(); };
+            maintenanceButtons.Widgets.Add(repairCritical);
+            maintenanceButtons.Widgets.Add(repairAll);
+            _content.Widgets.Add(maintenanceButtons);
+
+            _content.Widgets.Add(new Label { Text = "NAJBARDZIEJ ZUŻYTE ODCINKI", Wrap = true });
+            foreach (var track in maintenance.GetWorstTracks(8))
+            {
+                string state = track.State switch
+                {
+                    MaintenanceState.Critical => "KRYTYCZNY",
+                    MaintenanceState.Warning => "OSTRZEŻENIE",
+                    _ => "DOBRY"
+                };
+                _content.Widgets.Add(new Label
+                {
+                    Text = $"({track.Position.X},{track.Position.Y}) • zużycie {track.WearPercent:0.0}% • stan {state} • {track.Type}/{track.LineClass}/{track.Traction}",
+                    Wrap = true
+                });
+            }
+        }
 
         _content.Widgets.Add(new Label { Text = "KOLEJKA ŻĄDAŃ — FCFS", Wrap = true });
         if (dispatcher == null || dispatcher.PendingRequests.Count == 0)
