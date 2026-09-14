@@ -16,6 +16,7 @@ public sealed class GameMap
         _tracks;
 
     public RailwayLineManager RailwayLines { get; }
+    public InfrastructureMaintenanceManager Maintenance { get; }
 
     public GameMap(int width, int height)
         : this(new MapSize(width, height))
@@ -29,6 +30,7 @@ public sealed class GameMap
         _terrain = new TerrainType[
             checked(size.Width * size.Height)];
         RailwayLines = new RailwayLineManager(this);
+        Maintenance = new InfrastructureMaintenanceManager(this);
     }
 
     // ============================================================
@@ -119,7 +121,8 @@ public sealed class GameMap
 
     public bool IsInside(int x, int y)
     {
-        return x >= 0 && x < Size.Width && y >= 0 && y < Size.Height;
+        return x >= 0 && x < Size.Width &&
+               y >= 0 && y < Size.Height;
     }
 
     private int GetIndex(MapPosition position)
