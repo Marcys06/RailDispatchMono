@@ -43,7 +43,7 @@ public sealed class MapSaveService
 
         var data = new MapSaveData
         {
-            GameVersion = "0.3.0",
+            GameVersion = "0.3.1",
             Map = new MapInfoSaveData { Width = map.Size.Width, Height = map.Size.Height }
         };
 
@@ -69,12 +69,7 @@ public sealed class MapSaveService
 
         foreach (var line in map.RailwayLines.Lines)
         {
-            var saved = new RailwayLineSaveData
-            {
-                Id = line.Id,
-                Name = line.Name,
-                ColorIndex = line.ColorIndex
-            };
+            var saved = new RailwayLineSaveData { Id = line.Id, Name = line.Name, ColorIndex = line.ColorIndex };
             foreach (var position in line.TrackPositions.OrderBy(p => p.Y).ThenBy(p => p.X))
                 saved.Tracks.Add(new MapPositionSaveData { X = position.X, Y = position.Y });
             data.RailwayLines.Add(saved);
@@ -179,10 +174,7 @@ public sealed class MapSaveService
 
         foreach (var saved in data.RailwayLines)
         {
-            var positions = saved.Tracks
-                .Select(p => new MapPosition(p.X, p.Y))
-                .Where(map.HasTrack)
-                .ToList();
+            var positions = saved.Tracks.Select(p => new MapPosition(p.X, p.Y)).Where(map.HasTrack).ToList();
             map.RailwayLines.Create(saved.Name, positions, saved.Id, saved.ColorIndex);
         }
 
